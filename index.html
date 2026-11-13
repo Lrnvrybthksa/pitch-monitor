@@ -96,6 +96,13 @@ button.ghost:disabled { opacity: .4; }
 .video { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #0c0f14; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; font-size: 13px; color: var(--muted); }
 .video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 input[type=url] { font: 500 16px var(--display); min-height: 46px; border-radius: 12px; border: 2px solid var(--line); background: var(--field); color: var(--text); padding: 0 12px; width: 100%; }
+.ytlist { display: flex; flex-direction: column; gap: 6px; }
+.ytlist h3 { margin: 0; font-size: 13px; font-weight: 500; color: var(--muted); }
+.ytitem { display: flex; align-items: center; gap: 6px; }
+.ytitem .go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 4px 8px 4px 4px; border-radius: 10px; border: 2px solid var(--line); background: var(--field); color: var(--text); font: 500 14px var(--display); text-align: left; cursor: pointer; }
+.ytitem .go img { width: 64px; height: 36px; object-fit: cover; border-radius: 6px; flex: none; background: #0c0f14; }
+.ytitem .go span { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.25; }
+.ytitem .rm { flex: none; width: 44px; min-height: 48px; border-radius: 10px; border: 2px solid var(--line); background: transparent; color: var(--muted); font: 500 18px var(--display); cursor: pointer; }
 .trace-wrap { padding: 10px; }
 canvas { display: block; width: 100%; height: 640px; border-radius: 10px; background: #151a23; }
 .trace-cap { font-size: 12px; color: var(--muted); margin: 8px 4px 0; display: flex; justify-content: space-between; }
@@ -202,6 +209,7 @@ input[type=range] { width: 100%; accent-color: var(--good); height: 28px; }
     </div>
     <div class="video" id="yt-box" hidden></div>
     <p id="yt-msg">The video plays here and your voice is drawn on the chart underneath. Wear headphones so the mic doesn't hear the song.</p>
+    <div class="ytlist" id="yt-list" hidden></div>
     <label class="filebtn">Or chart an audio file<input type="file" id="song-file" accept="audio/*"></label>
     <p id="song-status">A voice-only recording works best. The app maps its notes onto the chart, plays it back, and you can sing along.</p>
     <div class="row" id="song-player" hidden>
@@ -934,10 +942,51 @@ input[type=range] { width: 100%; accent-color: var(--good); height: 28px; }
     var f = $("yt-box").querySelector("iframe");
     if (f && f.contentWindow) { try { f.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', "*"); } catch (e) {} }
   }
+  var ytHist = store.get("pm.yt", []);
+  if (!Array.isArray(ytHist)) ytHist = [];
+  function ytRenderList() {
+    var host = $("yt-list"); host.innerHTML = ""; host.hidden = !ytHist.length;
+    if (!ytHist.length) return;
+    var h = document.createElement("h3"); h.textContent = "Your recent videos"; host.appendChild(h);
+    ytHist.forEach(function (it) {
+      var row = document.createElement("div"); row.className = "ytitem";
+      var go = document.createElement("button"); go.type = "button"; go.className = "go";
+      var img = document.createElement("img"); img.alt = ""; img.loading = "lazy";
+      img.onerror = function () { img.style.display = "none"; };
+      img.src = "https://i.ytimg.com/vi/" + it.id + "/default.jpg";
+      var sp = document.createElement("span"); sp.textContent = it.title || "YouTube video " + it.id;
+      go.appendChild(img); go.appendChild(sp);
+      go.addEventListener("click", function () { $("yt-url").value = "https://youtu.be/" + it.id; ytShow(it.id); });
+      var rm = document.createElement("button"); rm.type = "button"; rm.className = "rm"; rm.textContent = "×";
+      rm.setAttribute("aria-label", "Remove " + (it.title || "video") + " from the list");
+      rm.addEventListener("click", function () { ytHist = ytHist.filter(function (x) { return x.id !== it.id; }); store.set("pm.yt", ytHist); ytRenderList(); });
+      row.appendChild(go); row.appendChild(rm); host.appendChild(row);
+    });
+  }
+  function ytRemember(id) {
+    var old = null;
+    ytHist = ytHist.filter(function (x) { if (x.id === id) { old = x; return false; } return true; });
+    var it = old || { id: id, title: "" };
+    ytHist.unshift(it); if (ytHist.length > 30) ytHist.length = 30;
+    store.set("pm.yt", ytHist); ytRenderList();
+    if (!it.title && window.fetch) {
+      try {
+        fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id))
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) { if (j && j.title) { it.title = String(j.title).slice(0, 120); store.set("pm.yt", ytHist); ytRenderList(); } })
+          .then(null, function () {});
+      } catch (e) {}
+    }
+  }
   function ytLoad() {
-    var id = ytId($("yt-url").value), box = $("yt-box");
+    var id = ytId($("yt-url").value);
     if (!id) { $("yt-msg").textContent = "That doesn't look like a YouTube link. Paste the full link from the Share button."; return; }
     prefs.yt = $("yt-url").value.trim(); savePrefs();
+    ytShow(id);
+  }
+  function ytShow(id) {
+    var box = $("yt-box");
+    ytRemember(id);
     box.innerHTML = ""; box.hidden = false;
     var f = document.createElement("iframe");
     f.src = "https://www.youtube.com/embed/" + id + "?playsinline=1&rel=0&enablejsapi=1";
@@ -947,6 +996,7 @@ input[type=range] { width: 100%; accent-color: var(--good); height: 28px; }
     $("yt-msg").textContent = "Wear headphones, tap Start listening, then play the video and sing along. If the video stays blank, open the app from its web link, since some previews block embedded videos.";
   }
   if (prefs.yt) $("yt-url").value = prefs.yt;
+  ytRenderList();
   $("yt-load").addEventListener("click", ytLoad);
   $("yt-url").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); ytLoad(); } });
 
