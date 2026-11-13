@@ -32,8 +32,8 @@ main { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap
 h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: .02em; display: flex; justify-content: space-between; align-items: baseline; }
 h1 small { font-family: var(--mono); font-weight: 400; font-size: 12px; color: var(--muted); }
 
-.seg { display: grid; grid-template-columns: repeat(5, 1fr); background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 4px; gap: 2px; }
-.seg button { min-height: 42px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font: 500 13px var(--display); cursor: pointer; padding: 0; }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 4px; gap: 2px; }
+.seg button { min-height: 42px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font: 500 15px var(--display); cursor: pointer; padding: 0; }
 .seg button[aria-pressed="true"] { background: var(--field); color: var(--text); font-weight: 700; box-shadow: inset 0 0 0 2px var(--line); }
 
 .card { background: var(--panel); border: 2px solid var(--line); border-radius: 18px; padding: 18px 16px 16px; transition: border-color .15s, box-shadow .15s; }
@@ -93,6 +93,9 @@ button.ghost:disabled { opacity: .4; }
 .octrow .sp { flex: 1; }
 .octrow .wide { width: auto; padding: 0 12px; font: 500 14px var(--display); }
 
+.video { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #0c0f14; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; font-size: 13px; color: var(--muted); }
+.video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+input[type=url] { font: 500 16px var(--display); min-height: 46px; border-radius: 12px; border: 2px solid var(--line); background: var(--field); color: var(--text); padding: 0 12px; width: 100%; }
 .trace-wrap { padding: 10px; }
 canvas { display: block; width: 100%; height: 640px; border-radius: 10px; background: #151a23; }
 .trace-cap { font-size: 12px; color: var(--muted); margin: 8px 4px 0; display: flex; justify-content: space-between; }
@@ -138,6 +141,7 @@ input[type=range] { width: 100%; accent-color: var(--good); height: 28px; }
     <button type="button" data-mode="key" aria-pressed="false">Key</button>
     <button type="button" data-mode="range" aria-pressed="false">Range</button>
     <button type="button" data-mode="exercise" aria-pressed="false">Exercises</button>
+    <button type="button" data-mode="song" aria-pressed="false">Song</button>
   </div>
 
   <section class="card" id="card" aria-live="polite">
@@ -189,6 +193,15 @@ input[type=range] { width: 100%; accent-color: var(--good); height: 28px; }
     <p id="rf-result" hidden></p>
     <button type="button" class="big" id="rf-btn">Find my range</button>
     <button type="button" class="ghost" id="rf-use" hidden>Set exercises to fit my range</button>
+  </section>
+
+  <section class="panel" id="panel-song" hidden>
+    <div class="row">
+      <label class="fld" style="flex:3 1 200px">YouTube link<input type="url" id="yt-url" placeholder="Paste a YouTube link" autocomplete="off"></label>
+      <button type="button" class="ghost" id="yt-load" style="flex:1 1 80px">Load</button>
+    </div>
+    <div class="video" id="yt-box">Paste a link and tap Load. The video plays here and your voice is drawn on the chart underneath.</div>
+    <p id="yt-msg">Wear headphones, tap Start listening, then play the video and sing along. Without headphones the mic hears the song too.</p>
   </section>
 
   <section class="panel" id="panel-ex" hidden>
@@ -883,6 +896,32 @@ input[type=range] { width: 100%; accent-color: var(--good); height: 28px; }
   }
   $("prog-clear").addEventListener("click", function () { days = {}; saveDays(); renderProgress(); });
 
+  /* ---------- song (YouTube player) ---------- */
+  function ytId(u) {
+    u = (u || "").trim();
+    var m = u.match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/|\/live\/)([A-Za-z0-9_-]{11})/) || u.match(/^([A-Za-z0-9_-]{11})$/);
+    return m ? m[1] : null;
+  }
+  function ytPause() {
+    var f = $("yt-box").querySelector("iframe");
+    if (f && f.contentWindow) { try { f.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', "*"); } catch (e) {} }
+  }
+  function ytLoad() {
+    var id = ytId($("yt-url").value), box = $("yt-box");
+    if (!id) { $("yt-msg").textContent = "That doesn't look like a YouTube link. Paste the full link from the Share button."; return; }
+    prefs.yt = $("yt-url").value.trim(); savePrefs();
+    box.innerHTML = "";
+    var f = document.createElement("iframe");
+    f.src = "https://www.youtube.com/embed/" + id + "?playsinline=1&rel=0&enablejsapi=1";
+    f.title = "YouTube video"; f.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+    f.referrerPolicy = "strict-origin-when-cross-origin"; f.allowFullscreen = true;
+    box.appendChild(f);
+    $("yt-msg").textContent = "Wear headphones, tap Start listening, then play the video and sing along. If the video stays blank, open the app from its web link, since some previews block embedded videos.";
+  }
+  if (prefs.yt) $("yt-url").value = prefs.yt;
+  $("yt-load").addEventListener("click", ytLoad);
+  $("yt-url").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); ytLoad(); } });
+
   /* ---------- modes ---------- */
   function modeRef(now) {
     if (mode === "target") return targetMidi;
@@ -900,8 +939,10 @@ input[type=range] { width: 100%; accent-color: var(--good); height: 28px; }
     ["target", "key", "range"].forEach(function (p) { $("panel-" + p).hidden = m !== p; });
     $("panel-ex").hidden = m !== "exercise";
     var fullChart = m === "free" || m === "key" || m === "range";
-    canvas.style.height = fullChart ? "640px" : "190px";
-    $("trace-note").textContent = m === "key" ? "C2 to C7 · bright rows are in the key" : fullChart ? "C2 to C7 · every note has its own row" : "Green band is your target";
+    canvas.style.height = fullChart ? "640px" : m === "song" ? "300px" : "190px";
+    $("panel-song").hidden = m !== "song";
+    if (m !== "song") ytPause();
+    $("trace-note").textContent = m === "song" ? "Follows your voice · two octaves" : m === "key" ? "C2 to C7 · bright rows are in the key" : fullChart ? "C2 to C7 · every note has its own row" : "Green band is your target";
     setFlats(); renderKeyChips(true); rfRender(); applyScale(); showIdle();
   }
   document.querySelectorAll(".seg button").forEach(function (b) {
@@ -977,14 +1018,15 @@ input[type=range] { width: 100%; accent-color: var(--good); height: 28px; }
     else for (var k = history.length - 1; k >= 0; k--) {
       if (history[k].midi != null) { center += (history[k].midi - center) * 0.04; break; }
     }
-    var full = !gl && (mode === "free" || mode === "key" || mode === "range");
-    var lo2 = full ? 35.5 : center - span / 2, hi2 = full ? 96.5 : center + span / 2;
+    var full = !gl && (mode === "free" || mode === "key" || mode === "range" || mode === "song");
+    if (mode === "song") { span = 25; center = clamp(center, 48, 84); }
+    var lo2 = full && mode !== "song" ? 35.5 : center - span / 2, hi2 = full && mode !== "song" ? 96.5 : center + span / 2;
     function yOf(m) { return h - ((m - lo2) / (hi2 - lo2)) * h; }
     function xOf(t) { return 34 + (w - 34) * (nowFrac - (now - t) / WINDOW); }
     ctx2d.font = "11px ui-monospace, Menlo, Consolas, monospace"; ctx2d.textBaseline = "middle";
     if (full) {
-      var rowH = h / 61, act = hasPitch ? Math.round(curSm) : null, MONO = "px ui-monospace, Menlo, Consolas, monospace";
-      for (var fm = 36; fm <= 96; fm++) {
+      var rowH = h / (hi2 - lo2), act = hasPitch ? Math.round(curSm) : null, MONO = "px ui-monospace, Menlo, Consolas, monospace";
+      for (var fm = Math.ceil(lo2); fm <= Math.floor(hi2); fm++) {
         var fy = yOf(fm), fpc = pcOf(fm), black = [1, 3, 6, 8, 10].indexOf(fpc) >= 0;
         var bright = mode === "key" ? keyDegree(fpc) >= 0 : !black, isAct = fm === act;
         ctx2d.fillStyle = bright ? "#252d3b" : "#10141a";
