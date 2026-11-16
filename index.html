@@ -1090,6 +1090,20 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     { group: MX, name: "Corridos tumbados: minor lick", steps: [0,2,3,7,8,7,5,3,2,-1,0], hold: 0.5, min: true, tip: "A requinto-style minor phrase that dips to the raised seventh before landing home." },
     { group: MX, name: "Cumbia norte\u00F1a: minor pentatonic", steps: [0,3,5,7,10,12,10,7,5,3,0], hold: 0.5, min: true, tip: "Simple five-note minor lines that sit well over cumbia grooves." }
   );
+  var JZ = "Jazz";
+  EX.push(
+    grp(JZ, scaleEx("Bebop dominant", [0,2,4,5,7,9,10,11,12], "Mixolydian with an extra passing note between the flat seventh and the root, so chord notes land on the beat.")),
+    grp(JZ, scaleEx("Bebop major", [0,2,4,5,7,8,9,11,12], "The major scale with a passing note between the fifth and sixth.")),
+    grp(JZ, scaleEx("Bebop Dorian", [0,2,3,4,5,7,9,10,12], "Dorian with a passing major third. Used over minor seventh chords.", 1)),
+    grp(JZ, scaleEx("Jazz minor (melodic minor)", [0,2,3,5,7,9,11,12], "Minor with a major sixth and seventh. The parent of many jazz sounds.", 1)),
+    grp(JZ, scaleEx("Lydian dominant", [0,2,4,6,7,9,10,12], "Mixolydian with a raised fourth. Bright and bluesy at once.")),
+    grp(JZ, scaleEx("Altered scale", [0,1,3,4,6,8,10,12], "Every tension of a dominant chord in one scale. Used right before resolving.", 1)),
+    grp(JZ, scaleEx("Half-whole diminished", [0,1,3,4,6,7,9,10,12], "Half step, whole step, repeated. Fits dominant chords with a flat ninth.", 1)),
+    grp(JZ, scaleEx("Locrian natural 2", [0,2,3,5,6,8,10,12], "For half-diminished chords, with a friendlier second than plain Locrian.", 1)),
+    grp(JZ, scaleEx("Major blues scale", [0,2,3,4,7,9,12], "Major pentatonic plus the flat third. The sweet side of the blues.")),
+    { group: JZ, name: "2-5-1 arpeggios", steps: [2,5,9,12,11,7,5,2,0,4,7,11], hold: 0.55, tip: "The most common jazz chord move, spelled out: up the two chord, down the five chord, up the one chord. Your starting note is the home key." },
+    { group: JZ, name: "1-2-3-5 pattern", steps: [0,2,4,7,5,7,9,12,7,9,11,14,12], hold: 0.5, tip: "A four-note cell used by many jazz improvisers, played on the one, four and five of the key." }
+  );
   var SAXES = ["ssax", "asax", "tsax"], INST_GROUP = "For your instrument";
   EX.push(
     { group: INST_GROUP, inst: ["guitar"], name: "Open strings", abs: [40, 45, 50, 55, 59, 64], exact: true, hold: 0.4, tip: "Pluck each open string from low E to high E and let it ring. It doubles as a tuning check." },
@@ -1102,7 +1116,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     { group: INST_GROUP, inst: SAXES, name: "Octave slurs", steps: [0,12,0,12,0], exact: true, hold: 0.8, tip: "Slur between the low and high octave with the octave key. The exact octave counts." },
     { group: INST_GROUP, inst: SAXES, name: "Chromatic run", steps: [0,1,2,3,4,5,6,7,8,9,10,11,12], exact: true, hold: 0.35, tip: "Every half step up one octave. Keep the fingers even." }
   );
-  var GROUPS = [INST_GROUP, "Warm-ups", "Scales", XO, MX, "Intervals", "Arpeggios", "Slides", "Range builders", "Ear training", "Your own"];
+  var GROUPS = [INST_GROUP, "Warm-ups", "Scales", JZ, XO, MX, "Intervals", "Arpeggios", "Slides", "Range builders", "Ear training", "Your own"];
   var CAT_NAMES = { "For your instrument": "Instrument", "Exotic scales": "Exotic", "Regional Mexican": "Mexican regional", "Range builders": "Range", "Ear training": "Ear", "Your own": "Mine" }, curCat = null;
   function pickerRender() {
     var cats = $("ex-cats"), grid = $("ex-grid"), sel = EX[+exSel.value];
