@@ -1065,6 +1065,31 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     arpEx("Dominant 7 arpeggio", [0,4,7,10,12], "A major chord with a flat seventh."),
     arpEx("Minor 7 arpeggio", [0,3,7,10,12], "A minor chord with its seventh.", 1)
   );
+  function grp(g, e) { e.group = g; return e; }
+  var XO = "Exotic scales", MX = "Regional Mexican";
+  EX.push(
+    grp(XO, scaleEx("Phrygian mode", [0,1,3,5,7,8,10,12], "A minor scale with a lowered second. Dark, Spanish-sounding.", 1)),
+    grp(XO, scaleEx("Phrygian dominant", [0,1,4,5,7,8,10,12], "Phrygian with a major third. The flamenco and Middle Eastern sound.", 1)),
+    grp(XO, scaleEx("Double harmonic (Byzantine)", [0,1,4,5,7,8,11,12], "Two big augmented steps. Think surf guitar and Arabic melodies.")),
+    grp(XO, scaleEx("Hungarian minor", [0,2,3,6,7,8,11,12], "Harmonic minor with a raised fourth.", 1)),
+    grp(XO, scaleEx("Persian scale", [0,1,4,5,6,8,11,12], "Very tense, with a lowered second and fifth.")),
+    grp(XO, scaleEx("Melodic minor", [0,2,3,5,7,9,11,12], "Minor on the bottom, major on top. The jazz minor.", 1)),
+    grp(XO, scaleEx("Lydian mode", [0,2,4,6,7,9,11,12], "Major with a raised fourth. Bright and floating.")),
+    grp(XO, scaleEx("Locrian mode", [0,1,3,5,6,8,10,12], "The darkest mode, with a lowered second and fifth.", 1)),
+    grp(XO, scaleEx("Whole tone scale", [0,2,4,6,8,10,12], "Only whole steps. Dreamy, with no clear home note.")),
+    grp(XO, scaleEx("Diminished scale", [0,2,3,5,6,8,9,11,12], "Whole step, half step, repeated. Eight notes to the octave.", 1)),
+    grp(XO, scaleEx("Hirajoshi (Japanese)", [0,2,3,7,8,12], "A five-note Japanese scale with wide gaps.", 1)),
+    grp(XO, scaleEx("In sen (Japanese)", [0,1,5,7,10,12], "Another five-note Japanese scale, starting with a half step.", 1)),
+    grp(XO, scaleEx("Egyptian pentatonic", [0,2,5,7,10,12], "A five-note scale with no third, so it is neither major nor minor.")),
+    { group: MX, name: "Mariachi: major in thirds", steps: [0,4,2,5,4,7,5,9,7,11,9,12], hold: 0.6, tip: "Mariachi violins and trumpets often move in parallel thirds. Climb the major scale in thirds." },
+    { group: MX, name: "Norte\u00F1o: major in sixths", steps: [0,9,2,11,4,12,5,14], hold: 0.6, tip: "Accordion and bajo sexto lines are often harmonized a sixth apart. Jump from each scale note to the sixth above it." },
+    grp(MX, scaleEx("Ranchera and bolero: harmonic minor", [0,2,3,5,7,8,11,12], "The minor sound behind many rancheras and boleros, with its raised seventh.", 1)),
+    grp(MX, scaleEx("Huapango: Andalusian sound", [0,1,4,5,7,8,10,12], "The Phrygian dominant scale, the Spanish colour heard in huapangos and son huasteco.", 1)),
+    { group: MX, name: "Banda: brass arpeggio run", steps: [0,4,7,12,16,12,7,4,0], hold: 0.6, tip: "Banda brass lines lean on big major-chord runs. Up the arpeggio past the octave and back." },
+    grp(MX, scaleEx("Son jarocho: Mixolydian", [0,2,4,5,7,9,10,12], "A major scale with a flat seventh, a common sound in sones.")),
+    { group: MX, name: "Corridos tumbados: minor lick", steps: [0,2,3,7,8,7,5,3,2,-1,0], hold: 0.5, min: true, tip: "A requinto-style minor phrase that dips to the raised seventh before landing home." },
+    { group: MX, name: "Cumbia norte\u00F1a: minor pentatonic", steps: [0,3,5,7,10,12,10,7,5,3,0], hold: 0.5, min: true, tip: "Simple five-note minor lines that sit well over cumbia grooves." }
+  );
   var SAXES = ["ssax", "asax", "tsax"], INST_GROUP = "For your instrument";
   EX.push(
     { group: INST_GROUP, inst: ["guitar"], name: "Open strings", abs: [40, 45, 50, 55, 59, 64], exact: true, hold: 0.4, tip: "Pluck each open string from low E to high E and let it ring. It doubles as a tuning check." },
@@ -1077,8 +1102,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     { group: INST_GROUP, inst: SAXES, name: "Octave slurs", steps: [0,12,0,12,0], exact: true, hold: 0.8, tip: "Slur between the low and high octave with the octave key. The exact octave counts." },
     { group: INST_GROUP, inst: SAXES, name: "Chromatic run", steps: [0,1,2,3,4,5,6,7,8,9,10,11,12], exact: true, hold: 0.35, tip: "Every half step up one octave. Keep the fingers even." }
   );
-  var GROUPS = [INST_GROUP, "Warm-ups", "Scales", "Intervals", "Arpeggios", "Slides", "Range builders", "Ear training", "Your own"];
-  var CAT_NAMES = { "For your instrument": "Instrument", "Range builders": "Range", "Ear training": "Ear", "Your own": "Mine" }, curCat = null;
+  var GROUPS = [INST_GROUP, "Warm-ups", "Scales", XO, MX, "Intervals", "Arpeggios", "Slides", "Range builders", "Ear training", "Your own"];
+  var CAT_NAMES = { "For your instrument": "Instrument", "Exotic scales": "Exotic", "Regional Mexican": "Mexican regional", "Range builders": "Range", "Ear training": "Ear", "Your own": "Mine" }, curCat = null;
   function pickerRender() {
     var cats = $("ex-cats"), grid = $("ex-grid"), sel = EX[+exSel.value];
     if (!curCat || pickerRender.last !== exSel.value) curCat = sel.group;
