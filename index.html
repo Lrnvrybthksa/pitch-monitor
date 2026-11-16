@@ -424,6 +424,11 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <label class="fld">Groove<select id="gv-style"></select></label>
       <label class="fld">Chords<select id="gv-prog"></select></label>
     </div>
+    <button type="button" class="big" id="gv-play">Play groove</button>
+    <div class="row">
+      <button type="button" class="ghost" id="gv-fill">Play a fill</button>
+      <button type="button" class="ghost" id="gv-end">Finish with an ending</button>
+    </div>
     <div class="row">
       <label class="fld">Key<select id="gv-key"></select></label>
       <label class="fld">Scale<select id="gv-scale"><option value="maj">Major</option><option value="min">Minor</option></select></label>
@@ -484,11 +489,6 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
           <option value="0">No key change</option><option value="1">Last chorus up a half step</option><option value="2">Last chorus up a whole step</option>
         </select></label>
       </div>
-    </div>
-    <button type="button" class="big" id="gv-play">Play groove</button>
-    <div class="row">
-      <button type="button" class="ghost" id="gv-fill">Play a fill</button>
-      <button type="button" class="ghost" id="gv-end">Finish with an ending</button>
     </div>
     <div class="builder" id="cs-box">
       <label class="check"><input type="checkbox" id="cs-on"> Show chord shapes</label>
@@ -2851,7 +2851,22 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     { id: "jangle", group: "Dream and indie pop", name: "Jangle pop (12-string)", bpm: 124, beats: 4, steps: 8, fx: true, k: [0, 4], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: each(ALL8, 1), arp: true, cv: "s:guitar12", bv: "s:bass", prog: "1465", tip: "Fast, bright 12-string arpeggios over a driving beat." },
     { id: "synthdream", group: "Dream and indie pop", name: "Synth dream pop (1980s)", bpm: 104, beats: 4, steps: 8, fx: true, kit: "e", k: [0, 4], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: each(ALL8, 1), arp: true, cv: "s:epfm", c2: [[0, 8]], cv2: "pad", bv: "s:subbass", prog: "m-dream", mel: "sustain", by: "lead", tip: "Drum machine, pulsing synth bass, glassy arpeggios and a synth lead, in a minor key." }
   ].forEach(function (s) { STYLES.push(s); });
-  var GROUP_ORDER = ["Regional Mexican", "Modern regional Mexican", "Grupera", "Ballads", "R&B", "Dream and indie pop", "Electro-pop", "Jazz", "Rock", "Metal", "Basics", "Kick drum"];
+  /* Original grooves in the feel of each Lorde album era. They are not transcriptions of her songs. */
+  [
+    { id: "lo-ph1", group: "Lorde-style eras", name: "Pure Heroine era: snaps and sub bass", bpm: 85, beats: 4, steps: 16, kit: "e", k: [0, 10], s2: [4, 12], b: [[0, "r"], [10, "r"]], c2: [[0, 16]], cv2: "pad", bv: "s:subbass", prog: "m-pop", tip: "Almost nothing: a deep kick, finger-snap clicks, sub bass and one held chord. In the feel of her 2013 album, not a copy of a song." },
+    { id: "lo-ph2", group: "Lorde-style eras", name: "Pure Heroine era: slow march", bpm: 92, beats: 4, steps: 16, kit: "e", k: [0, 6, 8], s: [4, 12], h: EV16, b: [[0, "r"], [6, "r"], [8, "r"]], c: [[0, 8], [8, 8]], cv: "pad", bv: "s:subbass", prog: "6415", tip: "A steady drum-machine march with long synth chords and lots of room for the voice." },
+    { id: "lo-ph3", group: "Lorde-style eras", name: "Pure Heroine era: half-time glow", bpm: 70, beats: 4, steps: 16, kit: "e", fx: true, k: [0, 7, 10], s: [8], h: [4, 12], b: [[0, "r"], [10, "r"]], c: each(EV16, 2), arp: true, cv: "s:epfm", c2: [[0, 16]], cv2: "pad", bv: "s:subbass", prog: "m-dream", tip: "Half-time snare, echoing glassy notes and a slow sub bass." },
+    { id: "lo-me1", group: "Lorde-style eras", name: "Melodrama era: piano stabs on a dance beat", bpm: 104, beats: 4, steps: 16, kit: "e", k: [0, 4, 8, 12], s: [4, 12], h: [2, 6, 10, 14], b: [[0, "r"], [3, "r"], [6, "r"], [8, "r"], [11, "r"], [14, "r"]], c: [[0, 1], [3, 1], [6, 1], [8, 1], [11, 1], [14, 1]], cv: "s:piano", bv: "s:subbass", prog: "4156", tip: "Four-on-the-floor kick with short, bright piano chords pushing against it. In the feel of her 2017 album." },
+    { id: "lo-me2", group: "Lorde-style eras", name: "Melodrama era: bare piano ballad", bpm: 72, beats: 4, steps: 8, b: [[0, "r"]], c: [[0, 2], [2, 2], [4, 2], [6, 2]], cv: "s:piano", bv: "s:bass", prog: "1364", tip: "Just piano chords on every beat and a quiet bass note. All the space is for the singer." },
+    { id: "lo-me3", group: "Lorde-style eras", name: "Melodrama era: building pulse", bpm: 114, beats: 4, steps: 16, kit: "e", k: [0, 4, 8, 12], h: [2, 6, 10, 14], b: each(EV16, "r"), c: each(EV16, 2), arp: true, cv: "s:epfm", c2: [[0, 16]], cv2: "strings", bv: "s:subbass", prog: "m-epic", tip: "A pulsing bass and climbing notes over a steady kick, with strings underneath. No snare, so it feels like it is always about to break open." },
+    { id: "lo-sp1", group: "Lorde-style eras", name: "Solar Power era: sunny acoustic strum", bpm: 88, beats: 4, steps: 16, k: [0, 8], s2: [4, 12], p: EV16, pv: "shake", b: [[0, "r"], [6, "r"], [8, "5"]], c: [[0, 4], [4, 2], [6, 2], [10, 2], [12, 2], [14, 2]], cv: "s:guitar", bv: "s:bass", prog: "1b74", tip: "Loose acoustic guitar strumming, a shaker and a soft kick. In the feel of her 2021 album." },
+    { id: "lo-sp2", group: "Lorde-style eras", name: "Solar Power era: fingerpicked folk", bpm: 76, beats: 4, steps: 8, p: [2, 6], pv: "shake", b: [[0, "r"], [4, "5"]], c: each(ALL8, 1), arp: true, cv: "s:nylon", bv: "s:contrabass", prog: "dream2", mel: "sustain", by: "flute", tip: "Picked nylon guitar, upright bass, a light shaker and a flute line. No drum kit." },
+    { id: "lo-sp3", group: "Lorde-style eras", name: "Solar Power era: beach groove", bpm: 100, beats: 4, steps: 16, k: [0, 6, 8], s2: [4, 12], p: GUIRO16, pv: "shake", b: [[0, "r"], [3, "r"], [8, "5"], [11, "r"]], c: [[2, 2], [6, 2], [10, 2], [14, 2]], cv: "s:elec", bv: "s:bass", prog: "1465", tip: "Clean guitar chops on the off-beats over a relaxed, shaker-driven beat." },
+    { id: "lo-vi1", group: "Lorde-style eras", name: "Virgin era: pulsing synths", bpm: 118, beats: 4, steps: 16, kit: "e", fx: true, k: [0, 4, 8, 12], s: [4, 12], h: [2, 6, 10, 14], b: each(EV16, "r"), c: each(ALL16, 1), arp: true, cv: "s:epfm", c2: [[0, 16]], cv2: "pad", bv: "s:subbass", prog: "m-pop", tip: "Fast synth notes and a driving bass over a club beat. In the feel of her 2025 album." },
+    { id: "lo-vi2", group: "Lorde-style eras", name: "Virgin era: raw drums and bass", bpm: 96, beats: 4, steps: 16, kit: "e", k: [0, 3, 8, 11], s: [4, 12], b: [[0, "r"], [3, "r"], [8, "r"], [11, "r"]], c: [[0, 8], [8, 8]], cv: "s:wurli", bv: "s:subbass", prog: "m-v", tip: "A stripped beat where the kick and bass hit together, with a gritty keyboard holding the chords." },
+    { id: "lo-vi3", group: "Lorde-style eras", name: "Virgin era: slow glow", bpm: 80, beats: 4, steps: 16, kit: "e", fx: true, k: [0, 10], s: [8], b: [[0, "r"], [10, "r"]], c: each(EV16, 2), arp: true, cv: "s:rhodes", c2: [[0, 16]], cv2: "pad", bv: "s:subbass", prog: "m-dream", mel: "sustain", by: "lead", tip: "Slow half-time beat, soft electric piano notes, a pad and a synth line on top." }
+  ].forEach(function (s) { STYLES.push(s); });
+  var GROUP_ORDER = ["Regional Mexican", "Modern regional Mexican", "Grupera", "Ballads", "R&B", "Dream and indie pop", "Electro-pop", "Lorde-style eras", "Jazz", "Rock", "Metal", "Basics", "Kick drum"];
   /* ---------- song form builder ---------- */
   var SEC_NAMES = { intro: "Intro", verse: "Verse", pre: "Pre-chorus", chorus: "Chorus", inter: "Interlude", bridge: "Bridge", solo: "Solo", outro: "Outro" };
   var FORMS = [
@@ -2872,7 +2887,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     banda: "banda", bandavals: "banda", bandarom: "banda", cumbia: "cumbia", grupcumbia: "cumbia", bandacumbia: "cumbia", tecnocumbia: "cumbia",
     sierreno: "sierreno", tumbado: "sierreno", tumbado44: "sierreno", electro: "sierreno", bolero: "bolero", swing: "aaba", jballad: "aaba", bossa: "aaba", blues: "blues", shufflerock: "blues",
     slowjam: "rnb", neosoul: "rnb", rnb90: "rnb" };
-  var FORM_GROUP = { "Ballads": "balada", "Grupera": "balada", "Dream and indie pop": "pop", "Electro-pop": "pop", "Rock": "rock", "Metal": "rock", "Kick drum": "rock", "Basics": "rock" };
+  var FORM_GROUP = { "Ballads": "balada", "Grupera": "balada", "Dream and indie pop": "pop", "Electro-pop": "pop", "Lorde-style eras": "pop", "Rock": "rock", "Metal": "rock", "Kick drum": "rock", "Basics": "rock" };
   var SF = { on: !!(prefs.sf && prefs.sf.on), form: "auto", secs: [], shift: 0, same: false, cur: -1 };
   function sfFormId() { return SF.form !== "auto" ? SF.form : FORM_OF[GV.style.id] || FORM_GROUP[GV.style.group] || "pop"; }
   function sfLoad() {
