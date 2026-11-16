@@ -148,7 +148,13 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 @keyframes lava { 0% { background-position: 0% 0%; } 100% { background-position: 100% 100%; } }
 @media (prefers-reduced-motion: reduce) { body::before { animation: none !important; } }
 h1 { font-size: 20px; }
-.seg { gap: 8px; border: 0; background: none; padding: 0; border-radius: 0; }
+.seg { gap: 8px; border: 0; background: none; padding: 0; border-radius: 0; grid-template-columns: repeat(4, 1fr); }
+.gv-now { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.gv-now b { font-size: 40px; font-weight: 700; line-height: 1; }
+.gv-now span { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.gv-beats { display: flex; gap: 8px; }
+.gv-beats i { width: 14px; height: 14px; border-radius: 50%; background: color-mix(in srgb, var(--text) 16%, transparent); }
+.gv-beats i.on { background: var(--accent); }
 .seg button { min-height: 42px; border-radius: 999px; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); font-size: 14px; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
 .card, .panel, details { border-width: 1px; border-radius: 22px; background: var(--panel); box-shadow: 0 12px 32px rgba(0,0,0,.28); }
@@ -228,6 +234,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     <button type="button" data-mode="range" aria-pressed="false">Range</button>
     <button type="button" data-mode="exercise" aria-pressed="false">Exercises</button>
     <button type="button" data-mode="song" aria-pressed="false">Song</button>
+    <button type="button" data-mode="jam" aria-pressed="false">Jam</button>
+    <button type="button" data-mode="rhythm" aria-pressed="false">Rhythm</button>
   </div>
 
   <section class="card" id="card" aria-live="polite">
@@ -372,6 +380,39 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <button type="button" class="ghost" id="ex-skip">Skip note</button>
     </div>
     <p>Headphones keep the played notes and the metronome out of the mic.</p>
+  </section>
+
+  <section class="panel" id="panel-jam" hidden>
+    <div class="row">
+      <label class="fld">Groove<select id="gv-style"></select></label>
+      <label class="fld">Chords<select id="gv-prog"></select></label>
+    </div>
+    <div class="row">
+      <label class="fld" style="flex:0 1 110px">Key<select id="gv-key"></select></label>
+      <label class="fld" style="flex:3 1 180px"><span id="gv-bpm-lbl">Tempo</span><input type="range" id="gv-bpm" min="40" max="220" step="1" value="112"></label>
+    </div>
+    <p id="gv-tip"></p>
+    <div class="gv-now"><b id="gv-chord"></b><span id="gv-next"></span></div>
+    <div class="gv-beats" id="gv-beats" aria-hidden="true"></div>
+    <div class="chips" id="gv-chips"></div>
+    <button type="button" class="big" id="gv-play">Play groove</button>
+    <p>To record yourself over the groove, wear headphones and tap Start listening. When you tap Stop, your take plays back with the groove mixed in, and you can download it.</p>
+  </section>
+
+  <section class="panel" id="panel-rhythm" hidden>
+    <div class="row">
+      <label class="fld">Rhythm<select id="rh-sel"></select></label>
+      <label class="fld"><span id="rh-bpm-lbl">Tempo</span><input type="range" id="rh-bpm" min="40" max="200" step="1" value="80"></label>
+    </div>
+    <p id="rh-tip"></p>
+    <canvas id="rh-canvas" style="height:120px" aria-label="The rhythm laid out over four bars, with your hits marked"></canvas>
+    <div class="sing"><b id="rh-now">Ready</b><span id="rh-info"></span></div>
+    <div class="row">
+      <button type="button" class="ghost" id="rh-hear">Hear it first</button>
+      <button type="button" class="big" id="rh-start" style="min-height:46px">Start</button>
+    </div>
+    <button type="button" class="ghost" id="rh-cal">Calibrate timing</button>
+    <p>Clap, tap, say "ta" or play one note on each dot. One bar of clicks counts you in, then four bars are scored. Use headphones so the mic doesn't hear the click, and run Calibrate timing once on each device.</p>
   </section>
 
   <section class="card trace-wrap">
@@ -864,7 +905,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       outGain = ac.createGain(); outGain.gain.value = vol;
       var comp = ac.createDynamicsCompressor();
       comp.threshold.value = -10; comp.ratio.value = 6; comp.attack.value = 0.005; comp.release.value = 0.15;
-      outGain.connect(comp); comp.connect(ac.destination);
+      outGain.connect(comp); comp.connect(master());
     }
     return outGain;
   }
@@ -1667,7 +1708,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (!song.buf) return;
     ensureContext().then(function () {
       if (song.offset >= song.dur - 0.1) song.offset = 0;
-      var n = ac.createBufferSource(); n.buffer = song.playBuf || song.buf; n.playbackRate.value = song.rate; n.connect(ac.destination);
+      var n = ac.createBufferSource(); n.buffer = song.playBuf || song.buf; n.playbackRate.value = song.rate; n.connect(master());
       n.onended = function () { if (song.node === n && song.playing) { song.playing = false; song.offset = 0; $("song-play").textContent = "Play"; } };
       n.start(0, song.offset * song.rate); song.node = n; song.startAt = ac.currentTime; song.playing = true;
       $("song-play").textContent = "Pause";
@@ -1799,13 +1840,16 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     rec = null; recChunks = [];
     if (!window.MediaRecorder || !sw("rec")) return;
     try {
-      rec = new MediaRecorder(s, { audioBitsPerSecond: 64000 });
+      var feed = s;
+      try { recDest = ac.createMediaStreamDestination(); srcNode.connect(recDest); master().connect(recDest); feed = recDest.stream; } catch (e2) { recDest = null; }
+      rec = new MediaRecorder(feed, { audioBitsPerSecond: 96000 });
       rec.ondataavailable = function (e) { if (e.data && e.data.size) recChunks.push(e.data); };
       rec.start(1000);
     } catch (e) { rec = null; }
   }
   function recStop() {
     var r = rec; rec = null;
+    if (recDest) { var rd = recDest; recDest = null; setTimeout(function () { try { master().disconnect(rd); } catch (e) {} }, 400); }
     if (!r || r.state === "inactive") return;
     r.onstop = function () {
       if (!rv || !rv.take || !recChunks.length) return;
@@ -1963,7 +2007,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   /* ---------- chart zoom ---------- */
   var ZOOMS = [13, 25, 37, 61], ZOOM_NAMES = ["1 octave", "2 octaves", "3 octaves", "All notes"];
   var zi = prefs.zoom == null ? 1 : clamp(prefs.zoom, 0, 3), fcen = 60, fgoal = 60;
-  function fullMode(m) { return m === "free" || m === "key" || m === "range" || m === "song"; }
+  function fullMode(m) { return m === "free" || m === "key" || m === "range" || m === "song" || m === "jam"; }
   function sizeChart() {
     var full = fullMode(mode);
     canvas.style.height = !full ? "190px" : ZOOMS[zi] === 61 ? "640px" : mode === "song" ? "340px" : "400px";
@@ -1973,6 +2017,387 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function setZoom(d) { zi = clamp(zi + d, 0, 3); prefs.zoom = zi; savePrefs(); sizeChart(); }
   $("zoom-in").addEventListener("click", function () { setZoom(-1); });
   $("zoom-out").addEventListener("click", function () { setZoom(1); });
+
+  /* ---------- master bus: everything the app plays goes through here, so a take can record it mixed with the mic ---------- */
+  var masterOut = null, recDest = null;
+  function master() { if (!masterOut) { masterOut = ac.createGain(); masterOut.connect(ac.destination); } return masterOut; }
+
+  /* ---------- backing grooves ---------- */
+  var PROGS = [
+    { id: "1-5", name: "I – V7 (corrido)", bars: ["I", "I", "V7", "V7", "V7", "V7", "I", "I"] },
+    { id: "1-4-5", name: "I – IV – V7", bars: ["I", "IV", "V7", "I"] },
+    { id: "ranch", name: "Ranchera: I – IV – I – V7", bars: ["I", "IV", "I", "V7"] },
+    { id: "andal", name: "Andalusian: i – VII – VI – V7", bars: ["i", "bVII", "bVI", "V7"] },
+    { id: "bolero", name: "Bolero: I – vi – ii – V7", bars: ["I", "vi", "ii", "V7"] },
+    { id: "pop", name: "Ballad: I – V – vi – IV", bars: ["I", "V", "vi", "IV"] },
+    { id: "minb", name: "Minor ballad: i – VI – III – VII", bars: ["i", "bVI", "bIII", "bVII"] },
+    { id: "251", name: "Jazz: ii7 – V7 – Imaj7", bars: ["ii7", "V7", "Imaj7", "Imaj7"] },
+    { id: "m251", name: "Jazz minor: ii – V7 – i", bars: ["iim7b5", "V7", "i7", "i7"] },
+    { id: "turn", name: "Jazz turnaround: I – vi – ii – V", bars: ["Imaj7", "vi7", "ii7", "V7"] },
+    { id: "blues", name: "12-bar blues", bars: ["I7", "IV7", "I7", "I7", "IV7", "IV7", "I7", "I7", "V7", "IV7", "I7", "V7"] },
+    { id: "metal", name: "Metal: i – VI – VII – i", bars: ["i", "bVI", "bVII", "i"] },
+    { id: "phryg", name: "Metal Phrygian: i – II – i – VII", bars: ["i", "bII", "i", "bVII"] },
+    { id: "one", name: "One chord (major)", bars: ["I"] },
+    { id: "onem", name: "One chord (minor)", bars: ["i"] }
+  ];
+  var GAL = [0, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15], ALL8 = [0, 1, 2, 3, 4, 5, 6, 7], ALL12 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], ALL16 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+  function each(a, d) { return a.map(function (x) { return [x, d]; }); }
+  var STYLES = [
+    { id: "corrido", group: "Regional Mexican", name: "Corrido / norteño polka", bpm: 112, beats: 2, steps: 4, k: [0, 2], p: [1, 3], pv: "rim", b: [[0, "r"], [2, "5"]], c: each([1, 3], 1), cv: "strum", bv: "pluck", prog: "1-5", tip: "The oom-pah of corridos and norteñas: bass on the beat, strum on the off-beat." },
+    { id: "banda", group: "Regional Mexican", name: "Banda (tuba and brass)", bpm: 126, beats: 2, steps: 4, k: [0, 2], s: [1, 3], b: [[0, "r"], [2, "5"]], c: each([1, 3], 1), cv: "brass", bv: "tuba", prog: "1-4-5", tip: "The same polka pulse played by a banda: tuba on the beat, brass stabs and tarola on the off-beat." },
+    { id: "vals", group: "Regional Mexican", name: "Ranchera waltz (3/4)", bpm: 150, beats: 3, steps: 3, k: [0], p: [1, 2], pv: "rim", b: [[0, "r5"]], c: each([1, 2], 1), cv: "strum", bv: "pluck", prog: "ranch", tip: "One-two-three: bass on one, guitar strums on two and three." },
+    { id: "lenta", group: "Regional Mexican", name: "Mariachi ranchera (slow 4/4)", bpm: 84, beats: 4, steps: 4, k: [0, 2], p: [1, 3], pv: "rim", b: [[0, "r"], [2, "5"]], c: each([1, 3], 1), cv: "strum", bv: "pluck", prog: "ranch", tip: "Guitarrón on one and three, vihuela and guitar strums on two and four." },
+    { id: "son", group: "Regional Mexican", name: "Mariachi son / huapango (6/8)", bpm: 104, beats: 2, steps: 6, k: [0, 3], p: [0, 2, 3, 5], pv: "shake", b: [[0, "r"], [3, "5"]], c: each([0, 2, 3, 5], 1), cv: "strum", bv: "pluck", prog: "andal", tip: "The rolling six-eight strum of sones and huapangos." },
+    { id: "cumbia", group: "Regional Mexican", name: "Cumbia norteña", bpm: 92, beats: 4, steps: 8, k: [0, 4], p: [0, 2, 3, 4, 6, 7], pv: "shake", b: [[0, "r"], [4, "3"], [6, "5"]], c: each([1, 3, 5, 7], 1), cv: "strum", bv: "pluck", prog: "1-4-5", tip: "Güiro going chh-ch-ch, chords on every off-beat." },
+    { id: "bolero", group: "Ballads", name: "Bolero", bpm: 88, beats: 4, steps: 8, p: [0, 2, 3, 4, 6, 7], pv: "shake", s2: [3, 6], b: [[0, "r"], [4, "5"], [6, "r"]], c: each([1, 2, 3, 5, 6, 7], 1), arp: true, cv: "strum", bv: "pluck", prog: "bolero", tip: "Soft maracas, a slow bass and picked guitar notes. The romantic trio sound." },
+    { id: "ballad", group: "Ballads", name: "Pop ballad", bpm: 70, beats: 4, steps: 8, k: [0, 5], s: [2, 6], h: ALL8, b: [[0, "r"], [5, "r"]], c: each(ALL8, 1), arp: true, cv: "keys", bv: "pluck", prog: "pop", tip: "Slow backbeat with rolling piano notes." },
+    { id: "ballad68", group: "Ballads", name: "Slow 6/8 ballad", bpm: 58, beats: 4, steps: 12, k: [0, 6], s: [3, 9], h: ALL12, b: [[0, "r"], [6, "5"]], c: each(ALL12, 1), arp: true, cv: "keys", bv: "pluck", prog: "bolero", tip: "The swaying one-two-three, one-two-three of classic slow songs." },
+    { id: "swing", group: "Jazz", name: "Swing", bpm: 126, beats: 4, steps: 12, h: [0, 3, 5, 6, 9, 11], p: [3, 9], pv: "rim", b: [[0, "r"], [3, "3"], [6, "5"], [9, "a"]], c: [[0, 2], [5, 1]], cv: "keys", bv: "pluck", prog: "251", tip: "Ride cymbal, walking bass and piano comping." },
+    { id: "jballad", group: "Jazz", name: "Jazz ballad", bpm: 60, beats: 4, steps: 12, h: [0, 3, 6, 9], p: [3, 9], pv: "shake", b: [[0, "r"], [6, "5"]], c: [[0, 11]], cv: "keys", bv: "pluck", prog: "turn", tip: "Brushes, a slow two-feel bass and long piano chords." },
+    { id: "bossa", group: "Jazz", name: "Bossa nova", bpm: 128, beats: 4, steps: 8, k: [0, 3, 4, 7], p: [0, 3, 6], pv: "rim", h: ALL8, b: [[0, "r"], [3, "5"], [4, "5"], [7, "r"]], c: each([0, 2, 5], 1), cv: "strum", bv: "pluck", prog: "251", tip: "A light Brazilian groove that jazz players love." },
+    { id: "blues", group: "Basics", name: "Blues shuffle", bpm: 96, beats: 4, steps: 12, h: [0, 2, 3, 5, 6, 8, 9, 11], k: [0, 6], s: [3, 9], b: [[0, "r"], [2, "r"], [3, "5"], [5, "5"], [6, "6"], [8, "6"], [9, "5"], [11, "5"]], c: each([0, 3, 6, 9], 1), cv: "strum", bv: "pluck", prog: "blues", tip: "A twelve-bar blues with a shuffle feel." },
+    { id: "rock", group: "Basics", name: "Rock", bpm: 112, beats: 4, steps: 8, k: [0, 3, 4], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: [[0, 2], [3, 1], [4, 2], [6, 2]], cv: "power", bv: "pluck", prog: "1-4-5", tip: "Straight eighth-note rock." },
+    { id: "gallop", group: "Metal", name: "Metal gallop", bpm: 140, beats: 4, steps: 16, k: GAL, s: [4, 12], h: [0, 4, 8, 12], b: each(GAL, "r"), c: each(GAL, 1), mute: true, cv: "power", bv: "pluck", prog: "metal", tip: "The galloping da-dada rhythm of classic heavy metal, palm-muted." },
+    { id: "double", group: "Metal", name: "Double kick", bpm: 150, beats: 4, steps: 16, k: ALL16, s: [4, 12], h: [0, 2, 4, 6, 8, 10, 12, 14], b: each([0, 2, 4, 6, 8, 10, 12, 14], "r"), c: [[0, 8], [8, 8]], cv: "power", bv: "pluck", prog: "phryg", tip: "Constant double-bass drums under long power chords." },
+    { id: "breakdown", group: "Metal", name: "Breakdown", bpm: 96, beats: 4, steps: 16, k: [0, 3, 6, 10, 12], s: [8], h: [0, 4, 8, 12], b: each([0, 3, 6, 10, 12], "r"), c: each([0, 3, 6, 10, 12], 2), mute: true, cv: "power", bv: "pluck", prog: "phryg", tip: "Slow, heavy and syncopated." },
+    { id: "kick4", group: "Kick drum", name: "Kick: four on the floor", bpm: 110, beats: 4, steps: 4, k: [0, 1, 2, 3], prog: "one", tip: "Just a kick on every beat. Good for locking in your timing." },
+    { id: "kickrock", group: "Kick drum", name: "Kick and snare", bpm: 100, beats: 4, steps: 8, k: [0, 3, 4], s: [2, 6], h: ALL8, prog: "one", tip: "A plain drum beat with no chords." },
+    { id: "kickdbl", group: "Kick drum", name: "Kick: double bass sixteenths", bpm: 120, beats: 4, steps: 16, k: ALL16, s: [4, 12], prog: "one", tip: "Sixteenth-note kicks, the metal drummer's engine." }
+  ];
+  var GV = { on: false, timer: null, style: STYLES[0], prog: PROGS[0], key: 0, bpm: 112, step: 0, bar: 0, t: 0, bus: null, cache: {}, marks: [], arp: 0, shown: -1 };
+  var ROM = { I: 0, II: 2, III: 4, IV: 5, V: 7, VI: 9, VII: 11 };
+  function chordOf(sym, keyPc) {
+    var m = /^(b|#)?([ivIV]+)(.*)$/.exec(sym), up = m[2].toUpperCase(), minor = m[2] !== up, q = m[3];
+    var tones = q === "m7b5" ? [0, 3, 6, 10] : q === "maj7" ? [0, 4, 7, 11] : q === "7" ? (minor ? [0, 3, 7, 10] : [0, 4, 7, 10]) : minor ? [0, 3, 7] : [0, 4, 7];
+    return { root: ((keyPc + ROM[up] + (m[1] === "b" ? -1 : m[1] === "#" ? 1 : 0)) % 12 + 12) % 12, tones: tones, minor: minor, q: q };
+  }
+  function chordName(ch) {
+    var names = FLAT_KEYS.major.indexOf((GV.key + xp) % 12) >= 0 || ch.minor ? FLAT : SHARP;
+    return names[(ch.root + xp) % 12] + (ch.q === "m7b5" ? "m7♭5" : (ch.minor ? "m" : "") + ch.q);
+  }
+  function gvBus() { if (!GV.bus) { GV.bus = ac.createGain(); GV.bus.gain.value = 0.85; GV.bus.connect(output()); } return GV.bus; }
+  var nzBuf = null;
+  function nz() {
+    if (!nzBuf) { nzBuf = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.5), ac.sampleRate); var d = nzBuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    var s = ac.createBufferSource(); s.buffer = nzBuf; return s;
+  }
+  function dNoise(t, v, dur, type, freq, q, out) {
+    var s = nz(), f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = type; f.frequency.value = freq; f.Q.value = q || 0.7;
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    s.connect(f); f.connect(g); g.connect(out || gvBus()); s.start(t); s.stop(t + dur + 0.02);
+  }
+  function dTone(t, v, f0, f1, dur, type, out) {
+    var o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || "sine"; o.frequency.setValueAtTime(f0, t); if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.5);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(out || gvBus()); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function dKick(t, v) { dTone(t, v, 150, 45, 0.28); }
+  function dSnare(t, v) { dNoise(t, v * 0.7, 0.16, "bandpass", 1900, 0.6); dTone(t, v * 0.35, 200, 150, 0.09); }
+  function dHat(t, v) { dNoise(t, v * 0.3, 0.045, "highpass", 7000); }
+  function dRim(t, v) { dTone(t, v * 0.4, 1700, 1700, 0.035, "triangle"); dNoise(t, v * 0.2, 0.03, "bandpass", 2500, 2); }
+  function dShake(t, v) { dNoise(t, v * 0.28, 0.07, "bandpass", 5200, 1); }
+  function gBass(t, midi, dur, voice) {
+    var f = a4 * Math.pow(2, (midi - 69) / 12), g = ac.createGain(), lp = ac.createBiquadFilter(), o = ac.createOscillator(), o2 = ac.createOscillator(), g2 = ac.createGain();
+    lp.type = "lowpass"; lp.frequency.value = voice === "tuba" ? 420 : 750;
+    o.type = voice === "tuba" ? "square" : "triangle"; o.frequency.value = f; o2.type = "sine"; o2.frequency.value = f; g2.gain.value = 0.7;
+    var a = voice === "tuba" ? 0.02 : 0.006, peak = voice === "tuba" ? 0.32 : 0.6;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + a);
+    if (voice === "tuba") { g.gain.setValueAtTime(peak, t + Math.max(a, dur * 0.7)); g.gain.linearRampToValueAtTime(0, t + dur); }
+    else g.gain.exponentialRampToValueAtTime(0.001, t + Math.max(0.2, dur * 1.4));
+    o.connect(lp); o2.connect(g2); g2.connect(lp); lp.connect(g); g.connect(gvBus());
+    var end = t + Math.max(0.25, dur * 1.5); o.start(t); o2.start(t); o.stop(end); o2.stop(end);
+  }
+  var distCurve = null;
+  function fuzz() {
+    if (!distCurve) { distCurve = new Float32Array(1024); for (var i = 0; i < 1024; i++) { var x = i / 512 - 1; distCurve[i] = Math.tanh(x * 9); } }
+    var w = ac.createWaveShaper(); w.curve = distCurve; return w;
+  }
+  function gChord(t, notes, dur, voice, mute) {
+    var bus = gvBus(), i;
+    if (voice === "strum") {
+      notes.forEach(function (m, k) {
+        var c = GV.cache[m];
+        if (!c) { var p0 = pluck(ac, a4 * Math.pow(2, (m - 69) / 12), 1.1); c = GV.cache[m] = { buf: p0.buffer, rate: p0.playbackRate.value }; }
+        var s = ac.createBufferSource(), g = ac.createGain(); s.buffer = c.buf; s.playbackRate.value = c.rate;
+        var tt = t + k * 0.011; g.gain.setValueAtTime(0.3, tt); g.gain.setValueAtTime(0.3, tt + Math.max(0.05, dur)); g.gain.linearRampToValueAtTime(0, tt + Math.max(0.05, dur) + 0.12);
+        s.connect(g); g.connect(bus); s.start(tt); s.stop(tt + dur + 0.2);
+      });
+      return;
+    }
+    if (voice === "power") {
+      var sh = fuzz(), lp = ac.createBiquadFilter(), g = ac.createGain(), pre = ac.createGain();
+      lp.type = "lowpass"; lp.frequency.value = mute ? 1100 : 3200; pre.gain.value = 0.5;
+      var d2 = mute ? Math.min(dur, 0.11) : dur;
+      g.gain.setValueAtTime(0.16, t); g.gain.setValueAtTime(0.16, t + d2 * 0.8); g.gain.linearRampToValueAtTime(0, t + d2);
+      [notes[0] - 12, notes[0] - 5, notes[0]].forEach(function (m) { var o = ac.createOscillator(); o.type = "sawtooth"; o.frequency.value = a4 * Math.pow(2, (m - 69) / 12); o.connect(pre); o.start(t); o.stop(t + d2 + 0.02); });
+      pre.connect(sh); sh.connect(lp); lp.connect(g); g.connect(bus);
+      return;
+    }
+    for (i = 0; i < notes.length; i++) {
+      var f = a4 * Math.pow(2, (notes[i] - 69) / 12), o = ac.createOscillator(), gg = ac.createGain();
+      if (voice === "brass") {
+        var bl = ac.createBiquadFilter(); bl.type = "lowpass"; bl.frequency.value = 1900; o.type = "sawtooth"; o.frequency.value = f;
+        gg.gain.setValueAtTime(0, t); gg.gain.linearRampToValueAtTime(0.12, t + 0.015); gg.gain.setValueAtTime(0.12, t + dur * 0.6); gg.gain.linearRampToValueAtTime(0, t + dur * 0.9);
+        o.connect(bl); bl.connect(gg);
+      } else {
+        o.type = "triangle"; o.frequency.value = f;
+        gg.gain.setValueAtTime(0, t); gg.gain.linearRampToValueAtTime(0.17, t + 0.006); gg.gain.exponentialRampToValueAtTime(0.03, t + Math.max(0.3, dur)); gg.gain.linearRampToValueAtTime(0, t + Math.max(0.3, dur) + 0.1);
+        o.connect(gg);
+      }
+      gg.connect(bus); o.start(t); o.stop(t + Math.max(0.3, dur) + 0.15);
+    }
+  }
+  function gvStepDur() { return 60 / GV.bpm * GV.style.beats / GV.style.steps; }
+  function gvStep(bar, st, t) {
+    var S = GV.style, bars = GV.prog.bars, ch = chordOf(bars[bar % bars.length], GV.key), nxt = chordOf(bars[(bar + 1) % bars.length], GV.key), sd = gvStepDur(), i;
+    if (S.k && S.k.indexOf(st) >= 0) dKick(t, 0.9);
+    if (S.s && S.s.indexOf(st) >= 0) dSnare(t, 0.8);
+    if (S.s2 && S.s2.indexOf(st) >= 0) dRim(t, 0.7);
+    if (S.h && S.h.indexOf(st) >= 0) dHat(t, S.h.length > 8 ? 0.6 : 0.9);
+    if (S.p && S.p.indexOf(st) >= 0) (S.pv === "shake" ? dShake : S.pv === "rim" ? dRim : dHat)(t, 0.9);
+    var b0 = 36 + ch.root; if (b0 > 44) b0 -= 12;
+    if (S.b) for (i = 0; i < S.b.length; i++) if (S.b[i][0] === st) {
+      var dg = S.b[i][1], nb = 36 + nxt.root, m = b0;
+      if (nb > 44) nb -= 12;
+      if (dg === "r5") dg = bar % 2 ? "5" : "r";
+      if (dg === "5") m = b0 + 7 > 47 ? b0 - 5 : b0 + 7; else if (dg === "3") m = b0 + ch.tones[1]; else if (dg === "6") m = b0 + 9; else if (dg === "a") m = nb - 1;
+      var nextB = S.steps; for (var j = 0; j < S.b.length; j++) if (S.b[j][0] > st) { nextB = S.b[j][0]; break; }
+      gBass(t, m, Math.min((nextB - st) * sd * 0.92, 1.2), S.bv);
+    }
+    var base = 48 + ch.root; if (base > 57) base -= 12;
+    var notes = ch.tones.map(function (x) { return base + x; });
+    if (S.c) for (i = 0; i < S.c.length; i++) if (S.c[i][0] === st) {
+      var dur = S.c[i][1] * sd * 0.95;
+      if (S.arp) { var up = notes.concat([notes[0] + 12]); gChord(t, [up[GV.arp++ % up.length]], Math.max(dur, 0.5), S.cv); }
+      else gChord(t, notes, dur, S.cv, S.mute);
+    }
+    GV.marks.push({ t: t, bar: bar, st: st });
+  }
+  function gvPump() {
+    if (!GV.on) return;
+    while (GV.t < ac.currentTime + 0.16) {
+      gvStep(GV.bar, GV.step, GV.t);
+      GV.t += gvStepDur(); GV.step++;
+      if (GV.step >= GV.style.steps) { GV.step = 0; GV.bar++; }
+    }
+  }
+  function gvStop() {
+    if (!GV.on) return;
+    GV.on = false; clearInterval(GV.timer); GV.marks = []; GV.shown = -1;
+    $("gv-play").textContent = "Play groove"; $("gv-play").classList.remove("stop"); gvChips(-1);
+  }
+  function gvStart() {
+    ensureContext().then(function () {
+      GV.on = true; GV.step = 0; GV.bar = 0; GV.arp = 0; GV.marks = []; GV.t = ac.currentTime + 0.1;
+      GV.timer = setInterval(gvPump, 25); gvPump();
+      $("gv-play").textContent = "Stop groove"; $("gv-play").classList.add("stop");
+    });
+  }
+  function gvChips(cur) {
+    var host = $("gv-chips"), bars = GV.prog.bars; host.innerHTML = "";
+    bars.forEach(function (sym, i) {
+      var c = document.createElement("span"); c.className = "chip" + (i === cur ? " cur" : ""); c.textContent = chordName(chordOf(sym, GV.key)); host.appendChild(c);
+    });
+    $("gv-chord").textContent = cur < 0 ? chordName(chordOf(bars[0], GV.key)) : chordName(chordOf(bars[cur], GV.key));
+    $("gv-next").textContent = cur < 0 ? "" : "next: " + chordName(chordOf(bars[(cur + 1) % bars.length], GV.key));
+  }
+  function gvFrame() {
+    if (!GV.on || !ac) return;
+    var now = ac.currentTime, last = null;
+    while (GV.marks.length && GV.marks[0].t <= now) last = GV.marks.shift();
+    if (!last) return;
+    var bi = last.bar % GV.prog.bars.length;
+    if (bi !== GV.shown) { GV.shown = bi; gvChips(bi); }
+    var beat = Math.floor(last.st / (GV.style.steps / GV.style.beats)), dots = $("gv-beats").children;
+    for (var i = 0; i < dots.length; i++) dots[i].className = i === beat ? "on" : "";
+  }
+  function gvFill() {
+    var ss = $("gv-style"), ps = $("gv-prog"), ks = $("gv-key"), groups = [];
+    ss.innerHTML = ""; ps.innerHTML = ""; ks.innerHTML = "";
+    STYLES.forEach(function (s) { if (groups.indexOf(s.group) < 0) groups.push(s.group); });
+    groups.forEach(function (g) {
+      var og = document.createElement("optgroup"); og.label = g;
+      STYLES.forEach(function (s) { if (s.group !== g) return; var o = document.createElement("option"); o.value = s.id; o.textContent = s.name; og.appendChild(o); });
+      ss.appendChild(og);
+    });
+    PROGS.forEach(function (pg) { var o = document.createElement("option"); o.value = pg.id; o.textContent = pg.name; ps.appendChild(o); });
+    for (var pc = 0; pc < 12; pc++) { var o = document.createElement("option"); o.value = pc; o.textContent = KEY_MAJ[(pc + xp) % 12]; ks.appendChild(o); }
+    ss.value = GV.style.id; ps.value = GV.prog.id; ks.value = GV.key;
+  }
+  function gvApply(fromStyle) {
+    var S = STYLES.filter(function (s) { return s.id === $("gv-style").value; })[0] || STYLES[0];
+    if (fromStyle) { $("gv-prog").value = S.prog; $("gv-bpm").value = S.bpm; }
+    GV.style = S; GV.prog = PROGS.filter(function (pg) { return pg.id === $("gv-prog").value; })[0] || PROGS[0];
+    GV.key = +$("gv-key").value; GV.bpm = +$("gv-bpm").value;
+    $("gv-bpm-lbl").textContent = "Tempo " + GV.bpm + " bpm"; $("gv-tip").textContent = S.tip;
+    var dots = $("gv-beats"); dots.innerHTML = ""; for (var i = 0; i < S.beats; i++) dots.appendChild(document.createElement("i"));
+    if (fromStyle && GV.on) { GV.step = 0; GV.bar = 0; GV.arp = 0; }
+    GV.shown = -1; gvChips(-1);
+    prefs.gv = { style: S.id, prog: GV.prog.id, key: GV.key, bpm: GV.bpm }; savePrefs();
+  }
+  (function () {
+    var g0 = prefs.gv || {};
+    GV.style = STYLES.filter(function (s) { return s.id === g0.style; })[0] || STYLES[0];
+    GV.prog = PROGS.filter(function (pg) { return pg.id === g0.prog; })[0] || PROGS.filter(function (pg) { return pg.id === GV.style.prog; })[0];
+    GV.key = g0.key != null ? g0.key : 0; GV.bpm = g0.bpm || GV.style.bpm;
+  })();
+  $("gv-style").addEventListener("change", function () { gvApply(true); });
+  $("gv-prog").addEventListener("change", function () { gvApply(false); });
+  $("gv-key").addEventListener("change", function () { gvApply(false); });
+  $("gv-bpm").addEventListener("input", function () { gvApply(false); });
+  $("gv-play").addEventListener("click", function () { if (GV.on) gvStop(); else gvStart(); });
+
+  /* ---------- rhythm practice ---------- */
+  var RHY = [
+    { group: "Basics", name: "Quarter notes", beats: 4, steps: 4, hits: [0, 1, 2, 3], bpm: 80, tip: "One clap on every beat. The foundation of everything else." },
+    { group: "Basics", name: "Eighth notes", beats: 4, steps: 8, hits: ALL8, bpm: 70, tip: "Two even claps per beat: one-and-two-and." },
+    { group: "Basics", name: "Off-beats", beats: 4, steps: 8, hits: [1, 3, 5, 7], bpm: 80, tip: "Clap only on the ands, between the clicks." },
+    { group: "Basics", name: "Tresillo (3-3-2)", beats: 4, steps: 8, hits: [0, 3, 6], bpm: 90, tip: "Three hits spread unevenly across the bar. It is inside cumbia, reggaeton and a lot of Latin music." },
+    { group: "Basics", name: "Triplets", beats: 4, steps: 12, hits: ALL12, bpm: 60, tip: "Three even claps per beat." },
+    { group: "Regional Mexican", name: "Polka strum (corrido)", beats: 2, steps: 4, hits: [1, 3], bpm: 100, tip: "The bajo sexto part: the bass takes the beat and you strum the off-beat." },
+    { group: "Regional Mexican", name: "Waltz strum (ranchera)", beats: 3, steps: 3, hits: [1, 2], bpm: 130, tip: "Rest on one, strum on two and three." },
+    { group: "Regional Mexican", name: "Cumbia güiro", beats: 4, steps: 8, hits: [0, 2, 3, 4, 6, 7], bpm: 86, tip: "Long, short-short: chh, ch-ch." },
+    { group: "Regional Mexican", name: "Bolero", beats: 4, steps: 8, hits: [0, 3, 4, 6, 7], bpm: 84, tip: "The gentle bolero pattern played on bongos or maracas." },
+    { group: "Regional Mexican", name: "Huapango strum", beats: 2, steps: 6, hits: [0, 2, 3, 5], bpm: 92, tip: "The six-eight strum of son huasteco and mariachi sones." },
+    { group: "Jazz", name: "Swing ride", beats: 4, steps: 12, hits: [0, 3, 5, 6, 9, 11], bpm: 100, tip: "Ding, ding-a-ding. The ride cymbal pattern." },
+    { group: "Jazz", name: "Charleston", beats: 4, steps: 8, hits: [0, 3], bpm: 110, tip: "Beat one, then the and of two. A classic comping rhythm." },
+    { group: "Metal", name: "Gallop", beats: 4, steps: 16, hits: GAL, bpm: 80, tip: "One long, two short: da-dada, da-dada. Start slow." },
+    { group: "Metal", name: "Reverse gallop", beats: 4, steps: 16, hits: [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14], bpm: 80, tip: "Two short, one long: dada-da, dada-da." },
+    { group: "Kick drum", name: "Four on the floor", beats: 4, steps: 4, hits: [0, 1, 2, 3], bpm: 110, tip: "A hit on every beat, like a dance kick drum." },
+    { group: "Kick drum", name: "Rock kick", beats: 4, steps: 8, hits: [0, 3, 4], bpm: 100, tip: "One, the and of two, three." },
+    { group: "Kick drum", name: "Double-time kicks", beats: 4, steps: 16, hits: ALL16, bpm: 60, tip: "Even sixteenth notes. Use two hands, or two feet." }
+  ];
+  var rh = { on: false, kind: "", def: RHY[0], bpm: 80, t0: 0, barDur: 2, bars: 4, exp: [], hit: [], on2: [], an: null, src: null, buf: null, lastT: 0, lastOn: 0, slow: 0.01, timer: null };
+  function rhLat() { return prefs.lat != null ? prefs.lat : ((ac && (ac.outputLatency || ac.baseLatency)) || 0.02) + 0.05; }
+  function rhClick(t, accent) { dTone(t, accent ? 0.5 : 0.32, accent ? 4200 : 3600, accent ? 4200 : 3600, 0.03, "sine", output()); }
+  function rhStop(msgText) {
+    if (!rh.on) return;
+    rh.on = false; clearTimeout(rh.timer);
+    $("rh-start").textContent = "Start"; $("rh-start").classList.remove("stop"); $("rh-hear").textContent = "Hear it first";
+    if (msgText != null) $("rh-now").textContent = msgText;
+  }
+  function rhBegin(kind) {
+    var d = kind === "cal" ? RHY[0] : rh.def, bpm = kind === "cal" ? 90 : rh.bpm, bars = kind === "run" ? 4 : 2;
+    rh.kind = kind; rh.on = true; rh.bars = bars; rh.cur = d;
+    rh.barDur = 60 / bpm * d.beats; rh.t0 = ac.currentTime + 0.25;
+    var sd = rh.barDur / d.steps, per = d.steps / d.beats, b, i;
+    rh.exp = []; rh.hit = []; rh.raw = [];
+    for (b = 0; b <= bars; b++) {
+      if (sw("click") || b === 0) for (i = 0; i < d.beats; i++) rhClick(rh.t0 + b * rh.barDur + i * per * sd, i === 0);
+      if (b > 0) d.hits.forEach(function (h) {
+        var t = rh.t0 + b * rh.barDur + h * sd; rh.exp.push({ t: t, got: null });
+        if (kind === "hear") dNoise(t, 0.55, 0.06, "bandpass", 1300, 0.8, output());
+      });
+    }
+    rh.lastT = ac.currentTime; rh.lastOn = 0; rh.slow = 0.01;
+    if (kind !== "hear") {
+      if (rh.src !== srcNode) { var lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1500; rh.an = ac.createAnalyser(); rh.an.fftSize = 2048; srcNode.connect(lp); lp.connect(rh.an); rh.src = srcNode; rh.buf = new Float32Array(2048); }
+    }
+    $("rh-now").textContent = kind === "hear" ? "Listen" : kind === "cal" ? "Clap on every click" : "Count in…"; $("rh-info").textContent = "";
+    rh.timer = setTimeout(rhFinish, ((bars + 1) * rh.barDur + 0.6) * 1000);
+  }
+  function rhMatch(t) {
+    var best = null, bd = 1e9, gap = rh.barDur / rh.cur.steps;
+    rh.exp.forEach(function (e) { var d = Math.abs(t - e.t); if (d < bd) { bd = d; best = e; } });
+    var lim = Math.min(0.2, gap * 0.48);
+    if (!best || bd > lim) { rh.hit.push({ t: t, err: null }); return; }
+    var err = t - best.t;
+    if (best.got == null || Math.abs(err) < Math.abs(best.got)) best.got = err;
+    rh.hit.push({ t: t, err: err });
+  }
+  function rhFrame() {
+    if (mode !== "rhythm") return;
+    if (rh.on && rh.kind !== "hear" && rh.an && ac) {
+      rh.an.getFloatTimeDomainData(rh.buf);
+      var now = ac.currentTime, sr = ac.sampleRate, N = 2048, C = 128;
+      for (var c = 0; c < N / C; c++) {
+        var ct = now - (N - c * C - C / 2) / sr;
+        if (ct <= rh.lastT) continue;
+        var s = 0; for (var i = c * C; i < c * C + C; i++) s += rh.buf[i] * rh.buf[i];
+        var e = Math.sqrt(s / C);
+        if (e > 0.02 && e > rh.slow * 3 && ct - rh.lastOn > 0.09) {
+          rh.lastOn = ct;
+          if (ct > rh.t0 + rh.barDur - 0.25) { rh.raw.push(ct); rhMatch(ct - rhLat()); }
+        }
+        rh.slow = rh.slow * 0.96 + e * 0.04; rh.lastT = ct;
+      }
+      if (rh.kind === "run" && now >= rh.t0 + rh.barDur && $("rh-now").textContent === "Count in…") $("rh-now").textContent = "Go";
+    }
+    rhDraw();
+  }
+  function rhFinish() {
+    if (!rh.on) return;
+    var kind = rh.kind;
+    if (kind === "hear") { rhStop("Ready"); return; }
+    if (kind === "cal") {
+      var offs = [];
+      rh.raw.forEach(function (t) { var bd = 1e9, be = null; rh.exp.forEach(function (e) { if (Math.abs(t - e.t) < Math.abs(bd)) { bd = t - e.t; be = e; } }); if (be && Math.abs(bd) < 0.3) offs.push(bd); });
+      if (offs.length >= 4) { prefs.lat = clamp(median(offs), -0.05, 0.4); savePrefs(); rhStop("Calibrated"); $("rh-info").textContent = "Timing offset set to " + Math.round(prefs.lat * 1000) + " ms"; }
+      else { rhStop("Not enough claps heard"); $("rh-info").textContent = "Try again, clapping on each click."; }
+      return;
+    }
+    var n = rh.exp.length, ok = 0, sum = 0, got = 0;
+    rh.exp.forEach(function (e) { if (e.got != null) { got++; sum += e.got; if (Math.abs(e.got) <= 0.055) ok++; } });
+    var avg = got ? Math.round(sum / got * 1000) : 0;
+    rhStop(ok + " of " + n + " on time");
+    $("rh-info").textContent = !got ? "No hits heard" : (n - got ? (n - got) + " missed · " : "") + (Math.abs(avg) < 12 ? "right on the beat on average" : "about " + Math.abs(avg) + " ms " + (avg > 0 ? "late" : "early") + " on average");
+    var rec = dayRec(); rec.ex.push({ n: "Rhythm: " + rh.cur.name, s: Math.round(ok / n * 100) }); saveDays();
+  }
+  function rhDraw() {
+    var cv = $("rh-canvas"), w = cv.clientWidth, h = cv.clientHeight;
+    if (!w) return;
+    var dpr = window.devicePixelRatio || 1, c = cv.getContext("2d"), d = rh.on || rh.exp.length ? (rh.cur || rh.def) : rh.def;
+    if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    c.setTransform(dpr, 0, 0, dpr, 0, 0); c.fillStyle = TH.chart; c.fillRect(0, 0, w, h);
+    var bars = rh.exp.length ? rh.bars : 4, pad = 10, bw = (w - pad * 2) / bars, i, b;
+    for (b = 0; b <= bars; b++) { c.fillStyle = TH.grid; c.fillRect(pad + b * bw, 12, b === 0 || b === bars ? 2 : 1, h - 24); }
+    for (b = 0; b < bars; b++) for (i = 0; i < d.beats; i++) { c.fillStyle = TH.grid; c.fillRect(pad + b * bw + i * bw / d.beats, h / 2 + 18, 1, 8); }
+    var r = Math.max(2.5, Math.min(7, bw / d.steps * 0.32));
+    for (b = 0; b < bars; b++) d.hits.forEach(function (hs, k) {
+      var x = pad + b * bw + hs * bw / d.steps, e = rh.exp.length ? rh.exp[b * d.hits.length + k] : null;
+      c.beginPath(); c.arc(x, h / 2, r, 0, 6.3);
+      c.fillStyle = e && e.got != null ? (Math.abs(e.got) <= 0.055 ? GOOD : WARN) : TH.note; c.fill();
+    });
+    if (rh.exp.length) {
+      var start = rh.t0 + rh.barDur, span = bars * rh.barDur;
+      rh.hit.forEach(function (hh) {
+        var x = pad + (hh.t - start) / span * (w - pad * 2);
+        if (x < pad - 4 || x > w - pad + 4) return;
+        c.fillStyle = hh.err == null ? TH.muted : Math.abs(hh.err) <= 0.055 ? GOOD : WARN; c.fillRect(x - 1, h / 2 - 24, 2, 14);
+      });
+      if (rh.on && ac) { var px = pad + (ac.currentTime - start) / span * (w - pad * 2); if (px >= pad && px <= w - pad) { c.fillStyle = TH.text; c.fillRect(px, 6, 2, h - 12); } }
+    }
+  }
+  function rhFill() {
+    var sel = $("rh-sel"), groups = []; sel.innerHTML = "";
+    RHY.forEach(function (x) { if (groups.indexOf(x.group) < 0) groups.push(x.group); });
+    groups.forEach(function (g) {
+      var og = document.createElement("optgroup"); og.label = g;
+      RHY.forEach(function (x, i) { if (x.group !== g) return; var o = document.createElement("option"); o.value = i; o.textContent = x.name; og.appendChild(o); });
+      sel.appendChild(og);
+    });
+  }
+  function rhApply(fromSel) {
+    rh.def = RHY[+$("rh-sel").value] || RHY[0];
+    if (fromSel) $("rh-bpm").value = rh.def.bpm;
+    rh.bpm = +$("rh-bpm").value; $("rh-bpm-lbl").textContent = "Tempo " + rh.bpm + " bpm"; $("rh-tip").textContent = rh.def.tip;
+    if (!rh.on) { rh.exp = []; rh.hit = []; $("rh-now").textContent = "Ready"; $("rh-info").textContent = ""; }
+  }
+  $("rh-sel").addEventListener("change", function () { rhStop(); rhApply(true); });
+  $("rh-bpm").addEventListener("input", function () { rhApply(false); });
+  $("rh-hear").addEventListener("click", function () {
+    if (rh.on) { rhStop("Ready"); return; }
+    ensureContext().then(function () { rhBegin("hear"); $("rh-hear").textContent = "Stop"; });
+  });
+  function rhGo(kind) {
+    if (rh.on) { rhStop("Ready"); return; }
+    var go = function () { rhBegin(kind); $("rh-start").textContent = "Stop"; $("rh-start").classList.add("stop"); };
+    if (running) go(); else startMic().then(function (ok) { if (ok) go(); });
+  }
+  $("rh-start").addEventListener("click", function () { rhGo("run"); });
+  $("rh-cal").addEventListener("click", function () { rhGo("cal"); });
 
   /* ---------- modes ---------- */
   function modeRef(now) {
@@ -1988,11 +2413,15 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (m !== "exercise") { exStop(); if (pv.on) pvStop(); }
     if (m !== "range" && rf.step !== 3) rf.step = 0;
     if (m !== "song") songPause();
+    if (m !== "jam") gvStop();
+    if (m !== "rhythm") rhStop("Ready");
     mode = m; R = (m === "target" || m === "exercise" || (m === "song" && song.track)) ? 100 : 50;
     document.querySelectorAll(".seg button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-mode") === m)); });
     ["target", "key", "range"].forEach(function (p) { $("panel-" + p).hidden = m !== p; });
     $("panel-ex").hidden = m !== "exercise";
-    sizeChart(); $("kb-card").hidden = m === "song" || !sw("kb");
+    $("panel-jam").hidden = m !== "jam"; $("panel-rhythm").hidden = m !== "rhythm";
+    document.querySelector(".trace-wrap").hidden = m === "rhythm";
+    sizeChart(); $("kb-card").hidden = m === "song" || m === "rhythm" || !sw("kb");
     if (m === "exercise") { setFlats(); renderChips(); }
     kbHint();
     $("panel-song").hidden = m !== "song";
@@ -2072,7 +2501,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         } else if (hasPitch) showIdle();
       }
     }
-    kbUpdate();
+    kbUpdate(); gvFrame(); rhFrame();
     drawTrace();
     requestAnimationFrame(frameDraw);
   }
@@ -2308,6 +2737,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   });
 
   msg.addEventListener("click", function () { msg.textContent = ""; });
+  gvFill(); $("gv-bpm").value = GV.bpm; gvApply(false); rhFill(); rhApply(true);
   document.querySelectorAll("main > details").forEach(function (d) { $("drawer-slot").appendChild(d); });
   function drawerOpen(on) { $("drawer").hidden = !on; if (on) { renderProgress(); $("drawer").scrollTop = 0; } }
   $("menu-btn").addEventListener("click", function () { drawerOpen(true); });
@@ -2351,7 +2781,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     ["anim", "Animated backgrounds (Fire, Blue flame, Lava)"]
   ];
   function applySw() {
-    $("kb-card").hidden = mode === "song" || !sw("kb");
+    $("kb-card").hidden = mode === "song" || mode === "rhythm" || !sw("kb");
     document.querySelector(".stats").parentNode.hidden = !sw("stats");
     applyTheme();
     if (mode === "exercise") renderChips();
@@ -2374,7 +2804,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     player = e.target.value; xp = PLAYERS[player].xp; prefs.player = player; savePrefs();
     exStop(); ex.state = "idle";
     fillAllNotes(tv, PLAYERS[player].root || old); targetMidi = +$("target-sel").value;
-    fillEx(); exIdleUI(); kbHint(); rfRender(); renderStats(); renderKeyChips(true);
+    fillEx(); exIdleUI(); kbHint(); gvFill(); gvChips(GV.shown); rfRender(); renderStats(); renderKeyChips(true);
     if (rv) rvRender();
     fgoal = fcen = clamp(player === "bass" ? 40 : 60, chLo() + ZOOMS[zi] / 2, 96.5);
   });
