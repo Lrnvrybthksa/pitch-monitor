@@ -178,6 +178,7 @@ canvas { border-radius: 14px; }
 .kbk { width: 22px; height: 68px; border-radius: 0 0 5px 5px; background: linear-gradient(180deg, #232a3d, #0b0e15); z-index: 2; box-shadow: 0 2px 4px rgba(0,0,0,.5); }
 .kw.hit { background: #c3cbff; } .kbk.hit { background: #5a66c4; }
 .kw.sung.good, .kbk.sung.good { background: var(--good); color: #07210f; }
+.kw.sung.neut, .kbk.sung.neut { background: var(--accent); color: var(--accent-ink); }
 .kw.sung.warn, .kbk.sung.warn { background: var(--warn); color: #2b2203; }
 .kw.tgt::after, .kbk.tgt::after { content: ""; position: absolute; left: 50%; bottom: 24px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(143,157,255,.4), 0 0 0 4px #0b0d13; }
 .kbk.tgt::after { bottom: 8px; }
@@ -470,6 +471,12 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         <label class="pick">Buttons<input type="color" id="c-accent"></label>
         <button type="button" class="ghost" id="c-reset">Reset colors</button>
       </section>
+      <section class="panel">
+        <h2>Switches</h2>
+        <p>Turn parts of the app on or off. Everything starts on.</p>
+        <div id="sw-list" style="display:flex;flex-direction:column;gap:2px"></div>
+        <button type="button" class="ghost" id="sw-reset">Turn everything back on</button>
+      </section>
       <div id="drawer-slot" style="display:flex;flex-direction:column;gap:14px"></div>
     </div>
   </div>
@@ -493,6 +500,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   };
   var prefs = store.get("pm.prefs", {});
   function savePrefs() { store.set("pm.prefs", prefs); }
+  /* On/off switches from the menu. Everything defaults to on. */
+  if (!prefs.sw || typeof prefs.sw !== "object") prefs.sw = {};
+  function sw(k) { return prefs.sw[k] !== false; }
 
   /* ---------- colors and designs ---------- */
   var THEMES = {
@@ -535,7 +545,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     st.setProperty("--chart", chart);
     st.setProperty("--bg-image", t.img || "none"); st.setProperty("--bg-size", t.size || "auto");
     st.setProperty("color-scheme", dark ? "dark" : "light");
-    if (t.fx) root.setAttribute("data-fx", t.fx); else root.removeAttribute("data-fx");
+    if (t.fx && sw("anim")) root.setAttribute("data-fx", t.fx); else root.removeAttribute("data-fx");
     var cur = null;
     [t.text, t.accent, inkFor(t.note), "#2fd27a"].forEach(function (c) { if (!cur && dist(c, t.note) > 90 && dist(c, chart) > 90) cur = c; });
     TH = { bg: t.bg, text: t.text, muted: mix(t.text, chart, 0.4), chart: chart, rowA: mix(chart, t.text, 0.11), rowB: chart, grid: mix(chart, t.text, 0.24), dim: mix(chart, t.text, 0.3), note: t.note, noteInk: inkFor(t.note), cur: cur || inkFor(chart), id: t.id };
@@ -658,13 +668,13 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     try { kbScroll.scrollTo({ left: left, behavior: smooth ? "smooth" : "auto" }); } catch (e) { kbScroll.scrollLeft = left; }
   }
   function kbUpdate() {
-    var sung = hasPitch ? Math.round(curSm) : null, good = curGood, ref = earActive() ? null : modeRef();
+    var sung = hasPitch ? Math.round(curSm) : null, good = curGood, ref = earActive() || !sw("kbdot") ? null : modeRef();
     var tgt = ref == null ? null : Math.round(ref), hit = performance.now() < kbHitUntil ? kbHit : null, p = kbPrev;
     if (sung === p.sung && good === p.good && tgt === p.tgt && hit === p.hit) return;
-    if (kbEls[p.sung]) kbEls[p.sung].classList.remove("sung", "good", "warn");
+    if (kbEls[p.sung]) kbEls[p.sung].classList.remove("sung", "good", "warn", "neut");
     if (kbEls[p.tgt]) kbEls[p.tgt].classList.remove("tgt");
     if (kbEls[p.hit]) kbEls[p.hit].classList.remove("hit");
-    if (kbEls[sung]) kbEls[sung].classList.add("sung", good ? "good" : "warn");
+    if (kbEls[sung]) kbEls[sung].classList.add("sung", ungraded() ? "neut" : good ? "good" : "warn");
     if (kbEls[tgt]) kbEls[tgt].classList.add("tgt");
     if (kbEls[hit]) kbEls[hit].classList.add("hit");
     var focus = tgt != null ? tgt : sung;
@@ -878,6 +888,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     });
   }
   function clicks(n, beatSec) {
+    if (!sw("click")) return;
     for (var k = 0; k < n; k++) {
       var t = ac.currentTime + k * beatSec, o = ac.createOscillator(), g = ac.createGain();
       o.type = "square"; o.frequency.value = k === 0 ? 2000 : 1500;
@@ -1139,7 +1150,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       var c = document.createElement("span"); c.className = "chip";
       c.textContent = m == null || (ex.state === "running" && ex.def.ear && i >= ex.results.length) ? "?" : noteLabel(m);
       if (ex.state !== "idle") {
-        if (i < ex.results.length) c.className += ex.results[i] >= 0.7 ? " ok" : " meh";
+        if (i < ex.results.length) c.className += !sw("grade") ? "" : ex.results[i] >= 0.7 ? " ok" : " meh";
         else if (i === ex.idx && ex.state === "running") c.className += " cur";
       }
       host.appendChild(c);
@@ -1174,7 +1185,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     for (i = 0; i < n; i++) {
       var x = gut + i * bw + k, by = (hi - steps[i]) * rowH, bh = Math.max(rowH - k, 6 * k), r = Math.min(5 * k, bh / 2, bw / 2);
       var done = run && i < ex.results.length, cur = (run && ex.state === "running" && i === ex.idx) || i === pv.idx;
-      c.fillStyle = done ? (ex.results[i] >= 0.7 ? GOOD : WARN) : cur ? TH.cur : TH.note;
+      c.fillStyle = done ? doneCol(i) : cur ? TH.cur : TH.note;
       c.beginPath();
       if (c.roundRect) c.roundRect(x, by, bw - 2 * k, bh, r); else c.rect(x, by, bw - 2 * k, bh);
       c.fill();
@@ -1199,7 +1210,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   var MAJ_SHARPS = { 0: 0, 7: 1, 2: 2, 9: 3, 4: 4, 11: 5, 6: 6 }, MAJ_FLATS = { 5: 1, 10: 2, 3: 3, 8: 4, 1: 5 };
   /* Key signature for the exercise: the major key of its starting note, or the relative major for minor ones. */
   function keySig(d, rootW) {
-    if (!d || d.abs || d.custom || d.gen || d.glide || d.ear) return { type: null, n: 0, letters: [] };
+    if (!d || d.abs || d.custom || d.gen || d.glide || d.ear || !sw("keysig")) return { type: null, n: 0, letters: [] };
     var pc = pcOf(rootW + (d.min ? 3 : 0));
     if (MAJ_FLATS[pc] != null) return { type: "flat", n: MAJ_FLATS[pc], letters: SIG_FLATS.slice(0, MAJ_FLATS[pc]) };
     return { type: "sharp", n: MAJ_SHARPS[pc] || 0, letters: SIG_SHARPS.slice(0, MAJ_SHARPS[pc] || 0) };
@@ -1245,7 +1256,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       c.strokeStyle = INK; c.lineWidth = Math.max(1, k);
       for (j = bottom - 2; j >= d; j -= 2) { c.beginPath(); c.moveTo(x - rx * 1.7, Math.round(yOf(j)) + 0.5); c.lineTo(x + rx * 1.7, Math.round(yOf(j)) + 0.5); c.stroke(); }
       for (j = top + 2; j <= d; j += 2) { c.beginPath(); c.moveTo(x - rx * 1.7, Math.round(yOf(j)) + 0.5); c.lineTo(x + rx * 1.7, Math.round(yOf(j)) + 0.5); c.stroke(); }
-      var col = done ? (ex.results[i] >= 0.7 ? GOOD : WARN) : cur ? TH.cur : TH.note;
+      var col = done ? doneCol(i) : cur ? TH.cur : TH.note;
       c.fillStyle = col; c.strokeStyle = col;
       if (ds[i].acc) { c.font = (4 * sp) + "px NotoMusicSub"; c.textAlign = "right"; c.fillText(ds[i].acc, x - rx - 0.25 * sp, y + 0.5 * sp); c.textAlign = "left"; }
       c.beginPath(); c.ellipse(x, y, rx, ry, -0.35, 0, Math.PI * 2); c.fill();
@@ -1409,8 +1420,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (ex.tempo) {
       var beats = ex.def.beats || 2, d = Math.min(0.45, ex.beat / 1000 * 0.6);
       ex.stepStart = performance.now(); ex.stepDur = beats * ex.beat;
-      playTone(note, d, 120); clicks(beats, ex.beat / 1000);
-    } else playTone(note, ex.idx === 0 ? 1.1 : 0.9);
+      if (sw("ref")) playTone(note, d, 120);
+      clicks(beats, ex.beat / 1000);
+    } else if (sw("ref")) playTone(note, ex.idx === 0 ? 1.1 : 0.9);
   }
   function exBegin() {
     var def = curDef(), rootM = +rootSel.value;
@@ -1423,7 +1435,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       var vals = def.glide.map(function (p) { return p[1]; });
       ex.gMid = (Math.min.apply(null, vals) + Math.max.apply(null, vals)) / 2;
       ex.t0 = performance.now(); ex.gStart = ex.t0 + 1500; ex.gEnd = ex.gStart + def.glide[def.glide.length - 1][0] * 1000;
-      ex.state = "running"; playTone(rootM, 1.1);
+      ex.state = "running"; if (sw("ref")) playTone(rootM, 1.1);
     } else {
       var base = baseSteps(def, rootM);
       if (!base.length) { $("ex-now").textContent = "Add some notes first"; return; }
@@ -1445,7 +1457,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     ex.state = "done"; holdbar.hidden = true;
     var avg = ex.results.reduce(function (a, b) { return a + b; }, 0) / ex.results.length;
     $("ex-now").textContent = "Done"; $("ex-count").textContent = "";
-    $("ex-summary").hidden = false; $("ex-summary").textContent = Math.round(avg * 100) + "% on pitch";
+    $("ex-summary").hidden = false; $("ex-summary").textContent = sw("grade") ? Math.round(avg * 100) + "% on pitch" : "Finished";
     $("ex-start").textContent = "Start again"; $("ex-start").classList.remove("stop");
     renderChips(); applyScale();
     var rec = dayRec(); rec.ex.push({ n: ex.def.name + (ex.kind === "steps" && ex.harm ? " (harmony)" : ""), s: Math.round(avg * 100) });
@@ -1492,7 +1504,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   var days = store.get("pm.days", {}), daysDirty = false, lastSave = 0;
   if (!days || typeof days !== "object") days = {};
   function todayKey() { var d = new Date(); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
-  function dayRec() { var k = todayKey(); if (!days[k]) days[k] = { sing: 0, good: 0, ex: [] }; return days[k]; }
+  function dayRec() { if (!sw("progress")) return { sing: 0, good: 0, ex: [] }; var k = todayKey(); if (!days[k]) days[k] = { sing: 0, good: 0, ex: [] }; return days[k]; }
   function saveDays() {
     var keys = Object.keys(days).sort();
     while (keys.length > 60) delete days[keys.shift()];
@@ -1550,6 +1562,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     });
   }
   function ytRemember(id) {
+    if (!sw("yt")) return;
     var old = null;
     ytHist = ytHist.filter(function (x) { if (x.id === id) { old = x; return false; } return true; });
     var it = old || { id: id, title: "" };
@@ -1736,7 +1749,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   var rec = null, recChunks = [], takeUrl = null, rvAudio = $("rv-audio"), rvTick = 0;
   function recStart(s) {
     rec = null; recChunks = [];
-    if (!window.MediaRecorder) return;
+    if (!window.MediaRecorder || !sw("rec")) return;
     try {
       rec = new MediaRecorder(s, { audioBitsPerSecond: 64000 });
       rec.ondataavailable = function (e) { if (e.data && e.data.size) recChunks.push(e.data); };
@@ -1931,7 +1944,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     document.querySelectorAll(".seg button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-mode") === m)); });
     ["target", "key", "range"].forEach(function (p) { $("panel-" + p).hidden = m !== p; });
     $("panel-ex").hidden = m !== "exercise";
-    sizeChart(); $("kb-card").hidden = m === "song";
+    sizeChart(); $("kb-card").hidden = m === "song" || !sw("kb");
     if (m === "exercise") { setFlats(); renderChips(); }
     kbHint();
     $("panel-song").hidden = m !== "song";
@@ -1943,8 +1956,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   });
 
   /* ---------- display ---------- */
+  function ungraded() { return mode === "exercise" && !sw("grade"); }
+  function doneCol(i) { return !sw("grade") ? TH.muted : ex.results[i] >= 0.7 ? GOOD : WARN; }
   function setState(kind) {
-    root.style.setProperty("--state", kind === "good" ? "var(--good)" : kind === "warn" ? "var(--warn)" : "var(--idle)");
+    root.style.setProperty("--state", kind === "idle" ? "var(--idle)" : ungraded() ? "var(--accent)" : kind === "good" ? "var(--good)" : "var(--warn)");
     card.classList.toggle("live", kind !== "idle");
   }
   function showIdle() {
@@ -1963,7 +1978,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     else if (keyOut && Math.abs(cents) <= curTol()) statusEl.textContent = nm(pcOf(n)) + " is not in " + keyName();
     else if (ref != null && Math.abs(cents) > R) statusEl.textContent = (cents > 0 ? "Too high" : "Too low") + (earActive() ? "" : ", aim for " + noteLabel(ref));
     else statusEl.textContent = cents > 0 ? "Sharp ↓ ease down" : "Flat ↑ bring it up";
-    readout.textContent = (a4 * Math.pow(2, (sm - 69) / 12)).toFixed(1) + " Hz   " + (cents >= 0 ? "+" : "") + cents.toFixed(0) + "¢" + (xp ? "   concert " + rawLabel(sm) : "");
+    readout.textContent = (a4 * Math.pow(2, (sm - 69) / 12)).toFixed(1) + " Hz   " + (cents >= 0 ? "+" : "") + cents.toFixed(0) + "¢" + (xp && sw("concert") ? "   concert " + rawLabel(sm) : "");
+    if (!sw("coach")) statusEl.textContent = "\u00a0";
   }
   function vibratoNow() {
     if (raw.length < 16 || raw[raw.length - 1].t - raw[0].t < 700) return null;
@@ -2034,7 +2050,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (full) {
       span = ZOOMS[zi];
       var ft = spT != null ? spT : hasPitch ? curSm : null, edge = span * 0.3, fmin = chLo() + span / 2, fmax = 96.5 - span / 2;
-      if (ft != null) { if (ft > fgoal + edge) fgoal = ft - edge; else if (ft < fgoal - edge) fgoal = ft + edge; }
+      if (ft != null && sw("follow")) { if (ft > fgoal + edge) fgoal = ft - edge; else if (ft < fgoal - edge) fgoal = ft + edge; }
       fgoal = clamp(fgoal, fmin, Math.max(fmin, fmax));
       fcen = clamp(fcen + (fgoal - fcen) * 0.12, fmin, Math.max(fmin, fmax));
     }
@@ -2103,7 +2119,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       if (p.midi == null || q.midi == null || q.t - p.t > 200) continue;
       var x1 = xOf(p.t), x2 = xOf(q.t);
       if (x2 < 34) continue;
-      ctx2d.strokeStyle = q.good ? GOOD : WARN;
+      ctx2d.strokeStyle = q.plain ? TH.note : q.good ? GOOD : WARN;
       ctx2d.beginPath(); ctx2d.moveTo(x1, yOf(p.midi)); ctx2d.lineTo(x2, yOf(q.midi)); ctx2d.stroke();
     }
     if (full && hasPitch) {
@@ -2136,7 +2152,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     curSm = sm; curGood = good;
     if (log.length < 60000) log.push({ t: now - logStart, m: sm, g: good, r: ref });
     showPitch(sm, cents, good, ref, keyOut);
-    history.push({ t: now, midi: plot, good: good });
+    history.push({ t: now, midi: plot, good: good, plain: ungraded() });
     voicedMs += dt;
     var rec = dayRec(); rec.sing += dt; daysDirty = true;
     if (good) { goodMs += dt; rec.good += dt; holdCur += dt; holdGap = 0; if (holdCur > longest) longest = holdCur; }
@@ -2270,7 +2286,40 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     });
   });
   $("c-reset").addEventListener("click", function () { prefs.theme = { id: "midnight" }; savePrefs(); applyTheme(); });
-  themeReady = true; themeUI();
+  var SWITCHES = [
+    ["kb", "Show the keyboard"],
+    ["stats", "Show the stats tiles"],
+    ["coach", "Show coaching text (Sharp, Flat, On pitch)"],
+    ["follow", "Chart scrolls to follow my pitch"],
+    ["ref", "Play each note before my turn in exercises"],
+    ["grade", "Green and yellow grading in exercises"],
+    ["kbdot", "Target dot on the keyboard"],
+    ["click", "Metronome click sound"],
+    ["keysig", "Key signature on sheet music"],
+    ["concert", "Show concert pitch next to sax notes"],
+    ["rec", "Record the audio of each take"],
+    ["progress", "Save my practice history"],
+    ["yt", "Remember YouTube videos I load"],
+    ["anim", "Animated backgrounds (Fire, Blue flame, Lava)"]
+  ];
+  function applySw() {
+    $("kb-card").hidden = mode === "song" || !sw("kb");
+    document.querySelector(".stats").parentNode.hidden = !sw("stats");
+    applyTheme();
+    if (mode === "exercise") renderChips();
+    kbPrev.tgt = -1;
+  }
+  function swUI() {
+    var host = $("sw-list"); host.innerHTML = "";
+    SWITCHES.forEach(function (x) {
+      var lab = document.createElement("label"), inp = document.createElement("input");
+      lab.className = "check"; inp.type = "checkbox"; inp.id = "sw-" + x[0]; inp.checked = sw(x[0]);
+      inp.addEventListener("change", function () { prefs.sw[x[0]] = inp.checked; savePrefs(); applySw(); });
+      lab.appendChild(inp); lab.appendChild(document.createTextNode(" " + x[1])); host.appendChild(lab);
+    });
+  }
+  $("sw-reset").addEventListener("click", function () { prefs.sw = {}; savePrefs(); swUI(); applySw(); });
+  themeReady = true; themeUI(); swUI(); applySw();
   $("player").value = player;
   $("player").addEventListener("change", function (e) {
     var tv = +$("target-sel").value, old = +rootSel.value;
