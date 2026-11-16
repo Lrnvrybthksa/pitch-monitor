@@ -340,6 +340,7 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     <div class="sing"><b id="ex-now">Ready</b><span id="ex-count"></span></div>
     <div class="chips" id="chips"></div>
     <div class="summary" id="ex-summary" hidden></div>
+    <button type="button" class="ghost" id="ex-preview">Hear this exercise</button>
     <button type="button" class="big" id="ex-start">Start exercise</button>
     <div class="row">
       <button type="button" class="ghost" id="ex-hear">Hear note again</button>
@@ -1070,7 +1071,7 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     }
     for (i = 0; i < n; i++) {
       var x = gut + i * bw + k, by = (hi - steps[i]) * rowH, bh = Math.max(rowH - k, 6 * k), r = Math.min(5 * k, bh / 2, bw / 2);
-      var done = run && i < ex.results.length, cur = run && ex.state === "running" && i === ex.idx;
+      var done = run && i < ex.results.length, cur = (run && ex.state === "running" && i === ex.idx) || i === pv.idx;
       c.fillStyle = done ? (ex.results[i] >= 0.7 ? GOOD : WARN) : cur ? "#ffffff" : "#8f9dff";
       c.beginPath();
       if (c.roundRect) c.roundRect(x, by, bw - 2 * k, bh, r); else c.rect(x, by, bw - 2 * k, bh);
@@ -1106,7 +1107,7 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     var rx = sp * 0.66, ry = sp * 0.47;
     for (i = 0; i < n; i++) {
       var x = left + (i + 0.5) * nw, d = ds[i].d, y = yOf(d);
-      var done = run && i < ex.results.length, cur = run && ex.state === "running" && i === ex.idx;
+      var done = run && i < ex.results.length, cur = (run && ex.state === "running" && i === ex.idx) || i === pv.idx;
       c.strokeStyle = INK; c.lineWidth = Math.max(1, k);
       for (j = bottom - 2; j >= d; j -= 2) { c.beginPath(); c.moveTo(x - rx * 1.7, Math.round(yOf(j)) + 0.5); c.lineTo(x + rx * 1.7, Math.round(yOf(j)) + 0.5); c.stroke(); }
       for (j = top + 2; j <= d; j += 2) { c.beginPath(); c.moveTo(x - rx * 1.7, Math.round(yOf(j)) + 0.5); c.lineTo(x + rx * 1.7, Math.round(yOf(j)) + 0.5); c.stroke(); }
@@ -1151,7 +1152,8 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     cv.style.width = W + "px"; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
     (sheet ? drawStaff : drawMap)(c, W, H, 1, st, ex.state !== "idle");
-    if (ex.state === "running") { var sc = cv.parentNode, cx = (sheet ? 62 : 40) + (ex.idx + 0.5) * (W - (sheet ? 70 : 40)) / st.length; if (cx < sc.scrollLeft + 30 || cx > sc.scrollLeft + boxW - 30) sc.scrollLeft = cx - boxW / 2; }
+    var fi = ex.state === "running" ? ex.idx : pv.idx;
+    if (fi >= 0 && (ex.state === "running" || pv.on)) { var sc = cv.parentNode, cx = (sheet ? 62 : 40) + (fi + 0.5) * (W - (sheet ? 70 : 40)) / st.length; if (cx < sc.scrollLeft + 30 || cx > sc.scrollLeft + boxW - 30) sc.scrollLeft = cx - boxW / 2; }
   }
   $("map-shot").addEventListener("click", function () {
     var st = mapSteps(); if (!st) return;
@@ -1170,8 +1172,57 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     }, "image/png");
   });
   window.addEventListener("resize", function () { if (mode === "exercise") mapRender(); });
+  /* Hear the exercise without the mic: plays each note in the chosen sound and lights it on the map and keyboard. */
+  var pv = { on: false, idx: -1, timer: null, node: null };
+  function glideOf(g, sec) {
+    sec = clamp(sec, 0, g[g.length - 1][0]);
+    for (var i = 1; i < g.length; i++) if (sec <= g[i][0]) {
+      var a = g[i - 1], b = g[i], u = (sec - a[0]) / (b[0] - a[0] || 1);
+      u = u * u * (3 - 2 * u);
+      return a[1] + (b[1] - a[1]) * u;
+    }
+    return g[g.length - 1][1];
+  }
+  function pvStop() {
+    var was = pv.on;
+    pv.on = false; pv.idx = -1; clearTimeout(pv.timer);
+    if (pv.node) { try { pv.node.stop(); } catch (e) {} pv.node = null; }
+    $("ex-preview").textContent = "Hear this exercise";
+    if (was) mapRender();
+  }
+  function pvStart() {
+    if (ex.state === "running") return;
+    var d = curDef();
+    if (d.ear) return;
+    ready().then(function () {
+      if (ex.state === "running") return;
+      pv.on = true; $("ex-preview").textContent = "Stop";
+      if (d.glide) {
+        var g = d.glide, total = g[g.length - 1][0], r0 = +rootSel.value, t0 = ac.currentTime + 0.05, o = ac.createOscillator(), o2 = ac.createOscillator(), gn = ac.createGain(), g2 = ac.createGain();
+        o.type = "triangle"; o2.type = "sine"; g2.gain.value = 0.3;
+        for (var t = 0; t <= total; t += 0.04) { var f = a4 * Math.pow(2, (r0 + glideOf(g, t) - 69) / 12); o.frequency.setValueAtTime(f, t0 + t); o2.frequency.setValueAtTime(f * 2, t0 + t); }
+        gn.gain.setValueAtTime(0, t0); gn.gain.linearRampToValueAtTime(0.3, t0 + 0.06); gn.gain.setValueAtTime(0.3, t0 + total - 0.2); gn.gain.linearRampToValueAtTime(0, t0 + total);
+        o.connect(gn); o2.connect(g2); g2.connect(gn); gn.connect(output()); o.start(t0); o2.start(t0); o.stop(t0 + total + 0.05); o2.stop(t0 + total + 0.05);
+        pv.node = { stop: function () { try { gn.gain.cancelScheduledValues(0); gn.gain.value = 0; o.stop(); o2.stop(); } catch (e) {} } };
+        ignoreUntil = Math.max(ignoreUntil, performance.now() + total * 1000 + 300);
+        pv.timer = setTimeout(pvStop, total * 1000 + 200);
+        return;
+      }
+      var st = previewSteps();
+      if (!st || !st.length || st[0] == null) { pvStop(); return; }
+      var gap = st.length > 20 ? 380 : 520;
+      (function next(i) {
+        if (!pv.on) return;
+        if (i >= st.length) { pv.timer = setTimeout(pvStop, 600); return; }
+        pv.idx = i; playTone(st[i], gap / 1000 + 0.14); mapRender();
+        pv.timer = setTimeout(function () { next(i + 1); }, gap);
+      })(0);
+    });
+  }
+  $("ex-preview").addEventListener("click", function () { if (pv.on) pvStop(); else pvStart(); });
   function exOptionsUI() {
     var d = curDef();
+    $("ex-preview").disabled = !!d.ear;
     $("ex-tip").textContent = d.tip;
     $("builder").hidden = !d.custom;
     rootSel.disabled = !!(d.custom || d.abs);
@@ -1179,6 +1230,7 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     $("ex-skip").disabled = !!d.glide;
   }
   function exIdleUI() {
+    if (pv.on) pvStop();
     setFlats(); pickerRender();
     $("ex-now").textContent = "Ready"; $("ex-count").textContent = "";
     $("ex-summary").hidden = true; holdbar.hidden = true; exOptionsUI(); renderChips(); applyScale();
@@ -1225,6 +1277,7 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     var def = curDef(), rootM = +rootSel.value;
     ex.def = def; ex.kind = def.glide ? "glide" : "steps"; ex.root = rootM;
     ex.hold = (def.hold || 0.7) * ((player === "guitar" || player === "bass") && def.hold > 0.45 ? 0.55 : 1);
+    if (pv.on) pvStop();
     ex.state = "idle"; setFlats();
     ex.results = []; ex.idx = 0; ex.acc = 0; ex.onTime = 0; ex.totalTime = 0;
     if (ex.kind === "glide") {
@@ -1732,7 +1785,7 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     return null;
   }
   function setMode(m) {
-    if (m !== "exercise") exStop();
+    if (m !== "exercise") { exStop(); if (pv.on) pvStop(); }
     if (m !== "range" && rf.step !== 3) rf.step = 0;
     if (m !== "song") songPause();
     mode = m; R = (m === "target" || m === "exercise" || (m === "song" && song.track)) ? 100 : 50;
