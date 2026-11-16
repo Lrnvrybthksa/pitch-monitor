@@ -175,7 +175,16 @@ canvas { border-radius: 14px; }
 .kw.tgt::after, .kbk.tgt::after { content: ""; position: absolute; left: 50%; bottom: 24px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(143,157,255,.4), 0 0 0 4px #0b0d13; }
 .kbk.tgt::after { bottom: 8px; }
 #kb-hint { padding: 8px 16px 0; }
-#rv-audio-dl, #rv-dl { font: 500 15px var(--display); border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); border-radius: 14px; color: var(--text); padding: 0 10px; text-align: center; min-height: 46px; }
+.cats { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px 2px; -webkit-overflow-scrolling: touch; }
+.cats::-webkit-scrollbar, .map-scroll::-webkit-scrollbar { display: none; }
+.cats button { flex: none; min-height: 36px; padding: 0 13px; border-radius: 999px; border: 0; background: rgba(255,255,255,.06); color: var(--text); font: 500 13px var(--display); cursor: pointer; }
+.cats button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.exgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.exgrid button { min-height: 46px; padding: 6px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); color: var(--text); font: 500 14px var(--display); text-align: left; line-height: 1.2; cursor: pointer; }
+.exgrid button[aria-pressed="true"] { border-color: var(--accent); background: rgba(143,157,255,.18); font-weight: 700; }
+.map-scroll { overflow-x: auto; scrollbar-width: none; border-radius: 14px; }
+#map { width: auto; }
+#rv-audio-dl, #rv-dl, #map-dl { font: 500 15px var(--display); border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); border-radius: 14px; color: var(--text); padding: 0 10px; text-align: center; min-height: 46px; }
 h1 { align-items: center; }
 h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; padding: 0 8px; border-radius: 999px; }
 </style>
@@ -275,8 +284,10 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
   </section>
 
   <section class="panel" id="panel-ex" hidden>
+    <div class="cats" id="ex-cats" role="group" aria-label="Exercise type"></div>
+    <div class="exgrid" id="ex-grid" role="group" aria-label="Exercise"></div>
     <div class="row">
-      <label class="fld">Exercise<select id="ex-sel"></select></label>
+      <label class="fld" hidden>Exercise<select id="ex-sel"></select></label>
       <label class="fld">Starting note<select id="root-sel"></select></label>
     </div>
     <div class="row">
@@ -297,6 +308,16 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
       </select></label>
     </div>
     <p id="ex-tip"></p>
+    <div id="map-wrap" hidden style="display:flex;flex-direction:column;gap:8px">
+      <div><b id="map-title" style="font-size:17px;font-weight:700;display:block"></b><span id="map-notes" style="font-family:var(--mono);font-size:13px;color:var(--muted)"></span></div>
+      <div class="map-scroll"><canvas id="map" style="height:210px" aria-label="The notes of this exercise laid out in order"></canvas></div>
+      <button type="button" class="ghost" id="map-shot">Save this note map as a picture</button>
+      <div id="map-out" hidden style="display:flex;flex-direction:column;gap:8px">
+        <img id="map-img" alt="Picture of the note map" style="width:100%;border-radius:10px;border:1px solid var(--line)">
+        <a id="map-dl" download="note-map.png" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Download</a>
+        <p class="small">You can also press and hold the picture to save or copy it.</p>
+      </div>
+    </div>
     <div class="builder" id="builder" hidden>
       <div class="keys" id="mel-keys"></div>
       <div class="octrow">
@@ -442,6 +463,10 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
   function chLo() { return player === "bass" ? 27.5 : 35.5; }
   function rawLabel(m) { m = Math.round(m); return nm(pcOf(m)) + (Math.floor(m / 12) - 1); }
   function noteLabel(m) { return rawLabel(Math.round(m) + xp); }
+  function bothLabel(m) {
+    var w = Math.round(m) + xp, pc = pcOf(w), oct = Math.floor(w / 12) - 1;
+    return SHARP[pc] === FLAT[pc] ? SHARP[pc] + oct : SHARP[pc] + oct + " / " + FLAT[pc] + oct;
+  }
   function median(a) { var b = a.slice().sort(function (p, q) { return p - q; }); return b[b.length >> 1]; }
   function rms(x) { var s = 0; for (var i = 0; i < x.length; i++) s += x[i] * x[i]; return Math.sqrt(s / x.length); }
 
@@ -492,7 +517,7 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
   function fillNotes(sel, from, to, selected) {
     sel.innerHTML = "";
     for (var m = from; m <= to; m++) {
-      var o = document.createElement("option"); o.value = m; o.textContent = noteLabel(m);
+      var o = document.createElement("option"); o.value = m; o.textContent = bothLabel(m);
       if (m === selected) o.selected = true; sel.appendChild(o);
     }
   }
@@ -777,7 +802,14 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     sel.innerHTML = "";
     names.forEach(function (n, i) { var o = document.createElement("option"); o.value = i; o.textContent = n; if (i === key.root) o.selected = true; sel.appendChild(o); });
   }
-  function setFlats() { flats = mode === "key" && FLAT_KEYS[key.scale].indexOf(key.root) >= 0; }
+  function setFlats() {
+    if (mode === "key") { flats = FLAT_KEYS[key.scale].indexOf(key.root) >= 0; return; }
+    flats = false;
+    if (mode !== "exercise") return;
+    var d = ex.state === "running" ? ex.def : curDef();
+    if (d.glide || d.abs || d.custom || d.ear) return;
+    flats = FLAT_KEYS[d.min ? "minor" : "major"].indexOf(pcOf((ex.state === "running" ? ex.root : +rootSel.value) + xp)) >= 0;
+  }
   function renderKeyChips(force) {
     var sig = key.cur + "|" + key.hits.map(function (h) { return h >= 500 ? 1 : 0; }).join("");
     if (!force && sig === key.sig) return;
@@ -898,6 +930,31 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
         return out;
       } }
   ];
+  var REGROUP = { "Major scale": ["Scales"], "Arpeggio": ["Arpeggios", "Major arpeggio"], "Fifths and octaves": ["Intervals"], "Half steps": ["Scales"],
+    "Minor scale": ["Scales", "Natural minor scale", 1], "Pentatonic": ["Scales", "Major pentatonic"], "Thirds ladder": ["Scales"], "Octave jumps": ["Intervals", "1 to 8 (octave)"] };
+  EX.forEach(function (e) { var r = REGROUP[e.name]; if (r) { e.group = r[0]; if (r[1]) e.name = r[1]; if (r[2]) e.min = true; } });
+  function scaleEx(name, up, tip, min) { return { group: "Scales", name: name, steps: up.concat(up.slice(0, -1).reverse()), hold: 0.6, tip: tip, min: !!min }; }
+  function jumpEx(name, n, tip) { return { group: "Intervals", name: name, steps: [0, n, 0, n, 0], hold: 0.8, tip: tip }; }
+  function arpEx(name, up, tip, min) { return { group: "Arpeggios", name: name, steps: up.concat(up.slice(0, -1).reverse()), hold: 0.7, tip: tip, min: !!min }; }
+  EX.push(
+    scaleEx("Harmonic minor scale", [0,2,3,5,7,8,11,12], "Natural minor with a raised seventh. The big step near the top is the tricky part.", 1),
+    scaleEx("Minor pentatonic", [0,3,5,7,10,12], "Five notes that fit over almost any minor song.", 1),
+    scaleEx("Blues scale", [0,3,5,6,7,10,12], "Minor pentatonic plus the blue note.", 1),
+    scaleEx("Dorian mode", [0,2,3,5,7,9,10,12], "A minor scale with a brighter sixth. Common in jazz and funk.", 1),
+    scaleEx("Mixolydian mode", [0,2,4,5,7,9,10,12], "A major scale with a flat seventh. The sound of dominant chords."),
+    scaleEx("Chromatic scale", [0,1,2,3,4,5,6,7,8,9,10,11,12], "Every half step up one octave and back."),
+    jumpEx("1 to 2 (step)", 2, "Root up a whole step and back. Small, but easy to sing flat."),
+    jumpEx("1 to 3 (third)", 4, "Root to the major third and back."),
+    jumpEx("1 to 4 (fourth)", 5, "Root to the fourth and back."),
+    jumpEx("1 to 5 (fifth)", 7, "Root to the fifth and back."),
+    jumpEx("1 to 6 (sixth)", 9, "Root to the major sixth and back. A wide, open leap."),
+    jumpEx("1 to 7 (seventh)", 11, "Root to the major seventh and back. The hardest one to land."),
+    { group: "Intervals", name: "Interval ladder", steps: [0,2,0,4,0,5,0,7,0,9,0,11,0,12,0], hold: 0.7, tip: "From the root to each note of the major scale in turn: 1 to 2, 1 to 3, all the way to the octave." },
+    arpEx("Minor arpeggio", [0,3,7,12], "The notes of a minor chord, up and back.", 1),
+    arpEx("Major 7 arpeggio", [0,4,7,11,12], "A major chord with its seventh."),
+    arpEx("Dominant 7 arpeggio", [0,4,7,10,12], "A major chord with a flat seventh."),
+    arpEx("Minor 7 arpeggio", [0,3,7,10,12], "A minor chord with its seventh.", 1)
+  );
   var SAXES = ["ssax", "asax", "tsax"], INST_GROUP = "For your instrument";
   EX.push(
     { group: INST_GROUP, inst: ["guitar"], name: "Open strings", abs: [40, 45, 50, 55, 59, 64], exact: true, hold: 0.4, tip: "Pluck each open string from low E to high E and let it ring. It doubles as a tuning check." },
@@ -910,10 +967,35 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     { group: INST_GROUP, inst: SAXES, name: "Octave slurs", steps: [0,12,0,12,0], exact: true, hold: 0.8, tip: "Slur between the low and high octave with the octave key. The exact octave counts." },
     { group: INST_GROUP, inst: SAXES, name: "Chromatic run", steps: [0,1,2,3,4,5,6,7,8,9,10,11,12], exact: true, hold: 0.35, tip: "Every half step up one octave. Keep the fingers even." }
   );
+  var GROUPS = [INST_GROUP, "Warm-ups", "Scales", "Intervals", "Arpeggios", "Slides", "Range builders", "Ear training", "Your own"];
+  var CAT_NAMES = { "For your instrument": "Instrument", "Range builders": "Range", "Ear training": "Ear", "Your own": "Mine" }, curCat = null;
+  function pickerRender() {
+    var cats = $("ex-cats"), grid = $("ex-grid"), sel = EX[+exSel.value];
+    if (!curCat || pickerRender.last !== exSel.value) curCat = sel.group;
+    pickerRender.last = exSel.value;
+    cats.innerHTML = ""; grid.innerHTML = "";
+    GROUPS.forEach(function (g) {
+      if (!EX.some(function (e) { return e.group === g && (!e.inst || e.inst.indexOf(player) >= 0); })) return;
+      var b = document.createElement("button"); b.type = "button"; b.textContent = CAT_NAMES[g] || g;
+      b.setAttribute("aria-pressed", String(g === curCat));
+      b.addEventListener("click", function () { curCat = g; pickerRender(); });
+      cats.appendChild(b);
+    });
+    EX.forEach(function (e, i) {
+      if (e.group !== curCat || (e.inst && e.inst.indexOf(player) < 0)) return;
+      var b = document.createElement("button"); b.type = "button"; b.textContent = e.name;
+      b.setAttribute("aria-pressed", String(i === +exSel.value));
+      b.addEventListener("click", function () {
+        if (ex.state === "running") return;
+        exSel.value = String(i); exSel.dispatchEvent(new Event("change"));
+      });
+      grid.appendChild(b);
+    });
+  }
   function fillEx() {
     var keep = exSel.value || "0";
     exSel.innerHTML = "";
-    [INST_GROUP, "Warm-ups", "Scales and jumps", "Slides", "Range builders", "Ear training", "Your own"].forEach(function (g) {
+    GROUPS.forEach(function (g) {
       var og = document.createElement("optgroup"); og.label = g;
       EX.forEach(function (e, i) {
         if (e.group !== g || (e.inst && e.inst.indexOf(player) < 0)) return;
@@ -922,6 +1004,7 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
       if (og.children.length) exSel.appendChild(og);
     });
     exSel.value = keep; if (exSel.value !== keep) exSel.value = "0";
+    curCat = EX[+exSel.value].group;
   }
   fillEx();
   var ex = { state: "idle", def: EX[0], kind: "steps", steps: [], play: [], idx: 0, acc: 0, onTime: 0, totalTime: 0, results: [], harm: 0, tempo: false };
@@ -930,7 +1013,7 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
 
   function curDef() { return EX[+exSel.value]; }
   function earActive() { return mode === "exercise" && ex.state === "running" && !!ex.def.ear; }
-  function exactNow() { return mode === "exercise" && ex.state === "running" && !!ex.def.exact; }
+  function exactNow() { return mode === "exercise" && ex.state === "running" && (!!ex.def.exact || player !== "voice"); }
   function baseSteps(d, r0) { return d.abs ? d.abs.slice() : d.custom ? melody.slice() : d.gen ? d.gen(r0) : d.steps.map(function (x) { return r0 + x; }); }
   function gliding() { return mode === "exercise" && ex.state === "running" && ex.kind === "glide"; }
   function curTol() { return gliding() || (mode === "song" && song.track && song.playing) ? Math.max(tol, 35) : tol; }
@@ -962,7 +1045,76 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
       }
       host.appendChild(c);
     });
+    mapRender(); $("map-out").hidden = true;
   }
+  function drawMap(c, W, H, k, steps, run) {
+    var lo = Math.min.apply(null, steps) - 1, hi = Math.max.apply(null, steps) + 1, rows = hi - lo + 1, gut = 40 * k, rowH = H / rows, n = steps.length, bw = (W - gut) / n;
+    var MONO = "px ui-monospace, Menlo, Consolas, monospace", has = {}, i;
+    steps.forEach(function (m) { has[m] = 1; });
+    c.fillStyle = "#0f131b"; c.fillRect(0, 0, W, H); c.textBaseline = "middle";
+    for (var m = lo; m <= hi; m++) {
+      var y = (hi - m) * rowH, black = [1, 3, 6, 8, 10].indexOf(pcOf(m + xp)) >= 0;
+      c.fillStyle = black ? "#10141a" : "#222a38"; c.fillRect(gut, y, W - gut, Math.max(1, rowH - k));
+      if (has[m]) {
+        c.textAlign = "left"; c.font = (m === steps[0] ? "700 " : "") + Math.round(Math.min(11 * k, Math.max(8 * k, rowH * 0.85))) + MONO;
+        c.fillStyle = m === steps[0] ? "#eef1f6" : "#a3acbd"; c.fillText(noteLabel(m), 4 * k, y + rowH / 2);
+      }
+    }
+    for (i = 0; i < n; i++) {
+      var x = gut + i * bw + k, by = (hi - steps[i]) * rowH, bh = Math.max(rowH - k, 6 * k), r = Math.min(5 * k, bh / 2, bw / 2);
+      var done = run && i < ex.results.length, cur = run && ex.state === "running" && i === ex.idx;
+      c.fillStyle = done ? (ex.results[i] >= 0.7 ? GOOD : WARN) : cur ? "#ffffff" : "#8f9dff";
+      c.beginPath();
+      if (c.roundRect) c.roundRect(x, by, bw - 2 * k, bh, r); else c.rect(x, by, bw - 2 * k, bh);
+      c.fill();
+      if (bw >= 20 * k && rowH >= 11 * k) {
+        c.textAlign = "center"; c.font = "700 " + Math.round(Math.min(11 * k, rowH * 0.8)) + MONO; c.fillStyle = "#0c1033";
+        c.fillText(nm(pcOf(steps[i] + xp)), x + (bw - 2 * k) / 2, by + bh / 2);
+      }
+    }
+    c.textAlign = "left";
+  }
+  function mapSteps() {
+    var d = ex.state === "idle" ? curDef() : ex.def;
+    if (d.glide || d.ear) return null;
+    var st = ex.state === "idle" ? previewSteps() : ex.steps;
+    return st && st.length && st[0] != null ? st : null;
+  }
+  function mapRender() {
+    var st = mapSteps(), wrap = $("map-wrap"), cv = $("map");
+    wrap.hidden = !st;
+    if (!st) return;
+    var d = ex.state === "idle" ? curDef() : ex.def, seen = {}, names = [];
+    st.slice().sort(function (a, b) { return a - b; }).forEach(function (m) { var nmx = nm(pcOf(m + xp)); if (!seen[nmx]) { seen[nmx] = 1; names.push(nmx); } });
+    var first = nm(pcOf(st[0] + xp)), at = names.indexOf(first);
+    names = names.slice(at).concat(names.slice(0, at));
+    $("map-title").textContent = d.abs || d.custom ? d.name : first + " · " + d.name;
+    $("map-notes").textContent = names.join("  ");
+    var boxW = cv.parentNode.clientWidth;
+    if (!boxW) return;
+    var W = Math.max(boxW, 40 + st.length * 24), H = 210, dpr = window.devicePixelRatio || 1, c = cv.getContext("2d");
+    cv.style.width = W + "px"; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawMap(c, W, H, 1, st, ex.state !== "idle");
+    if (ex.state === "running") { var sc = cv.parentNode, cx = 40 + (ex.idx + 0.5) * (W - 40) / st.length; if (cx < sc.scrollLeft + 30 || cx > sc.scrollLeft + boxW - 30) sc.scrollLeft = cx - boxW / 2; }
+  }
+  $("map-shot").addEventListener("click", function () {
+    var st = mapSteps(); if (!st) return;
+    var W = Math.max(1100, 120 + st.length * 60), H = 640, cv = document.createElement("canvas"), c = cv.getContext("2d");
+    cv.width = W; cv.height = H;
+    c.fillStyle = "#12151c"; c.fillRect(0, 0, W, H);
+    c.textBaseline = "alphabetic"; c.fillStyle = "#eef1f6"; c.font = "700 36px system-ui, -apple-system, 'Segoe UI', sans-serif";
+    c.fillText($("map-title").textContent, 40, 62);
+    c.fillStyle = "#8e97aa"; c.font = "24px ui-monospace, Menlo, Consolas, monospace";
+    c.fillText($("map-notes").textContent + ($("player").value === "voice" ? "" : "   ·   " + $("player").selectedOptions[0].textContent), 40, 102);
+    c.save(); c.translate(40, 130); drawMap(c, W - 80, H - 170, 2, st, false); c.restore();
+    cv.toBlob(function (blob) {
+      if (!blob) return;
+      var url = URL.createObjectURL(blob);
+      $("map-img").src = url; $("map-dl").href = url; $("map-out").hidden = false;
+    }, "image/png");
+  });
+  window.addEventListener("resize", function () { if (mode === "exercise") mapRender(); });
   function exOptionsUI() {
     var d = curDef();
     $("ex-tip").textContent = d.tip;
@@ -972,6 +1124,7 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     $("ex-skip").disabled = !!d.glide;
   }
   function exIdleUI() {
+    setFlats(); pickerRender();
     $("ex-now").textContent = "Ready"; $("ex-count").textContent = "";
     $("ex-summary").hidden = true; holdbar.hidden = true; exOptionsUI(); renderChips(); applyScale();
   }
@@ -1016,6 +1169,8 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
   function exBegin() {
     var def = curDef(), rootM = +rootSel.value;
     ex.def = def; ex.kind = def.glide ? "glide" : "steps"; ex.root = rootM;
+    ex.hold = (def.hold || 0.7) * ((player === "guitar" || player === "bass") && def.hold > 0.45 ? 0.55 : 1);
+    ex.state = "idle"; setFlats();
     ex.results = []; ex.idx = 0; ex.acc = 0; ex.onTime = 0; ex.totalTime = 0;
     if (ex.kind === "glide") {
       var vals = def.glide.map(function (p) { return p[1]; });
@@ -1060,8 +1215,8 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     if (good) ex.onTime += dt;
     if (ex.kind === "glide" || ex.tempo) return;
     if (good) ex.acc += dt; else ex.acc = Math.max(0, ex.acc - dt * 2);
-    holdfill.style.width = clamp(ex.acc / (ex.def.hold * 1000), 0, 1) * 100 + "%";
-    if (ex.acc >= ex.def.hold * 1000) exAdvance();
+    holdfill.style.width = clamp(ex.acc / (ex.hold * 1000), 0, 1) * 100 + "%";
+    if (ex.acc >= ex.hold * 1000) exAdvance();
   }
   function exClock(now) {
     if (mode !== "exercise" || ex.state !== "running") return;
@@ -1530,6 +1685,7 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     ["target", "key", "range"].forEach(function (p) { $("panel-" + p).hidden = m !== p; });
     $("panel-ex").hidden = m !== "exercise";
     sizeChart(); $("kb-card").hidden = m === "song";
+    if (m === "exercise") { setFlats(); renderChips(); }
     kbHint();
     $("panel-song").hidden = m !== "song";
     if (m !== "song") ytPause();
