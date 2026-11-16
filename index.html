@@ -175,11 +175,17 @@ canvas { border-radius: 14px; }
 .kw.tgt::after, .kbk.tgt::after { content: ""; position: absolute; left: 50%; bottom: 24px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(143,157,255,.4), 0 0 0 4px #0b0d13; }
 .kbk.tgt::after { bottom: 8px; }
 #kb-hint { padding: 8px 16px 0; }
+#rv-audio-dl, #rv-dl { font: 500 15px var(--display); border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); border-radius: 14px; color: var(--text); padding: 0 10px; text-align: center; min-height: 46px; }
+h1 { align-items: center; }
+h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; padding: 0 8px; border-radius: 999px; }
 </style>
 </head>
 <body>
 <main>
-  <h1>Pitch Monitor <small id="a4-top">A4 = 440 Hz</small></h1>
+  <h1>Pitch Monitor <select id="player" aria-label="What you are singing or playing">
+    <option value="voice">Voice</option><option value="guitar">Guitar</option><option value="bass">Bass guitar</option>
+    <option value="ssax">Soprano sax</option><option value="asax">Alto sax</option><option value="tsax">Tenor sax</option>
+  </select><small id="a4-top" hidden>A4 = 440 Hz</small></h1>
 
   <div class="seg" role="group" aria-label="Mode">
     <button type="button" data-mode="free" aria-pressed="true">Free</button>
@@ -260,6 +266,12 @@ canvas { border-radius: 14px; }
       <button type="button" class="ghost" id="song-play" style="flex:0 1 96px">Play</button>
       <label class="fld" style="flex:3 1 180px"><span id="song-time">0:00 / 0:00</span><input type="range" id="song-seek" min="0" max="1" step="0.1" value="0" aria-label="Position in the recording"></label>
     </div>
+    <div class="octrow" id="song-shift" hidden>
+      <span>Transpose</span><span class="sp"></span>
+      <button type="button" id="shift-down" aria-label="Transpose down a half step">−</button>
+      <b id="shift-lbl">Original key</b>
+      <button type="button" id="shift-up" aria-label="Transpose up a half step">+</button>
+    </div>
   </section>
 
   <section class="panel" id="panel-ex" hidden>
@@ -324,6 +336,11 @@ canvas { border-radius: 14px; }
       </select></label>
       <button type="button" class="ghost" id="rv-shot">Save a picture</button>
     </div>
+    <div class="row" id="rv-audio-row" hidden>
+      <button type="button" class="ghost" id="rv-play">Play take</button>
+      <a class="ghost" id="rv-audio-dl" download="pitch-take.webm" style="display:flex;align-items:center;justify-content:center;text-decoration:none;min-height:46px">Download audio</a>
+    </div>
+    <audio id="rv-audio" preload="auto" hidden></audio>
     <label class="fld" id="rv-pos-wrap" hidden><span id="rv-pos-lbl">Scroll through the take</span><input type="range" id="rv-pos" min="0" max="1" step="0.5" value="0"></label>
     <div id="rv-out" hidden style="display:flex;flex-direction:column;gap:10px">
       <img id="rv-img" alt="Picture of the pitch chart" style="width:100%;border-radius:10px;border:2px solid var(--line)">
@@ -419,7 +436,12 @@ canvas { border-radius: 14px; }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function pcOf(m) { return ((Math.round(m) % 12) + 12) % 12; }
   function nm(pc) { return (flats ? FLAT : SHARP)[pc]; }
-  function noteLabel(m) { m = Math.round(m); return nm(pcOf(m)) + (Math.floor(m / 12) - 1); }
+  /* xp: semitones from sounding pitch to the note name the player reads (saxes are transposing instruments). */
+  var PLAYERS = { voice: { xp: 0 }, guitar: { xp: 0, root: 45 }, bass: { xp: 0, root: 33 }, ssax: { xp: 2, root: 65 }, asax: { xp: 9, root: 58 }, tsax: { xp: 14, root: 53 } };
+  var player = PLAYERS[prefs.player] ? prefs.player : "voice", xp = PLAYERS[player].xp;
+  function chLo() { return player === "bass" ? 27.5 : 35.5; }
+  function rawLabel(m) { m = Math.round(m); return nm(pcOf(m)) + (Math.floor(m / 12) - 1); }
+  function noteLabel(m) { return rawLabel(Math.round(m) + xp); }
   function median(a) { var b = a.slice().sort(function (p, q) { return p - q; }); return b[b.length >> 1]; }
   function rms(x) { var s = 0; for (var i = 0; i < x.length; i++) s += x[i] * x[i]; return Math.sqrt(s / x.length); }
 
@@ -427,7 +449,7 @@ canvas { border-radius: 14px; }
   function yin(x, sr) {
     var W = x.length >> 1;
     var tauMin = Math.floor(sr / 2200);
-    var tauMax = Math.min(W - 1, Math.floor(sr / 60));
+    var tauMax = Math.min(W - 1, Math.floor(sr / 40));
     var d = new Float32Array(tauMax + 1);
     for (var tau = 1; tau <= tauMax; tau++) {
       var s = 0;
@@ -474,12 +496,16 @@ canvas { border-radius: 14px; }
       if (m === selected) o.selected = true; sel.appendChild(o);
     }
   }
-  fillNotes($("target-sel"), 36, 84, 60);
-  fillNotes(rootSel, 36, 72, 60);
+  function fillAllNotes(tv, rv0) {
+    var low = player === "bass" ? 28 : 36;
+    fillNotes($("target-sel"), low, 84, clamp(tv, low, 84));
+    fillNotes(rootSel, low, 72, clamp(rv0, low, 72));
+  }
+  fillAllNotes(60, PLAYERS[player].root || 60);
   $("target-sel").addEventListener("change", function (e) { targetMidi = +e.target.value; });
 
   /* ---------- piano keyboard ---------- */
-  var KB_LO = 36, KB_HI = 84, WK = 34, kbEls = {}, kbHit = null, kbHitUntil = 0, kbPrev = { sung: null, good: null, tgt: null, hit: null, focus: null };
+  var KB_LO = 28, KB_HI = 84, WK = 34, kbEls = {}, kbHit = null, kbHitUntil = 0, kbPrev = { sung: null, good: null, tgt: null, hit: null, focus: null };
   var kbScroll = $("kb-scroll");
   (function () {
     var host = $("kb"), wi = 0;
@@ -495,6 +521,9 @@ canvas { border-radius: 14px; }
     }
     host.style.width = wi * WK + "px";
   })();
+  function kbHint() {
+    $("kb-hint").textContent = (mode === "target" ? "Tap a key to hear it and make it your target." : "Tap a key to hear it. The key you " + (player === "voice" ? "sing" : "play") + " lights up.") + (xp ? " The keyboard is in concert pitch." : "");
+  }
   function kbTap(m) {
     if (mode === "target") { targetMidi = m; $("target-sel").value = m; }
     playTone(m, 1.0);
@@ -768,7 +797,7 @@ canvas { border-radius: 14px; }
   $("key-root").addEventListener("change", keyChanged);
   $("key-scale").addEventListener("change", function () { key.scale = $("key-scale").value; fillKeyRoots(); keyChanged(); });
   $("hear-scale").addEventListener("click", function () {
-    var base = 48 + key.root; if (base > 55) base -= 12;
+    var base = 48 + key.root - xp; while (base > 55) base -= 12; while (base < 40) base += 12;
     var up = SCALE[key.scale].map(function (s) { return base + s; }); up.push(base + 12);
     playSeq(up, 0.42, 0.55);
   });
@@ -869,12 +898,32 @@ canvas { border-radius: 14px; }
         return out;
       } }
   ];
-  ["Warm-ups", "Scales and jumps", "Slides", "Range builders", "Ear training", "Your own"].forEach(function (g) {
-    var og = document.createElement("optgroup"); og.label = g;
-    EX.forEach(function (e, i) { if (e.group !== g) return; var o = document.createElement("option"); o.value = i; o.textContent = e.name; og.appendChild(o); });
-    exSel.appendChild(og);
-  });
-  exSel.value = "0";
+  var SAXES = ["ssax", "asax", "tsax"], INST_GROUP = "For your instrument";
+  EX.push(
+    { group: INST_GROUP, inst: ["guitar"], name: "Open strings", abs: [40, 45, 50, 55, 59, 64], exact: true, hold: 0.4, tip: "Pluck each open string from low E to high E and let it ring. It doubles as a tuning check." },
+    { group: INST_GROUP, inst: ["guitar"], name: "Minor pentatonic box", steps: [0,3,5,7,10,12,10,7,5,3,0], exact: true, hold: 0.35, tip: "The classic box shape, up and back. Starting on A2 puts it at the 5th fret." },
+    { group: INST_GROUP, inst: ["guitar"], name: "Four-fret chromatic", steps: [0,1,2,3,5,6,7,8,10,11,12,13], exact: true, hold: 0.3, tip: "One finger per fret, four notes on a string, then the next string up. Pick each note cleanly." },
+    { group: INST_GROUP, inst: ["bass"], name: "Open strings", abs: [28, 33, 38, 43], exact: true, hold: 0.4, tip: "Pluck E, A, D and G and let each ring. Very low notes are hard for a phone mic, so play close to it." },
+    { group: INST_GROUP, inst: ["bass"], name: "Root, fifth, octave", steps: [0,7,12,7,0], exact: true, hold: 0.4, tip: "The backbone of most bass lines. Land each note in tune and let it ring." },
+    { group: INST_GROUP, inst: ["bass"], name: "Walking line", steps: [0,4,7,9,10,9,7,4,0], exact: true, hold: 0.35, tip: "A walking pattern up to the flat seventh and back down." },
+    { group: INST_GROUP, inst: SAXES, name: "Long tones", steps: [0,2,4,5,7], exact: true, hold: 3, beats: 8, tip: "Hold each note steady for three seconds with an even tone. Note names are shown the way you read them for your sax." },
+    { group: INST_GROUP, inst: SAXES, name: "Octave slurs", steps: [0,12,0,12,0], exact: true, hold: 0.8, tip: "Slur between the low and high octave with the octave key. The exact octave counts." },
+    { group: INST_GROUP, inst: SAXES, name: "Chromatic run", steps: [0,1,2,3,4,5,6,7,8,9,10,11,12], exact: true, hold: 0.35, tip: "Every half step up one octave. Keep the fingers even." }
+  );
+  function fillEx() {
+    var keep = exSel.value || "0";
+    exSel.innerHTML = "";
+    [INST_GROUP, "Warm-ups", "Scales and jumps", "Slides", "Range builders", "Ear training", "Your own"].forEach(function (g) {
+      var og = document.createElement("optgroup"); og.label = g;
+      EX.forEach(function (e, i) {
+        if (e.group !== g || (e.inst && e.inst.indexOf(player) < 0)) return;
+        var o = document.createElement("option"); o.value = i; o.textContent = e.name; og.appendChild(o);
+      });
+      if (og.children.length) exSel.appendChild(og);
+    });
+    exSel.value = keep; if (exSel.value !== keep) exSel.value = "0";
+  }
+  fillEx();
   var ex = { state: "idle", def: EX[0], kind: "steps", steps: [], play: [], idx: 0, acc: 0, onTime: 0, totalTime: 0, results: [], harm: 0, tempo: false };
   var melody = store.get("pm.melody", []), melOct = 4;
   if (!Array.isArray(melody)) melody = [];
@@ -882,7 +931,7 @@ canvas { border-radius: 14px; }
   function curDef() { return EX[+exSel.value]; }
   function earActive() { return mode === "exercise" && ex.state === "running" && !!ex.def.ear; }
   function exactNow() { return mode === "exercise" && ex.state === "running" && !!ex.def.exact; }
-  function baseSteps(d, r0) { return d.custom ? melody.slice() : d.gen ? d.gen(r0) : d.steps.map(function (x) { return r0 + x; }); }
+  function baseSteps(d, r0) { return d.abs ? d.abs.slice() : d.custom ? melody.slice() : d.gen ? d.gen(r0) : d.steps.map(function (x) { return r0 + x; }); }
   function gliding() { return mode === "exercise" && ex.state === "running" && ex.kind === "glide"; }
   function curTol() { return gliding() || (mode === "song" && song.track && song.playing) ? Math.max(tol, 35) : tol; }
   function glideAt(sec) {
@@ -918,7 +967,7 @@ canvas { border-radius: 14px; }
     var d = curDef();
     $("ex-tip").textContent = d.tip;
     $("builder").hidden = !d.custom;
-    rootSel.disabled = !!d.custom;
+    rootSel.disabled = !!(d.custom || d.abs);
     harmSel.disabled = !!(d.glide || d.gen); tempoOn.disabled = !!d.glide; bpmSel.disabled = !!d.glide;
     $("ex-skip").disabled = !!d.glide;
   }
@@ -935,7 +984,7 @@ canvas { border-radius: 14px; }
     var b = document.createElement("button"); b.type = "button"; b.textContent = n;
     b.addEventListener("click", function () {
       if (ex.state === "running" || melody.length >= 32) return;
-      var m = 12 * (melOct + 1) + pc; melody.push(m); store.set("pm.melody", melody);
+      var m = 12 * (melOct + 1) + pc - xp; melody.push(m); store.set("pm.melody", melody);
       ex.state = "idle"; exIdleUI(); playTone(m, 0.6);
     });
     $("mel-keys").appendChild(b);
@@ -950,7 +999,7 @@ canvas { border-radius: 14px; }
     if (ex.state !== "running") return;
     if (ex.kind === "glide") { $("ex-now").textContent = "Follow the slide"; }
     else {
-      $("ex-now").textContent = ex.def.ear ? "Copy the note" : "Sing " + noteLabel(ex.steps[ex.idx]);
+      $("ex-now").textContent = ex.def.ear ? "Copy the note" : (player === "voice" ? "Sing " : "Play ") + noteLabel(ex.steps[ex.idx]);
       $("ex-count").textContent = (ex.harm ? "over " + noteLabel(ex.play[ex.idx]) + " · " : "") + "Note " + (ex.idx + 1) + " of " + ex.steps.length;
     }
     renderChips();
@@ -1136,13 +1185,13 @@ canvas { border-radius: 14px; }
   $("yt-url").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); ytLoad(); } });
 
   /* ---------- song (audio file charted as a path) ---------- */
-  var song = { buf: null, track: null, hop: 0.032, dur: 0, playing: false, startAt: 0, offset: 0, node: null, seeking: false };
+  var song = { buf: null, track: null, hop: 0.032, dur: 0, playing: false, startAt: 0, offset: 0, node: null, seeking: false, shift: 0, playBuf: null, rate: 1, job: 0 };
   function fmt(sec) { sec = Math.max(0, Math.floor(sec)); return Math.floor(sec / 60) + ":" + ("0" + sec % 60).slice(-2); }
   function songTime() { return song.playing ? Math.min(song.dur, song.offset + (ac.currentTime - song.startAt)) : song.offset; }
   function trackAt(sec) {
     if (!song.track || sec < 0 || sec > song.dur) return null;
     var v = song.track[Math.round((sec - 0.04) / song.hop)];
-    return v == null ? null : v;
+    return v == null ? null : v + song.shift;
   }
   function songPath() { return mode === "song" && !!song.track; }
   function songPause() {
@@ -1155,9 +1204,9 @@ canvas { border-radius: 14px; }
     if (!song.buf) return;
     ensureContext().then(function () {
       if (song.offset >= song.dur - 0.1) song.offset = 0;
-      var n = ac.createBufferSource(); n.buffer = song.buf; n.connect(ac.destination);
+      var n = ac.createBufferSource(); n.buffer = song.playBuf || song.buf; n.playbackRate.value = song.rate; n.connect(ac.destination);
       n.onended = function () { if (song.node === n && song.playing) { song.playing = false; song.offset = 0; $("song-play").textContent = "Play"; } };
-      n.start(0, song.offset); song.node = n; song.startAt = ac.currentTime; song.playing = true;
+      n.start(0, song.offset * song.rate); song.node = n; song.startAt = ac.currentTime; song.playing = true;
       $("song-play").textContent = "Pause";
     });
   }
@@ -1204,6 +1253,7 @@ canvas { border-radius: 14px; }
     var file = e.target.files && e.target.files[0], st = $("song-status");
     if (!file) return;
     songPause(); song.buf = null; song.track = null; $("song-player").hidden = true;
+    song.job++; song.shift = 0; song.playBuf = null; song.rate = 1; $("song-shift").hidden = true; $("shift-lbl").textContent = "Original key";
     st.textContent = "Reading the file…";
     ensureContext().then(function () { return file.arrayBuffer(); })
       .then(function (ab) { return new Promise(function (res, rej) { ac.decodeAudioData(ab, res, rej); }); })
@@ -1213,7 +1263,7 @@ canvas { border-radius: 14px; }
           song.buf = b; song.track = r.track; song.hop = r.hop; song.dur = b.duration; song.offset = 0;
           var pts = [], voicedN = 0;
           r.track.forEach(function (m, i) { pts.push({ t: i * r.hop * 1000 + 40, m: m, g: true, r: null }); if (m != null) voicedN++; });
-          $("song-seek").max = b.duration; $("song-seek").value = 0; $("song-player").hidden = false;
+          $("song-seek").max = b.duration; $("song-seek").value = 0; $("song-player").hidden = false; $("song-shift").hidden = false;
           if (!voicedN) { st.textContent = "I couldn't find a clear single voice in that file. A voice-only recording works best."; song.track = null; }
           else {
             st.textContent = "Charted " + file.name + ". Tap Play to follow it on the chart. Tap Start listening to sing along with headphones.";
@@ -1226,8 +1276,114 @@ canvas { border-radius: 14px; }
     e.target.value = "";
   });
 
+  /* Stretch audio in time without changing its pitch (WSOLA). Played back faster or slower by the same
+     factor, the result keeps the original length and comes out transposed. */
+  function stretchMono(x, a, onProgress) {
+    var N = 2048, Hs = 1024, D = 384, len = x.length, outLen = Math.floor(len * a), y = new Float32Array(outLen + N), win = new Float32Array(N), i;
+    for (i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / N);
+    for (i = 0; i < N && i < len; i++) y[i] = x[i] * win[i];
+    var prev = 0, k = 1, frames = Math.floor(outLen / Hs);
+    return new Promise(function (resolve) {
+      (function chunk() {
+        var stop = Math.min(frames, k + 300);
+        for (; k < stop; k++) {
+          var ideal = Math.round(k * Hs / a), ts = prev + Hs, best = 0, bestV = -Infinity;
+          if (ts + N / 2 < len) {
+            for (var d = -D; d <= D; d += 4) {
+              var c0 = ideal + d;
+              if (c0 < 0 || c0 + N >= len) continue;
+              var v = 0;
+              for (i = 0; i < N / 2; i += 4) v += x[ts + i] * x[c0 + i];
+              if (v > bestV) { bestV = v; best = d; }
+            }
+          }
+          prev = clamp(ideal + best, 0, Math.max(0, len - 1));
+          var o = k * Hs;
+          for (i = 0; i < N && prev + i < len; i++) y[o + i] += x[prev + i] * win[i];
+        }
+        onProgress(frames ? k / frames : 1);
+        if (k < frames) setTimeout(chunk, 0); else resolve(y.subarray(0, outLen));
+      })();
+    });
+  }
+  function songShift(n) {
+    if (!song.buf) return;
+    n = clamp(n, -7, 7);
+    var was = song.playing, job = ++song.job, st = $("song-status"), lbl = $("shift-lbl");
+    songPause();
+    function done() {
+      song.shift = n; lbl.textContent = n === 0 ? "Original key" : (n > 0 ? "+" : "") + n + (Math.abs(n) === 1 ? " half step" : " half steps");
+      st.textContent = n === 0 ? "Back in the original key." : "Transposed " + (n > 0 ? "up " : "down ") + Math.abs(n) + (Math.abs(n) === 1 ? " half step." : " half steps.") + " The path on the chart moved with it.";
+      if (was) songPlay();
+    }
+    if (n === 0) { song.playBuf = song.buf; song.rate = 1; done(); return; }
+    var b = song.buf, r = Math.pow(2, n / 12), mono = new Float32Array(b.length), c0 = b.getChannelData(0), c1 = b.numberOfChannels > 1 ? b.getChannelData(1) : null;
+    for (var i = 0; i < b.length; i++) mono[i] = c1 ? (c0[i] + c1[i]) * 0.5 : c0[i];
+    lbl.textContent = "Working…";
+    stretchMono(mono, r, function (p) { if (job === song.job) st.textContent = "Shifting the pitch… " + Math.round(p * 100) + "%"; }).then(function (y) {
+      if (job !== song.job) return;
+      var nb = ac.createBuffer(1, y.length, b.sampleRate); nb.getChannelData(0).set(y);
+      song.playBuf = nb; song.rate = r; done();
+    });
+  }
+  $("shift-down").addEventListener("click", function () { songShift(song.shift - 1); });
+  $("shift-up").addEventListener("click", function () { songShift(song.shift + 1); });
+
   /* ---------- take review ---------- */
   var log = [], logStart = 0, rv = null, rvBlob = null, rvUrl = null;
+  var rec = null, recChunks = [], takeUrl = null, rvAudio = $("rv-audio"), rvTick = 0;
+  function recStart(s) {
+    rec = null; recChunks = [];
+    if (!window.MediaRecorder) return;
+    try {
+      rec = new MediaRecorder(s, { audioBitsPerSecond: 64000 });
+      rec.ondataavailable = function (e) { if (e.data && e.data.size) recChunks.push(e.data); };
+      rec.start(1000);
+    } catch (e) { rec = null; }
+  }
+  function recStop() {
+    var r = rec; rec = null;
+    if (!r || r.state === "inactive") return;
+    r.onstop = function () {
+      if (!rv || !rv.take || !recChunks.length) return;
+      var type = r.mimeType || (recChunks[0] && recChunks[0].type) || "audio/webm";
+      var blob = new Blob(recChunks, { type: type }), ext = /mp4|aac|m4a/.test(type) ? "m4a" : /ogg/.test(type) ? "ogg" : "webm";
+      takeUrl = URL.createObjectURL(blob);
+      rvAudio.src = takeUrl; $("rv-audio-dl").href = takeUrl; $("rv-audio-dl").setAttribute("download", "pitch-take." + ext);
+      $("rv-audio-dl").textContent = "Download audio (" + (blob.size / 1048576 < 0.1 ? Math.max(1, Math.round(blob.size / 1024)) + " KB" : (blob.size / 1048576).toFixed(1) + " MB") + ")";
+      $("rv-audio-row").hidden = false;
+    };
+    try { r.stop(); } catch (e) {}
+  }
+  function takeClear() {
+    try { rvAudio.pause(); } catch (e) {}
+    rvAudio.removeAttribute("src");
+    if (takeUrl) { try { URL.revokeObjectURL(takeUrl); } catch (e) {} takeUrl = null; }
+    $("rv-audio-row").hidden = true; $("rv-play").textContent = "Play take";
+  }
+  function rvFollow() {
+    if (!rv || rvAudio.paused) { $("rv-play").textContent = "Play take"; if (rv) { rv.cursor = rvAudio.ended ? null : rv.cursor; rvRender(); } return; }
+    var now = performance.now();
+    if (now - rvTick > 60) {
+      rvTick = now; rv.cursor = rvAudio.currentTime;
+      var z = +$("rv-zoom").value, pos = $("rv-pos");
+      if (z > 0 && z < rv.dur && (rv.cursor < +pos.value || rv.cursor > +pos.value + z * 0.9)) pos.value = clamp(rv.cursor - z * 0.1, 0, rv.dur - z);
+      rvRender();
+    }
+    requestAnimationFrame(rvFollow);
+  }
+  $("rv-play").addEventListener("click", function () {
+    if (!takeUrl) return;
+    if (rvAudio.paused) { var pr = rvAudio.play(); if (pr && pr.then) pr.then(null, function () {}); $("rv-play").textContent = "Pause"; requestAnimationFrame(rvFollow); }
+    else rvAudio.pause();
+  });
+  $("rv-canvas").addEventListener("click", function (e) {
+    if (!rv || !takeUrl) return;
+    var box = $("rv-canvas").getBoundingClientRect(), wn = rvWindow(), t = wn[0] + (e.clientX - box.left - 36) / (box.width - 36) * (wn[1] - wn[0]);
+    t = clamp(t, 0, rv.dur); rv.cursor = t;
+    try { rvAudio.currentTime = t; } catch (err) {}
+    rvRender();
+  });
   var rvCanvas = $("rv-canvas"), rvCtx = rvCanvas.getContext("2d");
   function drawReview(c, w, h, t0, t1, k) {
     var gut = 36 * k, foot = 18 * k, ph = h - foot, rows = rv.hi - rv.lo + 1, rowH = ph / rows, MONO = "px ui-monospace, Menlo, Consolas, monospace";
@@ -1236,7 +1392,7 @@ canvas { border-radius: 14px; }
     c.fillStyle = "#151a23"; c.fillRect(0, 0, w, h);
     c.textBaseline = "middle"; c.textAlign = "left";
     for (var m = rv.lo; m <= rv.hi; m++) {
-      var pc = pcOf(m), black = [1, 3, 6, 8, 10].indexOf(pc) >= 0;
+      var pc = pcOf(m + xp), black = [1, 3, 6, 8, 10].indexOf(pc) >= 0;
       c.fillStyle = black ? "#10141a" : "#252d3b";
       c.fillRect(gut, y(m) - rowH / 2, w - gut, Math.max(1, rowH - k));
       if (rowH >= 9 * k || pc === 0 || (rowH >= 5 * k && !black && pc !== 4 && pc !== 11)) {
@@ -1270,6 +1426,9 @@ canvas { border-radius: 14px; }
       c.beginPath(); c.moveTo(x(a.t / 1000), y(a.m)); c.lineTo(x(b.t / 1000), y(b.m)); c.stroke();
     }
     c.restore();
+    if (k === 1 && rv.cursor != null && rv.cursor >= t0 && rv.cursor <= t1) {
+      c.fillStyle = "#eef1f6"; c.fillRect(x(rv.cursor) - 1, 0, 2, ph);
+    }
   }
   function rvWindow() {
     var z = +$("rv-zoom").value;
@@ -1301,14 +1460,15 @@ canvas { border-radius: 14px; }
     pts.forEach(function (p) { if (p.m != null) { vlo = Math.min(vlo, p.m); vhi = Math.max(vhi, p.m); } });
     lo = Math.floor(lo) - 1; hi = Math.ceil(hi) + 1;
     while (hi - lo < 11) { hi++; if (hi - lo < 11) lo--; }
-    rv = { pts: pts, title: title, dur: Math.max(1, pts[pts.length - 1].t / 1000), lo: lo, hi: hi };
+    takeClear();
+    rv = { pts: pts, title: title, dur: Math.max(1, pts[pts.length - 1].t / 1000), lo: lo, hi: hi, take: !!isTake, cursor: null };
     $("rv-title").textContent = title;
     $("rv-info").textContent = fmt(rv.dur) + (isTake ? " · " + Math.round(gd / vo * 100) + "% on pitch" : "") + " · " + (Math.round(vlo) === Math.round(vhi) ? noteLabel(vlo) : noteLabel(vlo) + " to " + noteLabel(vhi));
-    $("rv-foot").textContent = isTake ? "This take is erased when you start listening again." : "This is the chart of your audio file. It is replaced by your take when you stop listening.";
+    $("rv-foot").textContent = isTake ? "Tap the chart to jump to a moment. This take and its audio are erased when you start listening again." : "This is the chart of your audio file. It is replaced by your take when you stop listening.";
     $("rv-zoom").value = "0"; $("rv-pos").value = 0; $("rv-out").hidden = true;
     $("review").hidden = false; rvRender();
   }
-  function hideReview() { rv = null; $("review").hidden = true; $("rv-out").hidden = true; }
+  function hideReview() { rv = null; takeClear(); $("review").hidden = true; $("rv-out").hidden = true; }
   $("rv-zoom").addEventListener("change", rvRender);
   $("rv-pos").addEventListener("input", rvRender);
   window.addEventListener("resize", rvRender);
@@ -1370,7 +1530,7 @@ canvas { border-radius: 14px; }
     ["target", "key", "range"].forEach(function (p) { $("panel-" + p).hidden = m !== p; });
     $("panel-ex").hidden = m !== "exercise";
     sizeChart(); $("kb-card").hidden = m === "song";
-    $("kb-hint").textContent = m === "target" ? "Tap a key to hear it and make it your target." : "Tap a key to hear it. The key you sing lights up.";
+    kbHint();
     $("panel-song").hidden = m !== "song";
     if (m !== "song") ytPause();
     setFlats(); renderKeyChips(true); rfRender(); applyScale(); showIdle();
@@ -1394,13 +1554,13 @@ canvas { border-radius: 14px; }
   function showPitch(sm, cents, good, ref, keyOut) {
     hasPitch = true; targetCents = clamp(cents, -R, R);
     setState(good ? "good" : "warn");
-    var n = Math.round(sm);
+    var n = Math.round(sm) + xp;
     noteName.innerHTML = nm(pcOf(n)) + '<span class="oct">' + (Math.floor(n / 12) - 1) + "</span>";
     if (good) statusEl.textContent = mode === "key" ? "On pitch, in the key" : "On pitch";
     else if (keyOut && Math.abs(cents) <= curTol()) statusEl.textContent = nm(pcOf(n)) + " is not in " + keyName();
     else if (ref != null && Math.abs(cents) > R) statusEl.textContent = (cents > 0 ? "Too high" : "Too low") + (earActive() ? "" : ", aim for " + noteLabel(ref));
     else statusEl.textContent = cents > 0 ? "Sharp ↓ ease down" : "Flat ↑ bring it up";
-    readout.textContent = (a4 * Math.pow(2, (sm - 69) / 12)).toFixed(1) + " Hz   " + (cents >= 0 ? "+" : "") + cents.toFixed(0) + "¢";
+    readout.textContent = (a4 * Math.pow(2, (sm - 69) / 12)).toFixed(1) + " Hz   " + (cents >= 0 ? "+" : "") + cents.toFixed(0) + "¢" + (xp ? "   concert " + rawLabel(sm) : "");
   }
   function vibratoNow() {
     if (raw.length < 16 || raw[raw.length - 1].t - raw[0].t < 700) return null;
@@ -1439,7 +1599,7 @@ canvas { border-radius: 14px; }
         if (fmN != null) {
           curSm = fmN; curGood = true; hasPitch = true; setState("good");
           var fnn = Math.round(fmN);
-          noteName.innerHTML = nm(pcOf(fnn)) + '<span class="oct">' + (Math.floor(fnn / 12) - 1) + "</span>";
+          noteName.innerHTML = nm(pcOf(fnn + xp)) + '<span class="oct">' + (Math.floor((fnn + xp) / 12) - 1) + "</span>";
           statusEl.textContent = "In the recording"; targetCents = clamp((fmN - fnn) * 100, -R, R);
           readout.textContent = (a4 * Math.pow(2, (fmN - 69) / 12)).toFixed(1) + " Hz";
         } else if (hasPitch) showIdle();
@@ -1470,7 +1630,7 @@ canvas { border-radius: 14px; }
     var full = !gl && fullMode(mode);
     if (full) {
       span = ZOOMS[zi];
-      var ft = spT != null ? spT : hasPitch ? curSm : null, edge = span * 0.3, fmin = 35.5 + span / 2, fmax = 96.5 - span / 2;
+      var ft = spT != null ? spT : hasPitch ? curSm : null, edge = span * 0.3, fmin = chLo() + span / 2, fmax = 96.5 - span / 2;
       if (ft != null) { if (ft > fgoal + edge) fgoal = ft - edge; else if (ft < fgoal - edge) fgoal = ft + edge; }
       fgoal = clamp(fgoal, fmin, Math.max(fmin, fmax));
       fcen = clamp(fcen + (fgoal - fcen) * 0.12, fmin, Math.max(fmin, fmax));
@@ -1482,7 +1642,7 @@ canvas { border-radius: 14px; }
     if (full) {
       var rowH = h / (hi2 - lo2), act = hasPitch ? Math.round(curSm) : null, MONO = "px ui-monospace, Menlo, Consolas, monospace";
       for (var fm = Math.ceil(lo2); fm <= Math.floor(hi2); fm++) {
-        var fy = yOf(fm), fpc = pcOf(fm), black = [1, 3, 6, 8, 10].indexOf(fpc) >= 0;
+        var fy = yOf(fm), fpc = pcOf(fm + xp), black = [1, 3, 6, 8, 10].indexOf(fpc) >= 0;
         var bright = mode === "key" ? keyDegree(fpc) >= 0 : !black, isAct = fm === act;
         ctx2d.fillStyle = bright ? "#252d3b" : "#10141a";
         ctx2d.fillRect(34, fy - rowH / 2, w - 34, rowH - 1);
@@ -1491,12 +1651,12 @@ canvas { border-radius: 14px; }
         if (bright || isAct) {
           ctx2d.font = (isAct || fpc === 0 ? "600 " : "") + (isAct ? 10 : 9) + MONO;
           ctx2d.fillStyle = isAct ? (curGood ? GOOD : WARN) : fpc === 0 ? "#eef1f6" : "#737c8d";
-          ctx2d.fillText(nm(fpc) + (Math.floor(fm / 12) - 1), 4, fy);
+          ctx2d.fillText(nm(fpc) + (Math.floor((fm + xp) / 12) - 1), 4, fy);
         }
       }
     }
     for (var m = Math.ceil(lo2); !full && m <= Math.floor(hi2); m++) {
-      var y = yOf(m), inKey = mode !== "key" || keyDegree(pcOf(m)) >= 0;
+      var y = yOf(m), inKey = mode !== "key" || keyDegree(pcOf(m + xp)) >= 0;
       ctx2d.strokeStyle = mode === "key" && inKey ? "#4a556b" : mode === "key" ? "#1f2531" : "#2a3140"; ctx2d.lineWidth = 1;
       ctx2d.beginPath(); ctx2d.moveTo(34, y); ctx2d.lineTo(w, y); ctx2d.stroke();
       ctx2d.fillStyle = mode === "key" ? (inKey ? "#eef1f6" : "#4d5564") : "#8b94a5"; ctx2d.fillText(noteLabel(m), 3, y);
@@ -1565,7 +1725,7 @@ canvas { border-radius: 14px; }
     }
     var cents = diff * 100, good = Math.abs(cents) <= curTol(), keyOut = false;
     if (mode === "key") {
-      var deg = keyDegree(pcOf(sm));
+      var deg = keyDegree(pcOf(sm + xp));
       keyOut = deg < 0; good = good && !keyOut;
       key.cur = good ? deg : -1; if (good) key.hits[deg] += dt;
       renderKeyChips();
@@ -1633,6 +1793,7 @@ canvas { border-radius: 14px; }
     showIdle(); requestAnimationFrame(tick);
   }
   function stopAll() {
+    recStop();
     running = false; exStop();
     if (rf.step === 1 || rf.step === 2) { rf.step = 0; rfRender(); }
     if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
@@ -1658,7 +1819,7 @@ canvas { border-radius: 14px; }
       return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
     }).then(function (s) {
       stream = s; srcNode = ac.createMediaStreamSource(s); srcNode.connect(analyser);
-      begin(); return true;
+      begin(); recStart(s); return true;
     }).then(null, function (e) { micError(e); return false; });
   }
   toggle.addEventListener("click", function () { if (running) stopAll(); else startMic(); });
@@ -1680,6 +1841,16 @@ canvas { border-radius: 14px; }
   });
 
   msg.addEventListener("click", function () { msg.textContent = ""; });
+  $("player").value = player;
+  $("player").addEventListener("change", function (e) {
+    var tv = +$("target-sel").value, old = +rootSel.value;
+    player = e.target.value; xp = PLAYERS[player].xp; prefs.player = player; savePrefs();
+    exStop(); ex.state = "idle";
+    fillAllNotes(tv, PLAYERS[player].root || old); targetMidi = +$("target-sel").value;
+    fillEx(); exIdleUI(); kbHint(); rfRender(); renderStats(); renderKeyChips(true);
+    if (rv) rvRender();
+    fgoal = fcen = clamp(player === "bass" ? 40 : 60, chLo() + ZOOMS[zi] / 2, 96.5);
+  });
   sizeChart(); kbCenter(60, false);
   exIdleUI(); renderKeyChips(true); rfRender(); renderProgress();
   applyScale(); showIdle(); renderStats();
