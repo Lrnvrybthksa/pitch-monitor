@@ -1104,6 +1104,15 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     { group: JZ, name: "2-5-1 arpeggios", steps: [2,5,9,12,11,7,5,2,0,4,7,11], hold: 0.55, tip: "The most common jazz chord move, spelled out: up the two chord, down the five chord, up the one chord. Your starting note is the home key." },
     { group: JZ, name: "1-2-3-5 pattern", steps: [0,2,4,7,5,7,9,12,7,9,11,14,12], hold: 0.5, tip: "A four-note cell used by many jazz improvisers, played on the one, four and five of the key." }
   );
+  var BL = "Ballads";
+  EX.push(
+    { group: MX, name: "Corrido: major melody", steps: [0,2,4,5,7,5,4,2,0,-1,0], hold: 0.5, tip: "Traditional corridos stay in a major key with simple stepwise melodies. This one walks up five notes, back down, and touches the note under home." },
+    { group: MX, name: "Corrido: one and five chords", steps: [0,4,7,12,7,4,0,-5,-1,2,5,2,-1,-5,0], hold: 0.5, tip: "Most corridos rock between two chords. Outline the home chord, then the five-seven chord, and come back." },
+    { group: BL, name: "Slow major phrase", steps: [0,2,4,7,4,2,0], hold: 1.5, beats: 4, tip: "Ballads are about long, steady notes more than special scales. Hold each note for a second and a half with an even tone." },
+    { group: BL, name: "Slow minor phrase", steps: [0,3,5,7,5,3,0], hold: 1.5, beats: 4, min: true, tip: "The same idea in a minor key." },
+    { group: BL, name: "Sixth leap and fall", steps: [0,9,7,4,2,0], hold: 1.3, beats: 4, tip: "A big leap up a sixth, then a slow walk back down. A classic ballad shape." },
+    { group: BL, name: "Pentatonic ballad line", steps: [0,2,4,7,9,7,4,2,0], hold: 1.2, beats: 4, tip: "The major pentatonic, sung or played slowly. Many pop and worship ballads live in these five notes." }
+  );
   var SAXES = ["ssax", "asax", "tsax"], INST_GROUP = "For your instrument";
   EX.push(
     { group: INST_GROUP, inst: ["guitar"], name: "Open strings", abs: [40, 45, 50, 55, 59, 64], exact: true, hold: 0.4, tip: "Pluck each open string from low E to high E and let it ring. It doubles as a tuning check." },
@@ -1116,7 +1125,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     { group: INST_GROUP, inst: SAXES, name: "Octave slurs", steps: [0,12,0,12,0], exact: true, hold: 0.8, tip: "Slur between the low and high octave with the octave key. The exact octave counts." },
     { group: INST_GROUP, inst: SAXES, name: "Chromatic run", steps: [0,1,2,3,4,5,6,7,8,9,10,11,12], exact: true, hold: 0.35, tip: "Every half step up one octave. Keep the fingers even." }
   );
-  var GROUPS = [INST_GROUP, "Warm-ups", "Scales", JZ, XO, MX, "Intervals", "Arpeggios", "Slides", "Range builders", "Ear training", "Your own"];
+  var GROUPS = [INST_GROUP, "Warm-ups", "Scales", JZ, XO, MX, BL, "Intervals", "Arpeggios", "Slides", "Range builders", "Ear training", "Your own"];
   var CAT_NAMES = { "For your instrument": "Instrument", "Exotic scales": "Exotic", "Regional Mexican": "Mexican regional", "Range builders": "Range", "Ear training": "Ear", "Your own": "Mine" }, curCat = null;
   function pickerRender() {
     var cats = $("ex-cats"), grid = $("ex-grid"), sel = EX[+exSel.value];
