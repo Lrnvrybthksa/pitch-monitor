@@ -459,9 +459,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <a class="ghost" id="rv-audio-dl" download="pitch-take.webm" style="display:flex;align-items:center;justify-content:center;text-decoration:none;min-height:46px">Download audio</a>
     </div>
     <audio id="rv-audio" preload="auto" hidden></audio>
+    <button type="button" class="ghost" id="rv-wide">Save a wide picture of the whole take</button>
     <label class="fld" id="rv-pos-wrap" hidden><span id="rv-pos-lbl">Scroll through the take</span><input type="range" id="rv-pos" min="0" max="1" step="0.5" value="0"></label>
     <div id="rv-out" hidden style="display:flex;flex-direction:column;gap:10px">
-      <img id="rv-img" alt="Picture of the pitch chart" style="width:100%;border-radius:10px;border:2px solid var(--line)">
+      <div style="overflow-x:auto;border-radius:10px"><img id="rv-img" alt="Picture of the pitch chart" style="width:100%;border-radius:10px;border:2px solid var(--line);display:block"></div>
       <div class="row">
         <button type="button" class="ghost" id="rv-share">Share or save</button>
         <a class="ghost" id="rv-dl" download="pitch-take.png" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Download</a>
@@ -2015,7 +2016,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       }
     }
     var span = t1 - t0, steps = [1, 2, 5, 10, 15, 30, 60, 120, 300], step = 300, i;
-    for (i = 0; i < steps.length; i++) if (span / steps[i] <= 7) { step = steps[i]; break; }
+    for (i = 0; i < steps.length; i++) if (span / steps[i] <= Math.max(7, Math.round(w / (150 * k)))) { step = steps[i]; break; }
     c.font = Math.round(10 * k) + MONO; c.textAlign = "center";
     for (var tk = Math.ceil(t0 / step) * step; tk <= t1 + 0.001; tk += step) {
       c.fillStyle = "rgba(238,241,246,.14)"; c.fillRect(x(tk), 0, k, ph);
@@ -2085,9 +2086,12 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   $("rv-zoom").addEventListener("change", rvRender);
   $("rv-pos").addEventListener("input", rvRender);
   window.addEventListener("resize", rvRender);
-  $("rv-shot").addEventListener("click", function () {
+  $("rv-shot").addEventListener("click", function () { rvShot(false); });
+  $("rv-wide").addEventListener("click", function () { rvShot(true); });
+  function rvShot(wide) {
     if (!rv) return;
-    var wn = rvWindow(), W = 1200, H = 780, cv = document.createElement("canvas"), c = cv.getContext("2d");
+    var wn = wide ? [0, rv.dur] : rvWindow(), W = wide ? clamp(Math.round(rv.dur * 44) + 160, 1200, 12000) : 1200, H = 780, cv = document.createElement("canvas"), c = cv.getContext("2d");
+    $("rv-img").style.width = wide ? "auto" : "100%"; $("rv-img").style.height = wide ? "300px" : "auto"; $("rv-img").style.maxWidth = wide ? "none" : "100%";
     cv.width = W; cv.height = H;
     c.fillStyle = TH.bg; c.fillRect(0, 0, W, H);
     c.textBaseline = "alphabetic"; c.fillStyle = TH.text; c.font = "700 34px system-ui, -apple-system, 'Segoe UI', sans-serif";
@@ -2104,7 +2108,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       try { canShare = !!(navigator.canShare && navigator.canShare({ files: [new File([blob], "pitch-take.png", { type: "image/png" })] })); } catch (e) {}
       $("rv-share").hidden = !canShare;
     }, "image/png");
-  });
+  }
   $("rv-share").addEventListener("click", function () {
     if (!rvBlob) return;
     try { navigator.share({ files: [new File([rvBlob], "pitch-take.png", { type: "image/png" })], title: "Pitch Monitor take" }).then(null, function () {}); } catch (e) {}
@@ -2241,6 +2245,22 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       pre.connect(sh); sh.connect(lp); lp.connect(g); g.connect(bus);
       return;
     }
+    if (voice === "ep" || voice === "pad") {
+      notes.forEach(function (m) {
+        var f0 = a4 * Math.pow(2, (m - 69) / 12), g1 = ac.createGain(), stop = t + Math.max(0.4, dur) + 0.3;
+        if (voice === "ep") {
+          g1.gain.setValueAtTime(0, t); g1.gain.linearRampToValueAtTime(0.16, t + 0.004); g1.gain.exponentialRampToValueAtTime(0.02, t + Math.max(0.4, dur)); g1.gain.linearRampToValueAtTime(0, t + Math.max(0.4, dur) + 0.15);
+          [[1, 1], [2, 0.3], [4, 0.1], [1.003, 0.5]].forEach(function (pv2) { var o1 = ac.createOscillator(), og = ac.createGain(); o1.frequency.value = f0 * pv2[0]; og.gain.value = pv2[1]; o1.connect(og); og.connect(g1); o1.start(t); o1.stop(stop); });
+          g1.connect(bus);
+        } else {
+          var lp2 = ac.createBiquadFilter(); lp2.type = "lowpass"; lp2.frequency.value = 1500;
+          g1.gain.setValueAtTime(0, t); g1.gain.linearRampToValueAtTime(0.045, t + 0.14); g1.gain.setValueAtTime(0.045, t + Math.max(0.2, dur - 0.05)); g1.gain.linearRampToValueAtTime(0, t + dur + 0.2);
+          [1.0035, 0.9965, 2.002].forEach(function (r, k2) { var o1 = ac.createOscillator(), og = ac.createGain(); o1.type = "sawtooth"; o1.frequency.value = f0 * r; og.gain.value = k2 === 2 ? 0.4 : 1; o1.connect(og); og.connect(lp2); o1.start(t); o1.stop(t + dur + 0.3); });
+          lp2.connect(g1); g1.connect(bus);
+        }
+      });
+      return;
+    }
     for (i = 0; i < notes.length; i++) {
       var f = a4 * Math.pow(2, (notes[i] - 69) / 12), o = ac.createOscillator(), gg = ac.createGain();
       if (voice === "brass") {
@@ -2258,10 +2278,11 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function gvStepDur() { return 60 / GV.bpm * GV.style.beats / GV.style.steps; }
   function gvStep(bar, st, t) {
     var S = GV.style, bars = GV.prog.bars, ch = chordOf(bars[bar % bars.length], GV.key), nxt = chordOf(bars[(bar + 1) % bars.length], GV.key), sd = gvStepDur(), i;
-    if (S.k && S.k.indexOf(st) >= 0) dKick(t, 0.9);
-    if (S.s && S.s.indexOf(st) >= 0) dSnare(t, 0.8);
+    var ek = S.kit === "e";
+    if (S.k && S.k.indexOf(st) >= 0) { if (ek) dTone(t, 0.95, 105, 40, 0.5); else dKick(t, 0.9); }
+    if (S.s && S.s.indexOf(st) >= 0) { if (ek) { dNoise(t, 0.5, 0.03, "bandpass", 1500, 1.2); dNoise(t + 0.012, 0.45, 0.03, "bandpass", 1500, 1.2); dNoise(t + 0.024, 0.55, 0.14, "bandpass", 1400, 0.9); } else dSnare(t, 0.8); }
     if (S.s2 && S.s2.indexOf(st) >= 0) dRim(t, 0.7);
-    if (S.h && S.h.indexOf(st) >= 0) dHat(t, S.h.length > 8 ? 0.6 : 0.9);
+    if (S.h && S.h.indexOf(st) >= 0) { if (ek) dNoise(t, (S.h.length > 8 ? 0.6 : 0.9) * 0.22, 0.025, "highpass", 9000); else dHat(t, S.h.length > 8 ? 0.6 : 0.9); }
     if (S.p && S.p.indexOf(st) >= 0) (S.pv === "shake" ? dShake : S.pv === "rim" ? dRim : dHat)(t, 0.9);
     var b0 = 36 + ch.root; if (b0 > 44) b0 -= 12;
     if (S.b) for (i = 0; i < S.b.length; i++) if (S.b[i][0] === st) {
@@ -2279,6 +2300,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       if (S.arp) { var up = notes.concat([notes[0] + 12]); gChord(t, [up[GV.arp++ % up.length]], Math.max(dur, 0.5), S.cv); }
       else gChord(t, notes, dur, S.cv, S.mute);
     }
+    if (S.c2) for (i = 0; i < S.c2.length; i++) if (S.c2[i][0] === st) gChord(t, notes, S.c2[i][1] * sd, S.cv2);
     if (st === 0 && GV.mel !== "none") gvMelody(bar, t, ch);
     GV.marks.push({ t: t, bar: bar, st: st });
   }
@@ -2365,7 +2387,48 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       if (by === "trumpets") { voice("trumpet", 60, 0); voice("trumpet", 60, -2); }
       if (by === "both") voice("trumpet", 60, 0);
       if (by === "brass") { voice("trumpet", 60, 0); voice("trumpet", 60, -2); voice("trombone", 48, 0); }
+      if (by === "sax") { voice("sax", 60, 0); voice("sax", 60, -2); }
+      if (by === "requinto") { voice("guitar12", 62, 0); voice("guitar12", 62, -2); }
+      if (by === "accordion") { gReed(tq, degNote(ch, ev[2], 65), dur); gReed(tq, degNote(ch, ev[2] - 2, 65), dur); }
+      if (by === "ep") { gChord(tq, [degNote(ch, ev[2], 65), degNote(ch, ev[2] - 2, 65)], Math.max(dur, 0.5), "ep"); }
     });
+  }
+  /* More grooves: ballads, R&B, norteño, modern regional Mexican and grupera. */
+  [{ id: "50s", name: "Romantic: I – vi – IV – V7", bars: ["I", "vi", "IV", "V7"], mode: "maj" },
+   { id: "1-3-4-5", name: "Romantic: I – iii – IV – V7", bars: ["I", "iii", "IV", "V7"], mode: "maj" },
+   { id: "rnb", name: "R&B: Imaj7 – iii7 – vi7 – ii7", bars: ["Imaj7", "iii7", "vi7", "ii7"], mode: "maj" },
+   { id: "m-rom", name: "Minor romantic: i – iv – VII – III", bars: ["i", "iv", "bVII", "bIII"], mode: "min" },
+   { id: "m-tumb", name: "Minor corrido: i – VII – VI – V7", bars: ["i", "i", "bVII", "bVII", "bVI", "bVI", "V7", "V7"], mode: "min" }
+  ].forEach(function (pg) { PROGS.push(pg); });
+  var EV16 = [0, 2, 4, 6, 8, 10, 12, 14];
+  [
+    { id: "pianob", group: "Ballads", name: "Piano ballad (no drums)", bpm: 64, beats: 4, steps: 8, b: [[0, "r"], [4, "5"]], c: each(ALL8, 1), arp: true, cv: "keys", bv: "pluck", prog: "pop", tip: "Just rolling piano and a soft bass. Room to sing or play freely." },
+    { id: "powerb", group: "Ballads", name: "Power ballad", bpm: 66, beats: 4, steps: 8, k: [0, 3], s: [4], h: ALL8, b: [[0, "r"], [3, "r"], [6, "5"]], c: each(ALL8, 1), arp: true, cv: "keys", c2: [[0, 8]], cv2: "pad", bv: "pluck", prog: "pop", tip: "Half-time drums, piano and a string pad. The big slow rock ballad feel." },
+    { id: "romantic", group: "Ballads", name: "Romantic ballad (strings)", bpm: 72, beats: 4, steps: 8, k: [0, 5], s2: [2, 6], h: ALL8, b: [[0, "r"], [4, "5"], [6, "r"]], c: each(ALL8, 1), arp: true, cv: "strum", c2: [[0, 8]], cv2: "pad", bv: "pluck", prog: "50s", tip: "Picked guitar over soft strings, with a gentle rim click." },
+    { id: "slowjam", group: "R&B", name: "Slow jam", bpm: 68, beats: 4, steps: 16, kit: "e", k: [0, 6, 10], s: [4, 12], h: EV16, b: [[0, "r"], [6, "r"], [10, "5"]], c: [[0, 6], [6, 4], [10, 6]], cv: "ep", bv: "pluck", prog: "rnb", tip: "Electric piano chords over a slow drum machine beat." },
+    { id: "neosoul", group: "R&B", name: "Neo-soul", bpm: 82, beats: 4, steps: 16, kit: "e", k: [0, 7, 10], s: [4, 12], h: EV16, b: [[0, "r"], [3, "r"], [8, "5"], [11, "r"]], c: [[0, 3], [3, 5], [8, 3], [11, 5]], cv: "ep", bv: "pluck", prog: "rnb", tip: "Laid-back, syncopated electric piano and bass." },
+    { id: "rnb90", group: "R&B", name: "90s R&B", bpm: 96, beats: 4, steps: 16, kit: "e", k: [0, 3, 8, 10], s: [4, 12], h: ALL16, b: [[0, "r"], [3, "r"], [8, "r"], [10, "5"], [14, "3"]], c: [[0, 4], [6, 2], [8, 4], [14, 2]], cv: "ep", c2: [[0, 16]], cv2: "pad", bv: "pluck", prog: "turn", tip: "A busier drum machine groove with electric piano stabs and a pad." },
+    { id: "nortacc", group: "Regional Mexican", name: "Norteño with accordion", bpm: 116, beats: 2, steps: 4, k: [0, 2], p: [1, 3], pv: "rim", b: [[0, "r"], [2, "5"]], c: each([1, 3], 1), cv: "strum", bv: "pluck", prog: "1-5", mel: "answer", by: "accordion", tip: "The corrido polka with accordion fills answering between phrases." },
+    { id: "nortvals", group: "Regional Mexican", name: "Corrido waltz (norteño 3/4)", bpm: 160, beats: 3, steps: 3, k: [0], p: [1, 2], pv: "rim", b: [[0, "r5"]], c: each([1, 2], 1), cv: "strum", bv: "pluck", prog: "1-5", mel: "step", by: "accordion", tip: "Many corridos are waltzes: bass on one, bajo sexto on two and three, accordion on top." },
+    { id: "nortsax", group: "Regional Mexican", name: "Norteño-sax", bpm: 118, beats: 2, steps: 4, k: [0, 2], p: [1, 3], pv: "rim", b: [[0, "r"], [2, "5"]], c: each([1, 3], 1), cv: "strum", bv: "pluck", prog: "1-4-5", mel: "step", by: "sax", tip: "The polka with a saxophone carrying the tune next to the accordion." },
+    { id: "sierreno", group: "Modern regional Mexican", name: "Sierreño (requinto and tololoche)", bpm: 168, beats: 3, steps: 3, b: [[0, "r5"]], c: each([1, 2], 1), cv: "strum", bv: "pluck", prog: "m1-5", mel: "arp", by: "requinto", tip: "No drums: a plucked bass on one, guitar strums on two and three, and a 12-string requinto lead." },
+    { id: "tumbado", group: "Modern regional Mexican", name: "Corrido tumbado style", bpm: 150, beats: 3, steps: 3, b: [[0, "r5"]], c: each([1, 2], 1), cv: "brass", bv: "tuba", prog: "m-tumb", mel: "adorno", by: "requinto", tip: "A waltz with tuba on one, horn stabs on two and three, and a requinto weaving a minor melody." },
+    { id: "tumbado44", group: "Modern regional Mexican", name: "Sad sierreño (slow 4/4)", bpm: 84, beats: 4, steps: 8, b: [[0, "r"], [3, "5"], [4, "r"], [6, "5"]], c: each([1, 2, 3, 5, 6, 7], 1), arp: true, cv: "strum", bv: "pluck", prog: "m-rom", mel: "sustain", by: "requinto", tip: "Slow picked guitars and a requinto holding long notes. The melancholy side of the modern sound." },
+    { id: "electro", group: "Modern regional Mexican", name: "Electro corrido (drum machine)", bpm: 140, beats: 4, steps: 16, kit: "e", k: [0, 6, 8, 14], s: [4, 12], h: ALL16, b: [[0, "r"], [6, "r"], [8, "5"], [14, "r"]], c: [[2, 2], [6, 2], [10, 2], [14, 2]], cv: "brass", bv: "tuba", prog: "m1-5", mel: "answer", by: "requinto", tip: "Tuba and horns over a drum machine with fast hi-hats, a blend of corrido and trap." },
+    { id: "bandacumbia", group: "Modern regional Mexican", name: "Banda cumbia", bpm: 96, beats: 4, steps: 8, k: [0, 4], s: [2, 6], p: [0, 2, 3, 4, 6, 7], pv: "shake", b: [[0, "r"], [4, "3"], [6, "5"]], c: each([1, 3, 5, 7], 1), cv: "brass", bv: "tuba", prog: "1-4-5", mel: "fanfare", by: "brass", tip: "A cumbia played by a banda: tuba bass line, horns on the off-beats." },
+    { id: "grupcumbia", group: "Grupera", name: "Grupera cumbia", bpm: 94, beats: 4, steps: 8, kit: "e", k: [0, 4], s: [2, 6], p: [0, 2, 3, 4, 6, 7], pv: "shake", b: [[0, "r"], [4, "3"], [6, "5"]], c: each([1, 3, 5, 7], 1), cv: "ep", bv: "pluck", prog: "1-4-5", mel: "step", by: "ep", tip: "Cumbia with an electronic kit and electric piano, the grupera dance sound." },
+    { id: "grupbalada", group: "Grupera", name: "Grupera romantic ballad", bpm: 72, beats: 4, steps: 8, kit: "e", k: [0, 5], s: [2, 6], h: ALL8, b: [[0, "r"], [4, "5"], [6, "r"]], c: each(ALL8, 1), arp: true, cv: "ep", c2: [[0, 8]], cv2: "pad", bv: "pluck", prog: "50s", mel: "sustain", by: "ep", tip: "Electric piano arpeggios, a string pad and a drum machine. The classic romantic grupera ballad." },
+    { id: "grup68", group: "Grupera", name: "Grupera slow 6/8 ballad", bpm: 56, beats: 4, steps: 12, kit: "e", k: [0, 6], s: [3, 9], h: ALL12, b: [[0, "r"], [6, "5"], [9, "r"]], c: each(ALL12, 1), arp: true, cv: "ep", c2: [[0, 12]], cv2: "pad", bv: "pluck", prog: "50s", mel: "answer", by: "ep", tip: "The swaying slow dance: triplet electric piano over strings." },
+    { id: "grupmid", group: "Grupera", name: "Grupera mid-tempo", bpm: 104, beats: 4, steps: 8, kit: "e", k: [0, 3, 4], s: [2, 6], h: ALL8, b: [[0, "r"], [3, "r"], [4, "5"], [6, "r"]], c: [[0, 2], [3, 1], [4, 2], [6, 2]], cv: "ep", c2: [[0, 8]], cv2: "pad", bv: "pluck", prog: "1-3-4-5", mel: "step", by: "ep", tip: "A steady pop beat with electric piano and strings." }
+  ].forEach(function (s) { STYLES.push(s); });
+  MEL_BY.push(["accordion", "Accordion"], ["sax", "Saxophone"], ["requinto", "Requinto (12-string)"], ["ep", "Electric piano"]);
+  MEL_SETS.accordion = []; MEL_SETS.ep = []; MEL_SETS.sax = ["sax"]; MEL_SETS.requinto = ["guitar"];
+  function gReed(t, midi, dur) {
+    var f = a4 * Math.pow(2, (midi - 69) / 12), lp = ac.createBiquadFilter(), g = ac.createGain();
+    lp.type = "lowpass"; lp.frequency.value = 2600;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.11, t + 0.03); g.gain.setValueAtTime(0.11, t + Math.max(0.05, dur - 0.06)); g.gain.linearRampToValueAtTime(0, t + dur);
+    [["sawtooth", 1], ["square", 1.004], ["sawtooth", 2.002]].forEach(function (v, i) { var o = ac.createOscillator(), og = ac.createGain(); o.type = v[0]; o.frequency.value = f * v[1]; og.gain.value = i === 2 ? 0.35 : 1; o.connect(og); og.connect(lp); o.start(t); o.stop(t + dur + 0.05); });
+    lp.connect(g); g.connect(GV.melBus);
   }
   function gvProgFill(modeV, want) {
     var ps = $("gv-prog"); ps.innerHTML = "";
@@ -2375,7 +2438,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function gvFill() {
     var ss = $("gv-style"), ks = $("gv-key"), ms = $("gv-mel"), bs = $("gv-by"), groups = [];
     ss.innerHTML = ""; ks.innerHTML = ""; ms.innerHTML = ""; bs.innerHTML = "";
-    STYLES.forEach(function (s) { if (groups.indexOf(s.group) < 0) groups.push(s.group); });
+    groups = ["Regional Mexican", "Modern regional Mexican", "Grupera", "Ballads", "R&B", "Jazz", "Basics", "Metal", "Kick drum"];
     groups.forEach(function (g) {
       var og = document.createElement("optgroup"); og.label = g;
       STYLES.forEach(function (s) { if (s.group !== g) return; var o = document.createElement("option"); o.value = s.id; o.textContent = s.name; og.appendChild(o); });
