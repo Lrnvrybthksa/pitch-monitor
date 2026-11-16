@@ -149,6 +149,9 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 @media (prefers-reduced-motion: reduce) { body::before { animation: none !important; } }
 h1 { font-size: 20px; }
 .seg { gap: 8px; border: 0; background: none; padding: 0; border-radius: 0; grid-template-columns: repeat(4, 1fr); }
+.loud { display: flex; align-items: center; gap: 10px; margin: 14px 6px 0; font-size: 12px; color: var(--muted); }
+.loudbar { flex: 1; height: 8px; border-radius: 4px; background: var(--field); overflow: hidden; }
+.loudbar i { display: block; height: 100%; width: 0; border-radius: 4px; background: var(--accent); }
 .gv-now { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .gv-now b { font-size: 40px; font-weight: 700; line-height: 1; }
 .gv-now span { font-family: var(--mono); font-size: 13px; color: var(--muted); }
@@ -256,6 +259,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <div class="arrow" id="arrow"></div>
     </div>
     <div class="holdbar" id="holdbar" hidden><i id="holdfill"></i></div>
+    <div class="loud" id="loud"><span>Loudness</span><div class="loudbar"><i id="loud-fill"></i></div></div>
   </section>
 
   <section class="card kb-card" id="kb-card">
@@ -292,6 +296,15 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     <p id="rf-result" hidden></p>
     <button type="button" class="big" id="rf-btn">Find my range</button>
     <button type="button" class="ghost" id="rf-use" hidden>Set exercises to fit my range</button>
+    <h2 style="margin-top:6px">Best key for a song</h2>
+    <p>Enter the lowest and highest notes of a song's melody. The app works out how far to move it so it sits inside your range.</p>
+    <div class="row">
+      <label class="fld">Song's lowest note<select id="bk-lo"></select></label>
+      <label class="fld">Song's highest note<select id="bk-hi"></select></label>
+    </div>
+    <label class="fld">Song's key now (optional)<select id="bk-key"></select></label>
+    <button type="button" class="ghost" id="bk-go">Find my key</button>
+    <p id="bk-out" hidden></p>
   </section>
 
   <section class="panel" id="panel-song" hidden>
@@ -325,12 +338,16 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     </div>
     <div class="row">
       <label class="fld">Sound<select class="inst" id="inst-e"></select></label>
-      <label class="fld">Sing<select id="harm-sel">
+      <label class="fld">Your part<select id="harm-sel">
         <option value="0">The same note</option>
         <option value="3">Harmony: minor 3rd above</option>
         <option value="4">Harmony: major 3rd above</option>
         <option value="5">Harmony: 4th above</option>
         <option value="7">Harmony: 5th above</option>
+        <option value="d2">Segunda voz: a third above, in the key</option>
+        <option value="d-2">Segunda voz: a third below, in the key</option>
+        <option value="d5">Segunda voz: a sixth above, in the key</option>
+        <option value="d-5">Segunda voz: a sixth below, in the key</option>
       </select></label>
     </div>
     <div class="row">
@@ -457,6 +474,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <div class="stat"><b id="st-lo">--</b><span>Lowest</span></div>
       <div class="stat"><b id="st-hi">--</b><span>Highest</span></div>
       <div class="stat"><b id="st-time">0:00</b><span>Time singing</span></div>
+      <div class="stat"><b id="st-steady">--</b><span>Steadiness</span></div>
+      <div class="stat"><b id="st-drift">--</b><span>Drift on long note</span></div>
+      <div class="stat"><b id="st-db">--</b><span>Level</span></div>
     </div>
   </section>
 
@@ -601,7 +621,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   var recent = [], stab = [], raw = [], hasPitch = false, history = [];
   var shownCents = 0, targetCents = 0, center = 60, WINDOW = 6000;
   var targetMidi = 60;
-  var curSm = 60, curGood = false;
+  var curSm = 60, curGood = false, curDb = -90, steady = [], steadyNote = null;
   var voicedMs = 0, goodMs = 0, holdCur = 0, holdGap = 0, longest = 0, lo = null, hi = null, lastVibAt = 0;
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
@@ -727,7 +747,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
 
   /* ---------- reference sounds ---------- */
-  var SOUNDS = [["piano","Piano"],["guitar","Guitar"],["guitar12","12-string guitar"],["bass","Bass guitar"],["sax","Saxophone"],["trumpet","Trumpet"],["trombone","Trombone (brass)"],["organ","Organ"],["flute","Flute"],["voice","Voice (ahh)"],["pure","Pure tone"]];
+  var SOUNDS = [["piano","Piano"],["guitar","Guitar"],["guitar12","12-string guitar"],["bass","Bass guitar"],["sax","Saxophone"],["trumpet","Trumpet"],["trombone","Trombone (brass)"],["eguitar","Electric guitar (distorted)"],["subbass","Deep bass"],["organ","Organ"],["flute","Flute"],["voice","Voice (ahh)"],["pure","Pure tone"]];
   var instSel = document.querySelectorAll("select.inst");
   instSel.forEach(function (sel) {
     SOUNDS.forEach(function (x) { var o = document.createElement("option"); o.value = x[0]; o.textContent = x[1]; sel.appendChild(o); });
@@ -738,12 +758,12 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     });
   });
   function curInst() { return $("inst-t").value; }
-  var LEVEL = { piano: 0.55, guitar: 0.85, organ: 0.6, flute: 0.4, voice: 0.4, pure: 0.3 };
+  var LEVEL = { subbass: 0.75, piano: 0.55, guitar: 0.85, organ: 0.6, flute: 0.4, voice: 0.4, pure: 0.3 };
   var ATTACK = { piano: 0.003, guitar: 0.002, organ: 0.03, flute: 0.07, voice: 0.06, pure: 0.04 };
 
   /* Recorded instruments live in samples/<name>.json and load the first time they are used. Credits are in Settings. */
-  var SAMPLED = { piano: "piano", guitar: "guitar", guitar12: "guitar", bass: "bass", sax: "sax", trumpet: "trumpet", trombone: "trombone" };
-  var FALLBACK = { guitar12: "guitar", bass: "guitar", sax: "organ", trumpet: "organ", trombone: "organ" };
+  var SAMPLED = { piano: "piano", guitar: "guitar", guitar12: "guitar", eguitar: "guitar", bass: "bass", sax: "sax", trumpet: "trumpet", trombone: "trombone" };
+  var FALLBACK = { eguitar: "guitar", guitar12: "guitar", bass: "guitar", sax: "organ", trumpet: "organ", trombone: "organ" };
   var CORR = {"piano":{"36":4.4,"39":4.9,"42":-0.1,"45":2.1,"48":-2.6,"51":0.4,"54":0.7,"57":4.8,"60":2,"63":6.4,"66":0.6,"69":6.4,"72":5.4,"75":5.1,"78":4.5,"81":7.9,"84":11.1},"guitar":{"38":-2.7,"41":-2.7,"44":-5.3,"47":-1.2,"50":-0.8,"53":-2.1,"56":-6.4,"59":-1.4,"62":-2.1,"65":5.1,"68":5,"71":4.2,"74":1.4},"bass":{"25":5.5,"28":6.3,"31":-3.6,"34":-0.7,"37":0.3,"40":-0.9,"43":-3.3,"46":-0.9,"49":0.2,"52":-1.8,"55":0.4,"58":0.4,"61":-0.9,"64":-1.4,"67":0.5,"70":3,"73":0.7},"sax":{"49":-0.3,"52":-0.1,"55":0.2,"58":-0.7,"61":-0.2,"64":0.8,"67":1.2,"70":-1.1,"73":-0.6,"76":-0.7,"79":0.8,"80":0.4},"trumpet":{"53":-10.5,"57":-3.5,"63":-3.3,"65":7.1,"67":-6.3,"74":-3.3,"77":1.4,"81":0.4,"84":0.6},"trombone":{"34":-0.2,"37":0.1,"39":0,"41":-0.9,"44":4.9,"46":-2.3,"48":-0.5,"50":-0.9,"51":1.3,"53":-0.1,"56":2.1,"58":-8.6,"60":0.2,"61":-0.1,"62":0.8,"63":0.2,"65":0.6}};
   var loaded = {}, loading = {};
   function loadSamples(inst) {
@@ -799,6 +819,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
 
   function synth(ctx, dest, inst0, midi, t0, dur) {
+    if (inst0 === "subbass") while (midi > 47) midi -= 12;
     var pk0 = pickSample(inst0, midi), smp = pk0 && pk0.s, inst = smp ? inst0 : (FALLBACK[inst0] || inst0);
     if (pk0) midi = pk0.midi;
     var f = a4 * Math.pow(2, (midi - 69) / 12), end = t0 + dur, atk = ATTACK[inst] || 0.01, G = LEVEL[inst] || 0.4;
@@ -827,7 +848,13 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       var cset = CORR[SAMPLED[inst0]], fix = (cset && cset[smp.midi]) || 0;
       var rate = Math.pow(2, (midi - smp.midi - fix / 100) / 12) * (a4 / 440);
       ps.playbackRate.value = inst0 === "guitar12" && midi >= 59 ? rate * Math.pow(2, -4 / 1200) : rate;
-      ps.connect(master); ps.start(t0, smp.start); ps.stop(end + 0.05);
+      if (inst0 === "eguitar") {
+        var pg = ctx.createGain(), ws = ctx.createWaveShaper(), cab = ctx.createBiquadFilter(), hp = ctx.createBiquadFilter(), og = ctx.createGain();
+        if (!synth.curve) { synth.curve = new Float32Array(1024); for (var ci = 0; ci < 1024; ci++) synth.curve[ci] = Math.tanh((ci / 512 - 1) * 7); }
+        pg.gain.value = 4; ws.curve = synth.curve; cab.type = "lowpass"; cab.frequency.value = 3600; hp.type = "highpass"; hp.frequency.value = 90; og.gain.value = 0.3 * (smp.peak || 1);
+        ps.connect(pg); pg.connect(ws); ws.connect(cab); cab.connect(hp); hp.connect(og); og.connect(master);
+      } else ps.connect(master);
+      ps.start(t0, smp.start); ps.stop(end + 0.05);
       if (inst0 === "guitar12") {
         var p2 = ctx.createBufferSource(), g2 = ctx.createGain(), low = midi < 59;
         p2.buffer = smp.buf; p2.playbackRate.value = rate * (low ? 2 : Math.pow(2, 8 / 1200)); g2.gain.value = low ? 0.6 : 0.85;
@@ -893,6 +920,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       return;
     }
     if (inst === "organ") { mults = [1, 2, 3, 4, 6, 8]; amps = [1, 0.8, 0.4, 0.5, 0.2, 0.25]; }
+    else if (inst === "subbass") { mults = [1, 2, 3]; amps = [1, 0.4, 0.15]; }
     else { mults = [1]; amps = [1]; }
     sum = 0;
     for (i = 0; i < mults.length; i++) if (f * mults[i] < 8000) sum += amps[i];
@@ -1154,6 +1182,42 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     { group: BL, name: "Sixth leap and fall", steps: [0,9,7,4,2,0], hold: 1.3, beats: 4, tip: "A big leap up a sixth, then a slow walk back down. A classic ballad shape." },
     { group: BL, name: "Pentatonic ballad line", steps: [0,2,4,7,9,7,4,2,0], hold: 1.2, beats: 4, tip: "The major pentatonic, sung or played slowly. Many pop and worship ballads live in these five notes." }
   );
+  var MT = "Metal", LK = "Licks", CH = "Chords", OR = "Ornaments";
+  function lick(name, steps, tip, min) { return { group: LK, name: name, steps: steps, hold: 0.25, call: true, gap: 0.2, tip: tip + " You hear the whole lick first, then play it back.", min: !!min }; }
+  EX.push(
+    grp(MT, scaleEx("Natural minor (Aeolian)", [0,2,3,5,7,8,10,12], "The everyday metal scale.", 1)),
+    grp(MT, scaleEx("Phrygian (metal)", [0,1,3,5,7,8,10,12], "The half step above the root gives riffs their menace.", 1)),
+    grp(MT, scaleEx("Harmonic minor (neoclassical)", [0,2,3,5,7,8,11,12], "The scale of neoclassical shred.", 1)),
+    grp(MT, scaleEx("Phrygian dominant (metal)", [0,1,4,5,7,8,10,12], "Dark and exotic, common in thrash and death metal leads.", 1)),
+    grp(MT, scaleEx("Locrian (metal)", [0,1,3,5,6,8,10,12], "The most unstable mode, built around the tritone.", 1)),
+    { group: MT, name: "Diminished arpeggio", steps: [0,3,6,9,12,9,6,3,0], hold: 0.5, min: true, tip: "Stacked minor thirds. A staple of metal sweeps." },
+    { group: MT, name: "Pedal-tone riff", steps: [0,7,0,8,0,7,0,5,0,3], hold: 0.3, min: true, tip: "Keep returning to the low root between melody notes." },
+    { group: MT, name: "Tritone riff", steps: [0,6,5,0,6,5,3,0], hold: 0.3, min: true, tip: "The devil's interval, straight out of early heavy metal." },
+    lick("Norte\u00F1o accordion run", [7,9,11,12,14,12,11,9,7], "A quick major run like an accordion fill between verses."),
+    lick("Requinto lick 1 (12-string)", [0,3,7,8,7,3,2,0], "A minor requinto phrase in the corridos tumbados style. Try the 12-string sound.", 1),
+    lick("Requinto lick 2 (12-string)", [12,11,8,7,5,3,2,0], "A falling harmonic-minor line.", 1),
+    lick("Requinto lick 3 (12-string)", [7,8,7,5,3,5,3,2,0], "A winding minor phrase that resolves home.", 1),
+    lick("Mariachi trumpet call", [0,4,7,12,12,11,9,7], "A bright fanfare up the chord. Try the trumpet sound."),
+    lick("Banda brass answer", [12,11,9,7,9,11,12], "A short brass reply, down and back up."),
+    lick("Bolero requinto", [4,5,7,12,11,9,7,4], "A sweet melodic fill for romantic songs."),
+    lick("Cumbia hook", [0,2,3,7,5,3,2,0], "A catchy minor hook like a cumbia accordion line.", 1),
+    lick("Blues lick", [3,4,7,9,7,4,0], "Minor third bending into the major third, then home."),
+    lick("Bebop lick", [7,6,5,4,2,4,5,7,9,11,12], "A jazz line with chromatic passing notes."),
+    lick("Metal Phrygian riff", [0,1,0,3,0,1,0,-2], "A chugging riff around the flat second.", 1),
+    { group: CH, name: "I \u2013 IV \u2013 V7 \u2013 I", steps: [0,4,7, 5,9,12, 7,11,14,17, 12,7,4,0], hold: 0.5, tip: "The three chords behind most rancheras, corridos and rock songs, one note at a time. Use Hear this exercise first, or play the full chords in the Jam tab." },
+    { group: CH, name: "Andalusian cadence", steps: [0,3,7, -2,2,5, -4,0,3, -5,-1,2, 0], hold: 0.5, min: true, tip: "Four chords stepping down from a minor home chord. The Spanish sound in huapangos and boleros." },
+    { group: CH, name: "Bolero: I \u2013 vi \u2013 ii \u2013 V7", steps: [0,4,7, -3,0,4, 2,5,9, -5,-1,2,5, 0], hold: 0.5, tip: "The classic romantic progression, outlined chord by chord." },
+    { group: CH, name: "Ballad: I \u2013 V \u2013 vi \u2013 IV", steps: [0,4,7, -5,-1,2, -3,0,4, 5,9,12, 0], hold: 0.5, tip: "The four chords of countless pop and worship ballads." },
+    { group: CH, name: "12-bar blues roots", steps: [0,0,0,0,5,5,0,0,7,5,0,7], hold: 0.5, tip: "Just the bass note of each bar of a twelve-bar blues." },
+    { group: OR, name: "Slide up into the note", glide: [[0,-2],[0.5,-2],[1.1,0],[3,0]], tip: "Start a whole step under the note and slide up into it, then hold." },
+    { group: OR, name: "Fall off at the end", glide: [[0,0],[1.6,0],[2.3,-3],[2.7,-3]], tip: "Hold the note, then let it fall away at the end of the phrase." },
+    { group: OR, name: "Grace note from below", steps: [-1,0,-1,0,-1,0], hold: 0.3, tip: "A quick note a half step below, straight into the main note. Three times." },
+    { group: OR, name: "Mordent", steps: [0,2,0,0,2,0], hold: 0.25, tip: "Main note, the note above, and back, as fast as you can keep it clean." },
+    { group: OR, name: "Turn", steps: [2,0,-1,0,2,0,-1,0], hold: 0.25, tip: "Above, main, below, main. A classic decoration." },
+    { group: OR, name: "Falsete flip (huapango)", steps: [0,12,0,12,0], exact: true, hold: 0.6, tip: "Flip from your normal voice up an octave into falsetto and back, the way huapango singers do. The exact octave counts." },
+    { group: OR, name: "Vibrato on a long note", steps: [0], hold: 4, beats: 8, tip: "Hold the note straight for a second, then add vibrato. The Vibrato stat shows its speed and width." },
+    { group: BL, name: "Swell: soft, loud, soft", glide: [[0,0],[6,0]], swell: true, tip: "Hold one note for six seconds. Start soft, grow to your loudest in the middle, then fade. You get a pitch score and a swell-shape score." }
+  );
   var SAXES = ["ssax", "asax", "tsax"], INST_GROUP = "For your instrument";
   EX.push(
     { group: INST_GROUP, inst: ["guitar"], name: "Open strings", abs: [40, 45, 50, 55, 59, 64], exact: true, hold: 0.4, tip: "Pluck each open string from low E to high E and let it ring. It doubles as a tuning check." },
@@ -1166,7 +1230,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     { group: INST_GROUP, inst: SAXES, name: "Octave slurs", steps: [0,12,0,12,0], exact: true, hold: 0.8, tip: "Slur between the low and high octave with the octave key. The exact octave counts." },
     { group: INST_GROUP, inst: SAXES, name: "Chromatic run", steps: [0,1,2,3,4,5,6,7,8,9,10,11,12], exact: true, hold: 0.35, tip: "Every half step up one octave. Keep the fingers even." }
   );
-  var GROUPS = [INST_GROUP, "Warm-ups", "Scales", JZ, XO, MX, BL, "Intervals", "Arpeggios", "Slides", "Range builders", "Ear training", "Your own"];
+  var GROUPS = [INST_GROUP, "Warm-ups", "Scales", JZ, XO, MX, BL, MT, LK, CH, OR, "Intervals", "Arpeggios", "Slides", "Range builders", "Ear training", "Your own"];
   var CAT_NAMES = { "For your instrument": "Instrument", "Exotic scales": "Exotic", "Regional Mexican": "Mexican regional", "Range builders": "Range", "Ear training": "Ear", "Your own": "Mine" }, curCat = null;
   function pickerRender() {
     var cats = $("ex-cats"), grid = $("ex-grid"), sel = EX[+exSel.value];
@@ -1225,12 +1289,33 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     }
     return g[g.length - 1][1];
   }
+  /* Your part: a fixed interval above the melody, or a segunda voz that stays inside the key. */
+  function harmMap(base, d, r0) {
+    var v = harmSel.value;
+    if (d.gen || v === "0") return base.slice();
+    if (v.charAt(0) !== "d") return base.map(function (m) { return m + (+v); });
+    var sh = parseInt(v.slice(1), 10), sc = d.min ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11], tonic = d.custom || d.abs ? base[0] : r0;
+    return base.map(function (m) {
+      var rel = m - tonic, oct = Math.floor(rel / 12), idx = sc.indexOf(rel - 12 * oct);
+      if (idx < 0) return m + (sh === 2 ? 4 : sh === -2 ? -3 : sh === 5 ? 9 : -8);
+      var j = idx + sh;
+      return tonic + 12 * (oct + Math.floor(j / 7)) + sc[((j % 7) + 7) % 7];
+    });
+  }
   function previewSteps() {
-    var d = curDef(), h = +harmSel.value;
+    var d = curDef();
     if (d.glide) return [];
     if (d.ear) return [null, null, null, null, null, null, null, null];
-    if (d.gen) h = 0;
-    return baseSteps(d, +rootSel.value).map(function (m) { return m + h; });
+    return harmMap(baseSteps(d, +rootSel.value), d, +rootSel.value);
+  }
+  function playLick() {
+    var notes = ex.play.slice(), gap = ex.def.gap || 0.2;
+    ready().then(function () {
+      var t = ac.currentTime + 0.05;
+      notes.forEach(function (m, i) { synth(ac, output(), curInst(), m, t + i * gap, gap + 0.16); });
+      ignoreUntil = Math.max(ignoreUntil, performance.now() + (notes.length * gap + 0.4) * 1000);
+      recent = []; stab = []; raw = [];
+    });
   }
   function renderChips() {
     var host = $("chips"); host.innerHTML = "";
@@ -1449,11 +1534,12 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       }
       var st = previewSteps();
       if (!st || !st.length || st[0] == null) { pvStop(); return; }
-      var gap = st.length > 20 ? 380 : 520;
+      var gap = d.call ? (d.gap || 0.2) * 1000 : st.length > 20 ? 380 : 520, lead = harmSel.value !== "0" && !d.gen ? baseSteps(d, +rootSel.value) : null;
       (function next(i) {
         if (!pv.on) return;
         if (i >= st.length) { pv.timer = setTimeout(pvStop, 600); return; }
         pv.idx = i; playTone(st[i], gap / 1000 + 0.14); mapRender();
+        if (lead && lead[i] != null) playTone(lead[i], gap / 1000 + 0.14);
         pv.timer = setTimeout(function () { next(i + 1); }, gap);
       })(0);
     });
@@ -1505,6 +1591,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   function exStartStep() {
     exRefresh();
+    if (ex.def.call) { if (ex.idx === 0 && sw("ref")) playLick(); return; }
     var note = ex.play[ex.idx];
     if (ex.tempo) {
       var beats = ex.def.beats || 2, d = Math.min(0.45, ex.beat / 1000 * 0.6);
@@ -1519,7 +1606,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     ex.hold = (def.hold || 0.7) * ((player === "guitar" || player === "bass") && def.hold > 0.45 ? 0.55 : 1);
     if (pv.on) pvStop();
     ex.state = "idle"; setFlats();
-    ex.results = []; ex.idx = 0; ex.acc = 0; ex.onTime = 0; ex.totalTime = 0;
+    ex.results = []; ex.idx = 0; ex.acc = 0; ex.onTime = 0; ex.totalTime = 0; ex.lv = []; ex.extra = "";
     if (ex.kind === "glide") {
       var vals = def.glide.map(function (p) { return p[1]; });
       ex.gMid = (Math.min.apply(null, vals) + Math.max.apply(null, vals)) / 2;
@@ -1528,8 +1615,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     } else {
       var base = baseSteps(def, rootM);
       if (!base.length) { $("ex-now").textContent = "Add some notes first"; return; }
-      ex.harm = def.gen ? 0 : +harmSel.value; ex.play = base; ex.steps = base.map(function (m) { return m + ex.harm; });
-      ex.tempo = tempoOn.checked; ex.beat = 60000 / +bpmSel.value;
+      ex.harm = def.gen || harmSel.value === "0" ? 0 : harmSel.value; ex.play = base; ex.steps = harmMap(base, def, rootM);
+      ex.tempo = tempoOn.checked && !def.call; ex.beat = 60000 / +bpmSel.value;
       ex.state = "running"; exStartStep();
     }
     $("ex-summary").hidden = true; holdbar.hidden = false; holdfill.style.width = "0%";
@@ -1546,7 +1633,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     ex.state = "done"; holdbar.hidden = true;
     var avg = ex.results.reduce(function (a, b) { return a + b; }, 0) / ex.results.length;
     $("ex-now").textContent = "Done"; $("ex-count").textContent = "";
-    $("ex-summary").hidden = false; $("ex-summary").textContent = sw("grade") ? Math.round(avg * 100) + "% on pitch" : "Finished";
+    $("ex-summary").hidden = false; $("ex-summary").textContent = (sw("grade") ? Math.round(avg * 100) + "% on pitch" : "Finished") + (ex.extra || "");
     $("ex-start").textContent = "Start again"; $("ex-start").classList.remove("stop");
     renderChips(); applyScale();
     var rec = dayRec(); rec.ex.push({ n: ex.def.name + (ex.kind === "steps" && ex.harm ? " (harmony)" : ""), s: Math.round(avg * 100) });
@@ -1559,6 +1646,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (ex.idx >= ex.steps.length) exDone(); else exStartStep();
   }
   function exStep(dt, good) {
+    if (ex.kind === "glide" && ex.def.swell && performance.now() >= ex.gStart && curDb > -70) ex.lv.push(curDb);
     ex.totalTime += dt;
     if (good) ex.onTime += dt;
     if (ex.kind === "glide" || ex.tempo) return;
@@ -1571,7 +1659,19 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (ex.kind === "glide") {
       holdfill.style.width = clamp((now - ex.gStart) / (ex.gEnd - ex.gStart), 0, 1) * 100 + "%";
       $("ex-count").textContent = now < ex.gStart ? "Get ready" : Math.ceil((ex.gEnd - now) / 1000) + " s left";
-      if (now >= ex.gEnd) { ex.results = [ex.totalTime > 0 ? ex.onTime / ex.totalTime : 0]; exDone(); }
+      if (now >= ex.gEnd) {
+        ex.results = [ex.totalTime > 0 ? ex.onTime / ex.totalTime : 0]; ex.extra = "";
+        if (ex.def.swell && ex.lv.length > 20) {
+          var n = ex.lv.length, mx = 0, my = 0, sxy = 0, sxx = 0, syy = 0, lo0 = 1e9, hi0 = -1e9, i;
+          var tri = ex.lv.map(function (v, k) { return 1 - Math.abs(2 * k / (n - 1) - 1); });
+          for (i = 0; i < n; i++) { mx += tri[i]; my += ex.lv[i]; lo0 = Math.min(lo0, ex.lv[i]); hi0 = Math.max(hi0, ex.lv[i]); }
+          mx /= n; my /= n;
+          for (i = 0; i < n; i++) { sxy += (tri[i] - mx) * (ex.lv[i] - my); sxx += Math.pow(tri[i] - mx, 2); syy += Math.pow(ex.lv[i] - my, 2); }
+          var corr = syy > 0 ? sxy / Math.sqrt(sxx * syy) : 0;
+          ex.extra = " · swell shape " + Math.round(clamp(corr, 0, 1) * 100) + "% (" + Math.round(hi0 - lo0) + " dB from soft to loud)";
+        }
+        exDone();
+      }
     } else if (ex.tempo) {
       holdfill.style.width = clamp((now - ex.stepStart) / ex.stepDur, 0, 1) * 100 + "%";
       if (now >= ex.stepStart + ex.stepDur) exAdvance();
@@ -1584,7 +1684,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (running) go(); else startMic().then(function (ok) { if (ok) go(); });
   });
   $("ex-hear").addEventListener("click", function () {
-    if (ex.state === "running" && ex.kind === "steps") playTone(ex.play[ex.idx], 1.2);
+    if (ex.state === "running" && ex.def.call) playLick();
+    else if (ex.state === "running" && ex.kind === "steps") playTone(ex.play[ex.idx], 1.2);
     else playTone(+rootSel.value, 1.2);
   });
   $("ex-skip").addEventListener("click", function () { if (ex.state === "running" && ex.kind === "steps") exAdvance(); });
@@ -2502,6 +2603,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       }
     }
     kbUpdate(); gvFrame(); rhFrame();
+    $("loud-fill").style.width = (running ? clamp((curDb + 55) / 50, 0, 1) * 100 : 0) + "%";
+    if (running && (frameDraw.n = (frameDraw.n || 0) + 1) % 12 === 0) $("st-db").textContent = curDb < -70 ? "--" : Math.round(curDb) + " dB";
     drawTrace();
     requestAnimationFrame(frameDraw);
   }
@@ -2642,6 +2745,18 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       if (mode === "range" && rf.step === 1 && (rf.low == null || md < rf.low)) { rf.low = md; rfRender(); }
       if (mode === "range" && rf.step === 2 && (rf.high == null || md > rf.high)) { rf.high = md; rfRender(); }
     }
+    var rn = Math.round(sm);
+    if (rn !== steadyNote) { steadyNote = rn; steady = []; }
+    steady.push({ t: now, c: sm * 100 }); if (steady.length > 200) steady.shift();
+    if (now - lastVibAt > 300 && steady.length > 30 && now - steady[0].t >= 1200) {
+      var sn = steady.length, mean = 0, sd = 0, third = Math.max(3, Math.floor(sn * 0.3)), a0 = 0, a1 = 0, si;
+      for (si = 0; si < sn; si++) mean += steady[si].c; mean /= sn;
+      for (si = 0; si < sn; si++) sd += Math.pow(steady[si].c - mean, 2);
+      for (si = 0; si < third; si++) { a0 += steady[si].c; a1 += steady[sn - 1 - si].c; }
+      var drift = (a1 - a0) / third;
+      $("st-steady").textContent = "\u00B1" + Math.round(Math.sqrt(sd / sn)) + "\u00A2";
+      $("st-drift").textContent = Math.abs(drift) < 5 ? "none" : (drift > 0 ? "\u2191 " : "\u2193 ") + Math.round(Math.abs(drift)) + "\u00A2";
+    }
     if (now - lastVibAt > 300) { var vb = vibratoNow(); if (vb) { $("st-vib").textContent = vb; lastVibAt = now; } }
     renderStats();
     if (mode === "exercise" && ex.state === "running") exStep(dt, good);
@@ -2650,6 +2765,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     holdGap += dt; if (holdGap > 200) holdCur = 0;
     if (log.length < 60000) log.push({ t: now - logStart, m: null, g: false, r: modeRef(now) });
     if (now - lastVoice > 250) {
+      steady = []; steadyNote = null;
       recent = []; stab = []; raw = [];
       if (hasPitch) showIdle();
       history.push({ t: now, midi: null, good: false });
@@ -2664,7 +2780,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       exClock(now);
       if (now >= ignoreUntil) {
         analyser.getFloatTimeDomainData(buf);
-        var f = rms(buf) > 0.008 ? yin(buf, ac.sampleRate) : 0;
+        var lvl = rms(buf); curDb = 20 * Math.log10(lvl + 1e-6);
+        var f = lvl > 0.008 ? yin(buf, ac.sampleRate) : 0;
         if (f > 0) voiced(now, dt, f); else unvoiced(now, dt);
       }
       if (daysDirty && now - lastSave > 5000) saveDays();
@@ -2737,6 +2854,29 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   });
 
   msg.addEventListener("click", function () { msg.textContent = ""; });
+  function bkFill() {
+    var lo0 = +$("bk-lo").value || 55, hi0 = +$("bk-hi").value || 69, k0 = $("bk-key").value || "";
+    fillNotes($("bk-lo"), 36, 84, lo0); fillNotes($("bk-hi"), 36, 84, hi0);
+    var ks = $("bk-key"); ks.innerHTML = '<option value="">I don\u2019t know</option>';
+    for (var pc = 0; pc < 12; pc++) { var o = document.createElement("option"); o.value = pc; o.textContent = KEY_MAJ[pc]; ks.appendChild(o); }
+    ks.value = k0;
+  }
+  bkFill();
+  $("bk-go").addEventListener("click", function () {
+    var out = $("bk-out"), lo0 = +$("bk-lo").value, hi0 = +$("bk-hi").value; out.hidden = false;
+    if (!savedRange) { out.textContent = "Run Find my range first, so the app knows your lowest and highest notes."; return; }
+    if (hi0 <= lo0) { out.textContent = "The highest note needs to be above the lowest note."; return; }
+    var span = hi0 - lo0, mine = savedRange.high - savedRange.low, best = null, s;
+    if (span > mine) { out.textContent = "This song covers " + span + " half steps and your saved range is " + mine + ", so no key fits all of it. The closest fit is moving it " + describeShift(Math.round((savedRange.low + savedRange.high - lo0 - hi0) / 2)) + "."; return; }
+    for (s = -11; s <= 11; s++) if (lo0 + s >= savedRange.low && hi0 + s <= savedRange.high) {
+      var off = Math.abs((lo0 + hi0) / 2 + s - (savedRange.low + savedRange.high) / 2) + Math.abs(s) * 0.15;
+      if (best == null || off < best.off) best = { s: s, off: off };
+    }
+    if (!best) best = { s: Math.round((savedRange.low + savedRange.high - lo0 - hi0) / 2) };
+    var k = $("bk-key").value, keyTxt = k === "" || best.s === 0 ? "" : " That takes it from the key of " + KEY_MAJ[+k] + " to " + KEY_MAJ[((+k + best.s) % 12 + 12) % 12] + ".";
+    out.textContent = (best.s === 0 ? "It already fits your range as it is." : "Move it " + describeShift(best.s) + ".") + keyTxt + " The melody would then run from " + noteLabel(lo0 + best.s) + " to " + noteLabel(hi0 + best.s) + ", inside your range of " + noteLabel(savedRange.low) + " to " + noteLabel(savedRange.high) + "." + (best.s ? " In the Song tab, Transpose can shift a charted audio file by the same amount." : "");
+  });
+  function describeShift(n) { return n === 0 ? "nowhere" : (n > 0 ? "up " : "down ") + Math.abs(n) + (Math.abs(n) === 1 ? " half step" : " half steps"); }
   gvFill(); $("gv-bpm").value = GV.bpm; gvApply(false); rhFill(); rhApply(true);
   document.querySelectorAll("main > details").forEach(function (d) { $("drawer-slot").appendChild(d); });
   function drawerOpen(on) { $("drawer").hidden = !on; if (on) { renderProgress(); $("drawer").scrollTop = 0; } }
@@ -2778,11 +2918,13 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     ["rec", "Record the audio of each take"],
     ["progress", "Save my practice history"],
     ["yt", "Remember YouTube videos I load"],
-    ["anim", "Animated backgrounds (Fire, Blue flame, Lava)"]
+    ["anim", "Animated backgrounds (Fire, Blue flame, Lava)"],
+    ["loud", "Show the loudness bar"]
   ];
   function applySw() {
     $("kb-card").hidden = mode === "song" || mode === "rhythm" || !sw("kb");
     document.querySelector(".stats").parentNode.hidden = !sw("stats");
+    $("loud").hidden = !sw("loud");
     applyTheme();
     if (mode === "exercise") renderChips();
     kbPrev.tgt = -1;
@@ -2804,7 +2946,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     player = e.target.value; xp = PLAYERS[player].xp; prefs.player = player; savePrefs();
     exStop(); ex.state = "idle";
     fillAllNotes(tv, PLAYERS[player].root || old); targetMidi = +$("target-sel").value;
-    fillEx(); exIdleUI(); kbHint(); gvFill(); gvChips(GV.shown); rfRender(); renderStats(); renderKeyChips(true);
+    fillEx(); exIdleUI(); kbHint(); gvFill(); gvChips(GV.shown); bkFill(); rfRender(); renderStats(); renderKeyChips(true);
     if (rv) rvRender();
     fgoal = fcen = clamp(player === "bass" ? 40 : 60, chLo() + ZOOMS[zi] / 2, 96.5);
   });
