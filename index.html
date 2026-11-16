@@ -405,8 +405,13 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <label class="fld">Chords<select id="gv-prog"></select></label>
     </div>
     <div class="row">
-      <label class="fld" style="flex:0 1 110px">Key<select id="gv-key"></select></label>
-      <label class="fld" style="flex:3 1 180px"><span id="gv-bpm-lbl">Tempo</span><input type="range" id="gv-bpm" min="40" max="220" step="1" value="112"></label>
+      <label class="fld">Key<select id="gv-key"></select></label>
+      <label class="fld">Scale<select id="gv-scale"><option value="maj">Major</option><option value="min">Minor</option></select></label>
+    </div>
+    <label class="fld"><span id="gv-bpm-lbl">Tempo</span><input type="range" id="gv-bpm" min="40" max="220" step="1" value="112"></label>
+    <div class="row">
+      <label class="fld">Melody section<select id="gv-mel"></select></label>
+      <label class="fld">Played by<select id="gv-by"></select></label>
     </div>
     <p id="gv-tip"></p>
     <div class="gv-now"><b id="gv-chord"></b><span id="gv-next"></span></div>
@@ -515,7 +520,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <label class="filebtn">Analyze a recording instead
         <input type="file" id="file" accept="audio/*">
       </label>
-      <p class="small">Piano: Salamander Grand Piano V3 by Alexander Holm, CC BY 3.0. Guitar, bass, saxophone, trumpet and trombone: tonejs-instruments samples by Nicholaus Brosowsky, CC BY 3.0. All trimmed and re-encoded. Clef and accidental symbols: Noto Music, SIL Open Font License.</p>
+      <p class="small">Piano: Salamander Grand Piano V3 by Alexander Holm, CC BY 3.0. Guitar, bass, saxophone, trumpet, trombone and violin: tonejs-instruments samples by Nicholaus Brosowsky, CC BY 3.0. All trimmed and re-encoded. Clef and accidental symbols: Noto Music, SIL Open Font License.</p>
     </div>
   </details>
   <div class="msg" id="msg"></div>
@@ -747,7 +752,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
 
   /* ---------- reference sounds ---------- */
-  var SOUNDS = [["piano","Piano"],["guitar","Guitar"],["guitar12","12-string guitar"],["bass","Bass guitar"],["sax","Saxophone"],["trumpet","Trumpet"],["trombone","Trombone (brass)"],["eguitar","Electric guitar (distorted)"],["subbass","Deep bass"],["organ","Organ"],["flute","Flute"],["voice","Voice (ahh)"],["pure","Pure tone"]];
+  var SOUNDS = [["piano","Piano"],["guitar","Guitar"],["guitar12","12-string guitar"],["bass","Bass guitar"],["sax","Saxophone"],["trumpet","Trumpet"],["trombone","Trombone (brass)"],["violin","Violin"],["eguitar","Electric guitar (distorted)"],["subbass","Deep bass"],["organ","Organ"],["flute","Flute"],["voice","Voice (ahh)"],["pure","Pure tone"]];
   var instSel = document.querySelectorAll("select.inst");
   instSel.forEach(function (sel) {
     SOUNDS.forEach(function (x) { var o = document.createElement("option"); o.value = x[0]; o.textContent = x[1]; sel.appendChild(o); });
@@ -762,9 +767,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   var ATTACK = { piano: 0.003, guitar: 0.002, organ: 0.03, flute: 0.07, voice: 0.06, pure: 0.04 };
 
   /* Recorded instruments live in samples/<name>.json and load the first time they are used. Credits are in Settings. */
-  var SAMPLED = { piano: "piano", guitar: "guitar", guitar12: "guitar", eguitar: "guitar", bass: "bass", sax: "sax", trumpet: "trumpet", trombone: "trombone" };
-  var FALLBACK = { eguitar: "guitar", guitar12: "guitar", bass: "guitar", sax: "organ", trumpet: "organ", trombone: "organ" };
-  var CORR = {"piano":{"36":4.4,"39":4.9,"42":-0.1,"45":2.1,"48":-2.6,"51":0.4,"54":0.7,"57":4.8,"60":2,"63":6.4,"66":0.6,"69":6.4,"72":5.4,"75":5.1,"78":4.5,"81":7.9,"84":11.1},"guitar":{"38":-2.7,"41":-2.7,"44":-5.3,"47":-1.2,"50":-0.8,"53":-2.1,"56":-6.4,"59":-1.4,"62":-2.1,"65":5.1,"68":5,"71":4.2,"74":1.4},"bass":{"25":5.5,"28":6.3,"31":-3.6,"34":-0.7,"37":0.3,"40":-0.9,"43":-3.3,"46":-0.9,"49":0.2,"52":-1.8,"55":0.4,"58":0.4,"61":-0.9,"64":-1.4,"67":0.5,"70":3,"73":0.7},"sax":{"49":-0.3,"52":-0.1,"55":0.2,"58":-0.7,"61":-0.2,"64":0.8,"67":1.2,"70":-1.1,"73":-0.6,"76":-0.7,"79":0.8,"80":0.4},"trumpet":{"53":-10.5,"57":-3.5,"63":-3.3,"65":7.1,"67":-6.3,"74":-3.3,"77":1.4,"81":0.4,"84":0.6},"trombone":{"34":-0.2,"37":0.1,"39":0,"41":-0.9,"44":4.9,"46":-2.3,"48":-0.5,"50":-0.9,"51":1.3,"53":-0.1,"56":2.1,"58":-8.6,"60":0.2,"61":-0.1,"62":0.8,"63":0.2,"65":0.6}};
+  var SAMPLED = { piano: "piano", guitar: "guitar", guitar12: "guitar", eguitar: "guitar", violin: "violin", bass: "bass", sax: "sax", trumpet: "trumpet", trombone: "trombone" };
+  var FALLBACK = { violin: "organ", eguitar: "guitar", guitar12: "guitar", bass: "guitar", sax: "organ", trumpet: "organ", trombone: "organ" };
+  var CORR = {"piano":{"36":4.4,"39":4.9,"42":-0.1,"45":2.1,"48":-2.6,"51":0.4,"54":0.7,"57":4.8,"60":2,"63":6.4,"66":0.6,"69":6.4,"72":5.4,"75":5.1,"78":4.5,"81":7.9,"84":11.1},"guitar":{"38":-2.7,"41":-2.7,"44":-5.3,"47":-1.2,"50":-0.8,"53":-2.1,"56":-6.4,"59":-1.4,"62":-2.1,"65":5.1,"68":5,"71":4.2,"74":1.4},"bass":{"25":5.5,"28":6.3,"31":-3.6,"34":-0.7,"37":0.3,"40":-0.9,"43":-3.3,"46":-0.9,"49":0.2,"52":-1.8,"55":0.4,"58":0.4,"61":-0.9,"64":-1.4,"67":0.5,"70":3,"73":0.7},"sax":{"49":-0.3,"52":-0.1,"55":0.2,"58":-0.7,"61":-0.2,"64":0.8,"67":1.2,"70":-1.1,"73":-0.6,"76":-0.7,"79":0.8,"80":0.4},"trumpet":{"53":-10.5,"57":-3.5,"63":-3.3,"65":7.1,"67":-6.3,"74":-3.3,"77":1.4,"81":0.4,"84":0.6},"trombone":{"34":-0.2,"37":0.1,"39":0,"41":-0.9,"44":4.9,"46":-2.3,"48":-0.5,"50":-0.9,"51":1.3,"53":-0.1,"56":2.1,"58":-8.6,"60":0.2,"61":-0.1,"62":0.8,"63":0.2,"65":0.6},"violin":{"55":-0.2,"57":2.6,"60":-8,"64":4.5,"67":4.4,"69":12.8,"72":1.4,"76":20,"79":5.3,"81":-4.4,"84":-10.1,"88":8.5}};
   var loaded = {}, loading = {};
   function loadSamples(inst) {
     var set = SAMPLED[inst];
@@ -1942,7 +1947,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (!window.MediaRecorder || !sw("rec")) return;
     try {
       var feed = s;
-      try { recDest = ac.createMediaStreamDestination(); srcNode.connect(recDest); master().connect(recDest); feed = recDest.stream; } catch (e2) { recDest = null; }
+      try { var rdst = ac.createMediaStreamDestination(); recDest = ac.createGain(); recDest.gain.value = 0.7; srcNode.connect(recDest); master().connect(recDest); recDest.connect(rdst); feed = rdst.stream; } catch (e2) { recDest = null; }
       rec = new MediaRecorder(feed, { audioBitsPerSecond: 96000 });
       rec.ondataavailable = function (e) { if (e.data && e.data.size) recChunks.push(e.data); };
       rec.start(1000);
@@ -2173,10 +2178,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     return { root: ((keyPc + ROM[up] + (m[1] === "b" ? -1 : m[1] === "#" ? 1 : 0)) % 12 + 12) % 12, tones: tones, minor: minor, q: q };
   }
   function chordName(ch) {
-    var names = FLAT_KEYS.major.indexOf((GV.key + xp) % 12) >= 0 || ch.minor ? FLAT : SHARP;
+    var names = FLAT_KEYS[GV.prog.mode === "min" ? "minor" : "major"].indexOf((GV.key + xp) % 12) >= 0 ? FLAT : SHARP;
     return names[(ch.root + xp) % 12] + (ch.q === "m7b5" ? "m7♭5" : (ch.minor ? "m" : "") + ch.q);
   }
-  function gvBus() { if (!GV.bus) { GV.bus = ac.createGain(); GV.bus.gain.value = 0.85; GV.bus.connect(output()); } return GV.bus; }
+  function gvBus() { if (!GV.bus) { GV.bus = ac.createGain(); GV.bus.gain.value = 0.7; GV.bus.connect(output()); } return GV.bus; }
   var nzBuf = null;
   function nz() {
     if (!nzBuf) { nzBuf = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.5), ac.sampleRate); var d = nzBuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
@@ -2274,6 +2279,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       if (S.arp) { var up = notes.concat([notes[0] + 12]); gChord(t, [up[GV.arp++ % up.length]], Math.max(dur, 0.5), S.cv); }
       else gChord(t, notes, dur, S.cv, S.mute);
     }
+    if (st === 0 && GV.mel !== "none") gvMelody(bar, t, ch);
     GV.marks.push({ t: t, bar: bar, st: st });
   }
   function gvPump() {
@@ -2290,7 +2296,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     $("gv-play").textContent = "Play groove"; $("gv-play").classList.remove("stop"); gvChips(-1);
   }
   function gvStart() {
-    ensureContext().then(function () {
+    ensureContext().then(gvLoadMel).then(function () {
       GV.on = true; GV.step = 0; GV.bar = 0; GV.arp = 0; GV.marks = []; GV.t = ac.currentTime + 0.1;
       GV.timer = setInterval(gvPump, 25); gvPump();
       $("gv-play").textContent = "Stop groove"; $("gv-play").classList.add("stop");
@@ -2314,40 +2320,106 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     var beat = Math.floor(last.st / (GV.style.steps / GV.style.beats)), dots = $("gv-beats").children;
     for (var i = 0; i < dots.length; i++) dots[i].className = i === beat ? "on" : "";
   }
+  /* Melody section for a groove: a simple line that follows the chords, played by violins and/or brass in thirds. */
+  var MELS = [
+    { id: "none", name: "No melody" },
+    { id: "sustain", name: "Long notes in thirds", bars: [[[0, 0.92, 2]]] },
+    { id: "step", name: "Stepwise tune", bars: [[[0, 0.45, 2], [0.5, 0.42, 3]], [[0, 0.45, 4], [0.5, 0.42, 3]], [[0, 0.45, 2], [0.5, 0.42, 1]], [[0, 0.9, 0]]] },
+    { id: "answer", name: "Answer fills", bars: [[], [[0.5, 0.11, 4], [0.625, 0.11, 5], [0.75, 0.11, 6], [0.875, 0.11, 7]]] },
+    { id: "fanfare", name: "Fanfare", bars: [[[0, 0.2, 4], [0.25, 0.2, 4], [0.5, 0.42, 7]], [[0, 0.85, 4]]] },
+    { id: "adorno", name: "Adorno (turn into the next bar)", bars: [[[0, 0.55, 2], [0.66, 0.1, 4], [0.77, 0.1, 5], [0.88, 0.1, 4]], [[0, 0.9, 2]]] },
+    { id: "arp", name: "Rising arpeggios", bars: [[[0, 0.22, 0], [0.25, 0.22, 2], [0.5, 0.22, 4], [0.75, 0.22, 7]], [[0, 0.9, 4]]] }
+  ];
+  var MEL_BY = [["strings", "Strings (violins)"], ["trumpets", "Trumpets"], ["both", "Strings and trumpets (mariachi)"], ["brass", "Banda brass (trumpets and trombone)"]];
+  var MEL_SETS = { strings: ["violin"], trumpets: ["trumpet"], both: ["violin", "trumpet"], brass: ["trumpet", "trombone"] };
+  var MINP = ["andal", "minb", "m251", "metal", "phryg", "onem", "m1-5", "m1-4-5"];
+  PROGS.splice(4, 0, { id: "m1-5", name: "Minor: i – V7", bars: ["i", "i", "V7", "V7", "V7", "V7", "i", "i"] }, { id: "m1-4-5", name: "Minor: i – iv – V7 – i", bars: ["i", "iv", "V7", "i"] });
+  PROGS.forEach(function (pg) { pg.mode = MINP.indexOf(pg.id) >= 0 ? "min" : "maj"; });
+  STYLES.forEach(function (s) {
+    if (s.id === "lenta" || s.id === "son" || s.id === "vals") { s.mel = "sustain"; s.by = "both"; }
+    if (s.id === "banda") { s.mel = "fanfare"; s.by = "brass"; }
+  });
+  STYLES.splice(2, 0, { id: "bandavals", group: "Regional Mexican", name: "Banda waltz (3/4)", bpm: 150, beats: 3, steps: 3, k: [0], s: [1, 2], b: [[0, "r5"]], c: each([1, 2], 1), cv: "brass", bv: "tuba", prog: "ranch", mel: "step", by: "brass", tip: "A ranchera waltz the banda way: tuba on one, brass and tarola on two and three, with the horns carrying a tune." });
+  GV.mel = "none"; GV.by = "strings"; GV.melBus = null;
+  /* Note a number of scale steps above a chord's root, walking the key's scale. */
+  function degNote(ch, deg, low) {
+    var r = low + ((ch.root - low) % 12 + 12) % 12, minor = GV.prog.mode === "min";
+    var sc = !minor ? [0, 2, 4, 5, 7, 9, 11] : (ch.root === (GV.key + 7) % 12 && !ch.minor ? [0, 2, 3, 5, 7, 8, 11] : [0, 2, 3, 5, 7, 8, 10]);
+    function inScale(m) { return sc.indexOf(((m - GV.key) % 12 + 12) % 12) >= 0; }
+    if (!inScale(r)) { var fb = [0, 2, ch.tones[1], 5, ch.tones[2], 9, 10, 12], o = Math.floor(deg / 7), k = ((deg % 7) + 7) % 7; return r + 12 * o + fb[k]; }
+    var m = r, stepDir = deg >= 0 ? 1 : -1, left = Math.abs(deg);
+    while (left > 0) { m += stepDir; if (inScale(m)) left--; }
+    return m;
+  }
+  function gvMelody(bar, t, ch) {
+    var M = MELS.filter(function (x) { return x.id === GV.mel; })[0];
+    if (!M || !M.bars) return;
+    if (!GV.melBus) { GV.melBus = ac.createGain(); GV.melBus.gain.value = 0.36; GV.melBus.connect(gvBus()); }
+    var S = GV.style, barDur = S.steps * gvStepDur(), used = {};
+    M.bars[bar % M.bars.length].forEach(function (ev) {
+      var st = Math.min(S.steps - 1, Math.round(ev[0] * S.steps));
+      if (used[st]) return; used[st] = 1;
+      var tq = t + st / S.steps * barDur, dur = Math.max(0.2, ev[1] * barDur), by = GV.by;
+      function voice(inst, low, off) { synth(ac, GV.melBus, inst, degNote(ch, ev[2] + off, low), tq, dur); }
+      if (by === "strings" || by === "both") { voice("violin", 67, 0); voice("violin", 67, -2); }
+      if (by === "trumpets") { voice("trumpet", 60, 0); voice("trumpet", 60, -2); }
+      if (by === "both") voice("trumpet", 60, 0);
+      if (by === "brass") { voice("trumpet", 60, 0); voice("trumpet", 60, -2); voice("trombone", 48, 0); }
+    });
+  }
+  function gvProgFill(modeV, want) {
+    var ps = $("gv-prog"); ps.innerHTML = "";
+    PROGS.forEach(function (pg) { if (pg.mode !== modeV) return; var o = document.createElement("option"); o.value = pg.id; o.textContent = pg.name; ps.appendChild(o); });
+    ps.value = want; if (ps.value !== want) ps.selectedIndex = 0;
+  }
   function gvFill() {
-    var ss = $("gv-style"), ps = $("gv-prog"), ks = $("gv-key"), groups = [];
-    ss.innerHTML = ""; ps.innerHTML = ""; ks.innerHTML = "";
+    var ss = $("gv-style"), ks = $("gv-key"), ms = $("gv-mel"), bs = $("gv-by"), groups = [];
+    ss.innerHTML = ""; ks.innerHTML = ""; ms.innerHTML = ""; bs.innerHTML = "";
     STYLES.forEach(function (s) { if (groups.indexOf(s.group) < 0) groups.push(s.group); });
     groups.forEach(function (g) {
       var og = document.createElement("optgroup"); og.label = g;
       STYLES.forEach(function (s) { if (s.group !== g) return; var o = document.createElement("option"); o.value = s.id; o.textContent = s.name; og.appendChild(o); });
       ss.appendChild(og);
     });
-    PROGS.forEach(function (pg) { var o = document.createElement("option"); o.value = pg.id; o.textContent = pg.name; ps.appendChild(o); });
     for (var pc = 0; pc < 12; pc++) { var o = document.createElement("option"); o.value = pc; o.textContent = KEY_MAJ[(pc + xp) % 12]; ks.appendChild(o); }
-    ss.value = GV.style.id; ps.value = GV.prog.id; ks.value = GV.key;
+    MELS.forEach(function (x) { var o = document.createElement("option"); o.value = x.id; o.textContent = x.name; ms.appendChild(o); });
+    MEL_BY.forEach(function (x) { var o = document.createElement("option"); o.value = x[0]; o.textContent = x[1]; bs.appendChild(o); });
+    ss.value = GV.style.id; ks.value = GV.key; ms.value = GV.mel; bs.value = GV.by;
+    $("gv-scale").value = GV.prog.mode; gvProgFill(GV.prog.mode, GV.prog.id);
   }
-  function gvApply(fromStyle) {
+  function gvLoadMel() {
+    if (GV.mel === "none" || !ac) return Promise.resolve();
+    return Promise.all((MEL_SETS[GV.by] || []).map(function (x) { return loadSamples(x); }));
+  }
+  function gvApply(from) {
     var S = STYLES.filter(function (s) { return s.id === $("gv-style").value; })[0] || STYLES[0];
-    if (fromStyle) { $("gv-prog").value = S.prog; $("gv-bpm").value = S.bpm; }
+    if (from === "style") {
+      var dp = PROGS.filter(function (pg) { return pg.id === S.prog; })[0] || PROGS[0];
+      $("gv-scale").value = dp.mode; gvProgFill(dp.mode, dp.id); $("gv-bpm").value = S.bpm;
+      $("gv-mel").value = S.mel || "none"; if (S.by) $("gv-by").value = S.by;
+    }
+    if (from === "scale") gvProgFill($("gv-scale").value, S.prog);
     GV.style = S; GV.prog = PROGS.filter(function (pg) { return pg.id === $("gv-prog").value; })[0] || PROGS[0];
-    GV.key = +$("gv-key").value; GV.bpm = +$("gv-bpm").value;
+    GV.key = +$("gv-key").value; GV.bpm = +$("gv-bpm").value; GV.mel = $("gv-mel").value; GV.by = $("gv-by").value;
+    $("gv-by").disabled = GV.mel === "none";
     $("gv-bpm-lbl").textContent = "Tempo " + GV.bpm + " bpm"; $("gv-tip").textContent = S.tip;
     var dots = $("gv-beats"); dots.innerHTML = ""; for (var i = 0; i < S.beats; i++) dots.appendChild(document.createElement("i"));
-    if (fromStyle && GV.on) { GV.step = 0; GV.bar = 0; GV.arp = 0; }
+    if ((from === "style" || from === "scale") && GV.on) { GV.step = 0; GV.bar = 0; GV.arp = 0; }
     GV.shown = -1; gvChips(-1);
-    prefs.gv = { style: S.id, prog: GV.prog.id, key: GV.key, bpm: GV.bpm }; savePrefs();
+    if (GV.on) gvLoadMel();
+    prefs.gv = { style: S.id, prog: GV.prog.id, key: GV.key, bpm: GV.bpm, mel: GV.mel, by: GV.by }; savePrefs();
   }
   (function () {
     var g0 = prefs.gv || {};
     GV.style = STYLES.filter(function (s) { return s.id === g0.style; })[0] || STYLES[0];
     GV.prog = PROGS.filter(function (pg) { return pg.id === g0.prog; })[0] || PROGS.filter(function (pg) { return pg.id === GV.style.prog; })[0];
     GV.key = g0.key != null ? g0.key : 0; GV.bpm = g0.bpm || GV.style.bpm;
+    GV.mel = g0.mel || GV.style.mel || "none"; GV.by = g0.by || GV.style.by || "strings";
   })();
-  $("gv-style").addEventListener("change", function () { gvApply(true); });
-  $("gv-prog").addEventListener("change", function () { gvApply(false); });
-  $("gv-key").addEventListener("change", function () { gvApply(false); });
-  $("gv-bpm").addEventListener("input", function () { gvApply(false); });
+  $("gv-style").addEventListener("change", function () { gvApply("style"); });
+  $("gv-scale").addEventListener("change", function () { gvApply("scale"); });
+  ["gv-prog", "gv-key", "gv-mel", "gv-by"].forEach(function (id) { $(id).addEventListener("change", function () { gvApply(""); }); });
+  $("gv-bpm").addEventListener("input", function () { gvApply(""); });
   $("gv-play").addEventListener("click", function () { if (GV.on) gvStop(); else gvStart(); });
 
   /* ---------- rhythm practice ---------- */
@@ -2877,7 +2949,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     out.textContent = (best.s === 0 ? "It already fits your range as it is." : "Move it " + describeShift(best.s) + ".") + keyTxt + " The melody would then run from " + noteLabel(lo0 + best.s) + " to " + noteLabel(hi0 + best.s) + ", inside your range of " + noteLabel(savedRange.low) + " to " + noteLabel(savedRange.high) + "." + (best.s ? " In the Song tab, Transpose can shift a charted audio file by the same amount." : "");
   });
   function describeShift(n) { return n === 0 ? "nowhere" : (n > 0 ? "up " : "down ") + Math.abs(n) + (Math.abs(n) === 1 ? " half step" : " half steps"); }
-  gvFill(); $("gv-bpm").value = GV.bpm; gvApply(false); rhFill(); rhApply(true);
+  gvFill(); $("gv-bpm").value = GV.bpm; gvApply(""); rhFill(); rhApply(true);
   document.querySelectorAll("main > details").forEach(function (d) { $("drawer-slot").appendChild(d); });
   function drawerOpen(on) { $("drawer").hidden = !on; if (on) { renderProgress(); $("drawer").scrollTop = 0; } }
   $("menu-btn").addEventListener("click", function () { drawerOpen(true); });
