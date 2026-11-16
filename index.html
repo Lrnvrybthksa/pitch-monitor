@@ -104,7 +104,7 @@ input[type=url] { font: 500 16px var(--display); min-height: 46px; border-radius
 .ytitem .go span { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.25; }
 .ytitem .rm { flex: none; width: 44px; min-height: 48px; border-radius: 10px; border: 2px solid var(--line); background: transparent; color: var(--muted); font: 500 18px var(--display); cursor: pointer; }
 .trace-wrap { padding: 10px; }
-canvas { display: block; width: 100%; height: 640px; border-radius: 10px; background: #151a23; }
+canvas { display: block; width: 100%; height: 640px; border-radius: 10px; background: var(--chart, #151a23); }
 .trace-cap { font-size: 12px; color: var(--muted); margin: 8px 4px 0; display: flex; justify-content: space-between; }
 
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -138,28 +138,35 @@ input[type=range] { width: 100%; accent-color: var(--good); height: 28px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
 /* ---- Skin 2: ink surfaces, periwinkle controls. Green and yellow are kept for pitch only. ---- */
-:root { --bg: #0b0d13; --panel: #141824; --line: rgba(255,255,255,.09); --field: #0f131c; --accent: #8f9dff; --accent-ink: #0c1033; --muted: #8e97aa; }
-body { background: radial-gradient(900px 420px at 50% -120px, #1c2452 0%, rgba(28,36,82,0) 70%) no-repeat, var(--bg); padding-bottom: 120px; }
+:root { --bg: #0b0d13; --panel: #141824; --line: color-mix(in srgb, var(--text) 9%, transparent); --field: #0f131c; --accent: #8f9dff; --accent-ink: #0c1033; --muted: #8e97aa; }
+html { background: var(--bg); }
+body { background: transparent; padding-bottom: 120px; }
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: var(--bg-image, none); background-size: var(--bg-size, auto); }
+:root[data-fx="flame"] body::before { transform-origin: 50% 100%; animation: flick 2.6s ease-in-out infinite alternate; }
+:root[data-fx="lava"] body::before { animation: lava 16s ease-in-out infinite alternate; }
+@keyframes flick { 0% { opacity: .82; transform: scaleY(.94); } 45% { opacity: 1; transform: scaleY(1.03); } 100% { opacity: .9; transform: scaleY(.98); } }
+@keyframes lava { 0% { background-position: 0% 0%; } 100% { background-position: 100% 100%; } }
+@media (prefers-reduced-motion: reduce) { body::before { animation: none !important; } }
 h1 { font-size: 20px; }
 .seg { gap: 8px; border: 0; background: none; padding: 0; border-radius: 0; }
-.seg button { min-height: 42px; border-radius: 999px; background: rgba(255,255,255,.06); color: var(--text); font-size: 14px; }
+.seg button { min-height: 42px; border-radius: 999px; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); font-size: 14px; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
-.card, .panel, details { border-width: 1px; border-radius: 22px; background: linear-gradient(180deg, #171c2a 0%, #121622 100%); box-shadow: 0 12px 32px rgba(0,0,0,.28); }
+.card, .panel, details { border-width: 1px; border-radius: 22px; background: var(--panel); box-shadow: 0 12px 32px rgba(0,0,0,.28); }
 .card.live { border-color: var(--state); box-shadow: 0 0 0 1px var(--state), 0 0 44px color-mix(in srgb, var(--state) 22%, transparent); }
-select, input[type=url] { border-width: 1px; border-radius: 14px; border-color: rgba(255,255,255,.12); }
-button.big { border-radius: 16px; background: linear-gradient(135deg, #a6b1ff, #7a88ff); color: var(--accent-ink); }
-button.big.stop { background: #2a3144; color: var(--text); }
-button.ghost, .filebtn, #rv-dl { border-width: 1px; border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.04); border-radius: 14px; color: var(--text); }
+select, input[type=url] { border-width: 1px; border-radius: 14px; border-color: color-mix(in srgb, var(--text) 12%, transparent); }
+button.big { border-radius: 16px; background: var(--accent); color: var(--accent-ink); }
+button.big.stop { background: color-mix(in srgb, var(--text) 20%, var(--bg)); color: var(--text); }
+button.ghost, .filebtn, #rv-dl { border-width: 1px; border-color: color-mix(in srgb, var(--text) 14%, transparent); background: color-mix(in srgb, var(--text) 4%, transparent); border-radius: 14px; color: var(--text); }
 input[type=range], .check input { accent-color: var(--accent); }
-.stat { background: rgba(255,255,255,.045); border: 1px solid var(--line); border-radius: 16px; }
-.chip { border-width: 1px; border-radius: 999px; padding: 5px 10px; border-color: rgba(255,255,255,.16); }
+.stat { background: color-mix(in srgb, var(--text) 4.5%, transparent); border: 1px solid var(--line); border-radius: 16px; }
+.chip { border-width: 1px; border-radius: 999px; padding: 5px 10px; border-color: color-mix(in srgb, var(--text) 16%, transparent); }
 canvas { border-radius: 14px; }
-.builder { background: rgba(255,255,255,.04); }
-.keys button, .octrow button, .ytitem .go, .ytitem .rm { border-width: 1px; border-color: rgba(255,255,255,.14); }
-#toggle { position: fixed; left: 50%; transform: translateX(-50%); width: min(520px, calc(100% - 32px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 20; box-shadow: 0 10px 30px rgba(0,0,0,.6), 0 0 0 6px rgba(11,13,19,.75); }
+.builder { background: color-mix(in srgb, var(--text) 4%, transparent); }
+.keys button, .octrow button, .ytitem .go, .ytitem .rm { border-width: 1px; border-color: color-mix(in srgb, var(--text) 14%, transparent); }
+#toggle { position: fixed; left: 50%; transform: translateX(-50%); width: min(520px, calc(100% - 32px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 20; box-shadow: 0 10px 30px rgba(0,0,0,.6), 0 0 0 6px color-mix(in srgb, var(--bg) 75%, transparent); }
 .msg { position: fixed; left: 50%; transform: translateX(-50%); width: min(520px, calc(100% - 32px)); bottom: calc(82px + env(safe-area-inset-bottom, 0px)); z-index: 21; background: #2b2610; border: 1px solid rgba(245,197,24,.5); border-radius: 14px; padding: 12px 14px; cursor: pointer; }
 .zoom { display: inline-flex; align-items: center; gap: 6px; }
-.zoom button { width: 36px; height: 32px; border-radius: 10px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); color: var(--text); font: 700 18px var(--display); cursor: pointer; padding: 0; }
+.zoom button { width: 36px; height: 32px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--text) 14%, transparent); background: color-mix(in srgb, var(--text) 5%, transparent); color: var(--text); font: 700 18px var(--display); cursor: pointer; padding: 0; }
 .zoom b { font-weight: 500; color: var(--text); min-width: 74px; text-align: center; }
 .trace-cap { align-items: center; }
 .kb-card { padding: 12px 0 10px; }
@@ -177,25 +184,38 @@ canvas { border-radius: 14px; }
 #kb-hint { padding: 8px 16px 0; }
 .cats { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px 2px; -webkit-overflow-scrolling: touch; }
 .cats::-webkit-scrollbar, .map-scroll::-webkit-scrollbar { display: none; }
-.cats button { flex: none; min-height: 36px; padding: 0 13px; border-radius: 999px; border: 0; background: rgba(255,255,255,.06); color: var(--text); font: 500 13px var(--display); cursor: pointer; }
+.cats button { flex: none; min-height: 36px; padding: 0 13px; border-radius: 999px; border: 0; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); font: 500 13px var(--display); cursor: pointer; }
 .cats button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 .exgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.exgrid button { min-height: 46px; padding: 6px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); color: var(--text); font: 500 14px var(--display); text-align: left; line-height: 1.2; cursor: pointer; }
-.exgrid button[aria-pressed="true"] { border-color: var(--accent); background: rgba(143,157,255,.18); font-weight: 700; }
+.exgrid button { min-height: 46px; padding: 6px 12px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--text) 12%, transparent); background: color-mix(in srgb, var(--text) 4%, transparent); color: var(--text); font: 500 14px var(--display); text-align: left; line-height: 1.2; cursor: pointer; }
+.exgrid button[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); font-weight: 700; }
 @font-face { font-family: "NotoMusicSub"; src: url(data:font/woff2;base64,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) format("woff2"); }
 .mapview { display: inline-flex; gap: 6px; }
-.mapview button { min-height: 36px; padding: 0 14px; border-radius: 999px; border: 0; background: rgba(255,255,255,.06); color: var(--text); font: 500 13px var(--display); cursor: pointer; }
+.mapview button { min-height: 36px; padding: 0 14px; border-radius: 999px; border: 0; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); font: 500 13px var(--display); cursor: pointer; }
 .mapview button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 .map-scroll { overflow-x: auto; scrollbar-width: none; border-radius: 14px; }
 #map { width: auto; }
-#rv-audio-dl, #rv-dl, #map-dl { font: 500 15px var(--display); border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); border-radius: 14px; color: var(--text); padding: 0 10px; text-align: center; min-height: 46px; }
-h1 { align-items: center; }
-h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; padding: 0 8px; border-radius: 999px; }
+#rv-audio-dl, #rv-dl, #map-dl { font: 500 15px var(--display); border: 1px solid color-mix(in srgb, var(--text) 14%, transparent); background: color-mix(in srgb, var(--text) 4%, transparent); border-radius: 14px; color: var(--text); padding: 0 10px; text-align: center; min-height: 46px; }
+h1 { align-items: center; gap: 8px; font-size: 17px; letter-spacing: 0; }
+h1 .title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#menu-btn { flex: none; width: 42px; height: 42px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--text) 14%, transparent); background: color-mix(in srgb, var(--text) 5%, transparent); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+#drawer { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.55); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.drawer-panel { max-width: 520px; margin: 0 auto; min-height: 100%; background: var(--bg); padding: 16px 16px 48px; display: flex; flex-direction: column; gap: 14px; }
+.drawer-head { display: flex; align-items: center; justify-content: space-between; font-size: 20px; font-weight: 700; }
+.drawer-head button { width: 42px; height: 42px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--text) 14%, transparent); background: transparent; color: var(--text); font: 500 20px var(--display); cursor: pointer; }
+.themes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.themes button { position: relative; min-height: 58px; border-radius: 14px; border: 2px solid transparent; cursor: pointer; font: 700 14px var(--display); text-align: left; padding: 8px 12px; overflow: hidden; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+.themes button[aria-pressed="true"] { border-color: var(--text); box-shadow: 0 0 0 2px var(--bg) inset; }
+.themes button i { flex: none; width: 16px; height: 12px; border-radius: 50%; transform: rotate(-20deg); }
+.pick { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; font-size: 15px; }
+.pick input { width: 64px; height: 40px; padding: 0; border: 1px solid color-mix(in srgb, var(--text) 20%, transparent); border-radius: 10px; background: none; cursor: pointer; }
+.panel h2 { font-size: 16px; }
+h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-size: 14px; padding: 0 8px; border-radius: 999px; }
 </style>
 </head>
 <body>
 <main>
-  <h1>Pitch Monitor <select id="player" aria-label="What you are singing or playing">
+  <h1><button type="button" id="menu-btn" aria-label="Open menu"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button><span class="title">Ricardo’s Pitchy App</span><select id="player" aria-label="What you are singing or playing">
     <option value="voice">Voice</option><option value="guitar">Guitar</option><option value="bass">Bass guitar</option>
     <option value="ssax">Soprano sax</option><option value="asax">Alto sax</option><option value="tsax">Tenor sax</option>
   </select><small id="a4-top" hidden>A4 = 440 Hz</small></h1>
@@ -318,6 +338,10 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
         <button type="button" id="mv-letters" aria-pressed="true">Letters</button>
         <button type="button" id="mv-sheet" aria-pressed="false">Sheet music</button>
       </div>
+      <div class="row" style="gap:6px 18px">
+        <label class="check" style="flex:0 1 auto"><input type="checkbox" id="aid-names" checked> Note names</label>
+        <label class="check" style="flex:0 1 auto"><input type="checkbox" id="aid-deg"> Scale numbers</label>
+      </div>
       <div class="map-scroll"><canvas id="map" style="height:210px" aria-label="The notes of this exercise laid out in order"></canvas></div>
       <button type="button" class="ghost" id="map-shot">Save this note map as a picture</button>
       <div id="map-out" hidden style="display:flex;flex-direction:column;gap:8px">
@@ -433,6 +457,22 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     </div>
   </details>
   <div class="msg" id="msg"></div>
+  <div id="drawer" hidden>
+    <div class="drawer-panel" id="drawer-panel">
+      <div class="drawer-head"><span>Menu</span><button type="button" id="menu-close" aria-label="Close menu">×</button></div>
+      <section class="panel">
+        <h2>Colors and designs</h2>
+        <div class="themes" id="theme-grid"></div>
+        <h2>Your own colors</h2>
+        <label class="pick">Background<input type="color" id="c-bg"></label>
+        <label class="pick">Text<input type="color" id="c-text"></label>
+        <label class="pick">Notes on the charts and sheet music<input type="color" id="c-note"></label>
+        <label class="pick">Buttons<input type="color" id="c-accent"></label>
+        <button type="button" class="ghost" id="c-reset">Reset colors</button>
+      </section>
+      <div id="drawer-slot" style="display:flex;flex-direction:column;gap:14px"></div>
+    </div>
+  </div>
 </main>
 
 <script>
@@ -453,6 +493,56 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
   };
   var prefs = store.get("pm.prefs", {});
   function savePrefs() { store.set("pm.prefs", prefs); }
+
+  /* ---------- colors and designs ---------- */
+  var THEMES = {
+    midnight: { name: "Midnight", bg: "#0b0d13", text: "#eef1f6", note: "#8f9dff", accent: "#8f9dff", panel: "#141824", img: "radial-gradient(900px 420px at 50% -120px, #1c2452 0%, rgba(28,36,82,0) 70%) no-repeat" },
+    red: { name: "Red", bg: "#b10f1a", text: "#ffffff", note: "#ffffff", accent: "#111111" },
+    redblack: { name: "Red and black", bg: "#c1121f", text: "#0a0a0a", note: "#0a0a0a", accent: "#0a0a0a" },
+    blackred: { name: "Black and red", bg: "#090909", text: "#ffe1e1", note: "#ff2e2e", accent: "#ff2e2e" },
+    fire: { name: "Fire", bg: "#170400", text: "#fff1dc", note: "#ffb300", accent: "#ff7a00", fx: "flame", img: "radial-gradient(130% 62% at 50% 108%, #ffb300 0%, #ff6a00 22%, #c21f00 46%, rgba(23,4,0,0) 76%) no-repeat" },
+    blueflame: { name: "Blue flame", bg: "#020512", text: "#e2f3ff", note: "#7dd3fc", accent: "#38bdf8", fx: "flame", img: "radial-gradient(130% 62% at 50% 108%, #e0f7ff 0%, #38bdf8 20%, #1d4ed8 46%, rgba(2,5,18,0) 76%) no-repeat" },
+    lava: { name: "Lava", bg: "#120301", text: "#ffe9d6", note: "#ff9100", accent: "#ff3d00", fx: "lava", size: "220% 220%", img: "radial-gradient(38% 26% at 18% 22%, rgba(255,61,0,.75), rgba(255,61,0,0) 70%), radial-gradient(34% 24% at 82% 48%, rgba(255,145,0,.7), rgba(255,145,0,0) 70%), radial-gradient(46% 30% at 40% 78%, rgba(213,0,0,.8), rgba(213,0,0,0) 70%), radial-gradient(30% 20% at 70% 12%, rgba(255,214,0,.45), rgba(255,214,0,0) 70%)" },
+    sunset: { name: "Sunset", bg: "#1b0b2e", text: "#ffeede", note: "#ffb86b", accent: "#ff7eb6", img: "linear-gradient(180deg, rgba(27,11,46,0) 30%, rgba(214,60,120,.5) 75%, rgba(255,140,60,.75) 100%) no-repeat" },
+    ocean: { name: "Ocean", bg: "#04202b", text: "#e6fbff", note: "#5eead4", accent: "#22d3ee", img: "linear-gradient(180deg, rgba(34,211,238,.18) 0%, rgba(4,32,43,0) 55%) no-repeat" },
+    forest: { name: "Forest", bg: "#0c1a10", text: "#eef6e6", note: "#a3e635", accent: "#84cc16" },
+    neon: { name: "Neon", bg: "#07010f", text: "#f6e9ff", note: "#39ff14", accent: "#ff2bd6", img: "radial-gradient(700px 360px at 50% -80px, rgba(255,43,214,.35), rgba(255,43,214,0) 70%) no-repeat" },
+    paper: { name: "Paper", bg: "#f5efe3", text: "#1c1a15", note: "#1c1a15", accent: "#9a4a0c" }
+  };
+  var TH = {}, themeReady = false;
+  function rgbOf(h) { h = h.replace("#", ""); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; }
+  function hexOf(c) { return "#" + c.map(function (v) { return ("0" + Math.round(Math.max(0, Math.min(255, v))).toString(16)).slice(-2); }).join(""); }
+  function mix(a, b, t) { var x = rgbOf(a), y = rgbOf(b); return hexOf([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t]); }
+  function lum(h) { var c = rgbOf(h); return (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255; }
+  function inkFor(h) { return lum(h) > 0.55 ? "#0a0a0a" : "#ffffff"; }
+  function dist(a, b) { var x = rgbOf(a), y = rgbOf(b); return Math.sqrt(Math.pow(x[0] - y[0], 2) + Math.pow(x[1] - y[1], 2) + Math.pow(x[2] - y[2], 2)); }
+  function rgba(h, a) { var c = rgbOf(h); return "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + a + ")"; }
+  function curTheme() {
+    var t = prefs.theme;
+    if (t && t.id === "custom" && t.bg && t.text && t.note && t.accent) return { name: "Custom", bg: t.bg, text: t.text, note: t.note, accent: t.accent, id: "custom" };
+    var id = t && THEMES[t.id] ? t.id : "midnight", th = THEMES[id];
+    return { name: th.name, bg: th.bg, text: th.text, note: th.note, accent: th.accent, panel: th.panel, img: th.img, fx: th.fx, size: th.size, id: id };
+  }
+  function applyTheme() {
+    var t = curTheme(), dark = lum(t.bg) < 0.5, st = root.style;
+    var panel = t.panel || mix(t.bg, t.text, 0.08), chart = dark ? mix(t.bg, "#000000", 0.28) : mix(t.bg, "#000000", 0.05);
+    st.setProperty("--bg", t.bg); st.setProperty("--text", t.text);
+    st.setProperty("--muted", mix(t.text, t.bg, 0.36)); st.setProperty("--idle", mix(t.text, t.bg, 0.55));
+    st.setProperty("--panel", t.img ? rgba(panel, 0.86) : panel);
+    st.setProperty("--field", dark ? mix(t.bg, "#000000", 0.32) : mix(t.bg, "#000000", 0.07));
+    st.setProperty("--line", rgba(t.text, 0.12));
+    st.setProperty("--accent", t.accent); st.setProperty("--accent-ink", inkFor(t.accent));
+    st.setProperty("--chart", chart);
+    st.setProperty("--bg-image", t.img || "none"); st.setProperty("--bg-size", t.size || "auto");
+    st.setProperty("color-scheme", dark ? "dark" : "light");
+    if (t.fx) root.setAttribute("data-fx", t.fx); else root.removeAttribute("data-fx");
+    var cur = null;
+    [t.text, t.accent, inkFor(t.note), "#2fd27a"].forEach(function (c) { if (!cur && dist(c, t.note) > 90 && dist(c, chart) > 90) cur = c; });
+    TH = { bg: t.bg, text: t.text, muted: mix(t.text, chart, 0.4), chart: chart, rowA: mix(chart, t.text, 0.11), rowB: chart, grid: mix(chart, t.text, 0.24), dim: mix(chart, t.text, 0.3), note: t.note, noteInk: inkFor(t.note), cur: cur || inkFor(chart), id: t.id };
+    if (themeReady) { mapRender(); rvRender(); themeUI(); }
+  }
+  applyTheme();
+
 
   var mode = "free", R = 50, tol = 15, a4 = 440, anyOct = true, flats = false;
   var ac = null, analyser = null, stream = null, srcNode = null, fileSrc = null, buf = null;
@@ -1056,29 +1146,46 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     });
     mapRender(); $("map-out").hidden = true;
   }
+  /* Learning aids: note names and scale-degree numbers on the note map, each can be switched off. */
+  var aids = { names: prefs.aidNames !== false, deg: !!prefs.aidDeg };
+  var DEG = ["1", "\u266D2", "2", "\u266D3", "3", "4", "\u266D5", "5", "\u266D6", "6", "\u266D7", "7"];
+  function degLabel(m) {
+    var d = ex.state === "idle" ? curDef() : ex.def;
+    if (d.abs || d.custom || d.gen) return null;
+    var r0 = ex.state === "idle" ? +rootSel.value : ex.root;
+    return DEG[((Math.round(m) - r0) % 12 + 12) % 12];
+  }
+  $("aid-names").checked = aids.names; $("aid-deg").checked = aids.deg;
+  $("aid-names").addEventListener("change", function (e) { aids.names = e.target.checked; prefs.aidNames = aids.names; savePrefs(); $("map-out").hidden = true; mapRender(); });
+  $("aid-deg").addEventListener("change", function (e) { aids.deg = e.target.checked; prefs.aidDeg = aids.deg; savePrefs(); $("map-out").hidden = true; mapRender(); });
   function drawMap(c, W, H, k, steps, run) {
     var lo = Math.min.apply(null, steps) - 1, hi = Math.max.apply(null, steps) + 1, rows = hi - lo + 1, gut = 40 * k, rowH = H / rows, n = steps.length, bw = (W - gut) / n;
     var MONO = "px ui-monospace, Menlo, Consolas, monospace", has = {}, i;
     steps.forEach(function (m) { has[m] = 1; });
-    c.fillStyle = "#0f131b"; c.fillRect(0, 0, W, H); c.textBaseline = "middle";
+    c.fillStyle = TH.chart; c.fillRect(0, 0, W, H); c.textBaseline = "middle";
     for (var m = lo; m <= hi; m++) {
       var y = (hi - m) * rowH, black = [1, 3, 6, 8, 10].indexOf(pcOf(m + xp)) >= 0;
-      c.fillStyle = black ? "#10141a" : "#222a38"; c.fillRect(gut, y, W - gut, Math.max(1, rowH - k));
-      if (has[m]) {
+      c.fillStyle = black ? TH.rowB : TH.rowA; c.fillRect(gut, y, W - gut, Math.max(1, rowH - k));
+      if (has[m] && aids.names) {
         c.textAlign = "left"; c.font = (m === steps[0] ? "700 " : "") + Math.round(Math.min(11 * k, Math.max(8 * k, rowH * 0.85))) + MONO;
-        c.fillStyle = m === steps[0] ? "#eef1f6" : "#a3acbd"; c.fillText(noteLabel(m), 4 * k, y + rowH / 2);
+        c.fillStyle = m === steps[0] ? TH.text : TH.muted; c.fillText(noteLabel(m), 4 * k, y + rowH / 2);
       }
     }
     for (i = 0; i < n; i++) {
       var x = gut + i * bw + k, by = (hi - steps[i]) * rowH, bh = Math.max(rowH - k, 6 * k), r = Math.min(5 * k, bh / 2, bw / 2);
       var done = run && i < ex.results.length, cur = (run && ex.state === "running" && i === ex.idx) || i === pv.idx;
-      c.fillStyle = done ? (ex.results[i] >= 0.7 ? GOOD : WARN) : cur ? "#ffffff" : "#8f9dff";
+      c.fillStyle = done ? (ex.results[i] >= 0.7 ? GOOD : WARN) : cur ? TH.cur : TH.note;
       c.beginPath();
       if (c.roundRect) c.roundRect(x, by, bw - 2 * k, bh, r); else c.rect(x, by, bw - 2 * k, bh);
       c.fill();
-      if (bw >= 20 * k && rowH >= 11 * k) {
-        c.textAlign = "center"; c.font = "700 " + Math.round(Math.min(11 * k, rowH * 0.8)) + MONO; c.fillStyle = "#0c1033";
-        c.fillText(nm(pcOf(steps[i] + xp)), x + (bw - 2 * k) / 2, by + bh / 2);
+      var dg = aids.deg ? degLabel(steps[i]) : null, inside = aids.names ? nm(pcOf(steps[i] + xp)) : dg;
+      if (inside && bw >= 20 * k && rowH >= 11 * k) {
+        c.textAlign = "center"; c.font = "700 " + Math.round(Math.min(11 * k, rowH * 0.8)) + MONO; c.fillStyle = TH.noteInk;
+        c.fillText(inside, x + (bw - 2 * k) / 2, by + bh / 2);
+      }
+      if (dg && aids.names && bw >= 16 * k) {
+        c.textAlign = "center"; c.font = Math.round(9 * k) + MONO; c.fillStyle = TH.muted;
+        c.fillText(dg, x + (bw - 2 * k) / 2, by < 13 * k ? by + bh + 7 * k : by - 6 * k);
       }
     }
     c.textAlign = "left";
@@ -1087,22 +1194,49 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
      and a clef drawn with its baseline on the bottom line lands where it belongs. */
   var mapView = prefs.mapView === "sheet" ? "sheet" : "letters";
   var L_SHARP = [0,0,1,1,2,3,3,4,4,5,5,6], L_FLAT = [0,1,1,2,2,3,4,4,5,5,6,6], BLACK = [0,1,0,1,0,0,1,0,1,0,1,0];
+  var NAT = [0, 2, 4, 5, 7, 9, 11], SIG_SHARPS = [3, 0, 4, 1, 5, 2, 6], SIG_FLATS = [6, 2, 5, 1, 4, 0, 3];
+  var SHARP_POS = [38, 35, 39, 36, 33, 37, 34], FLAT_POS = [34, 37, 33, 36, 32, 35, 31];
+  var MAJ_SHARPS = { 0: 0, 7: 1, 2: 2, 9: 3, 4: 4, 11: 5, 6: 6 }, MAJ_FLATS = { 5: 1, 10: 2, 3: 3, 8: 4, 1: 5 };
+  /* Key signature for the exercise: the major key of its starting note, or the relative major for minor ones. */
+  function keySig(d, rootW) {
+    if (!d || d.abs || d.custom || d.gen || d.glide || d.ear) return { type: null, n: 0, letters: [] };
+    var pc = pcOf(rootW + (d.min ? 3 : 0));
+    if (MAJ_FLATS[pc] != null) return { type: "flat", n: MAJ_FLATS[pc], letters: SIG_FLATS.slice(0, MAJ_FLATS[pc]) };
+    return { type: "sharp", n: MAJ_SHARPS[pc] || 0, letters: SIG_SHARPS.slice(0, MAJ_SHARPS[pc] || 0) };
+  }
+  function spell(w, sig) {
+    var pc = pcOf(w), L = -1, alt = 0, acc = "", i;
+    for (i = 0; i < sig.letters.length && L < 0; i++) {
+      if (sig.type === "sharp" && (NAT[sig.letters[i]] + 1) % 12 === pc) { L = sig.letters[i]; alt = 1; }
+      if (sig.type === "flat" && (NAT[sig.letters[i]] + 11) % 12 === pc) { L = sig.letters[i]; alt = -1; }
+    }
+    if (L < 0) {
+      if (!BLACK[pc]) { L = NAT.indexOf(pc); if (sig.letters.indexOf(L) >= 0) acc = "♮"; }
+      else {
+        var fl = sig.type === "flat" || (sig.n === 0 && flats);
+        L = (fl ? L_FLAT : L_SHARP)[pc]; alt = fl ? -1 : 1; acc = fl ? "♭" : "♯";
+      }
+    }
+    return { d: L + 7 * (Math.floor((w - alt) / 12) - 1), acc: acc, name: "CDEFGAB".charAt(L) + (alt > 0 ? "\u266F" : alt < 0 ? "\u266D" : "") };
+  }
   function drawStaff(c, W, H, k, steps, run) {
-    var off = player === "guitar" || player === "bass" ? 12 : xp, sum = 0;
-    var ds = steps.map(function (m) {
-      var w = Math.round(m) + off, pc = pcOf(w), oct = Math.floor(w / 12) - 1; sum += w;
-      return { d: (flats ? L_FLAT : L_SHARP)[pc] + 7 * oct, acc: BLACK[pc] ? (flats ? "\u266D" : "\u266F") : "" };
-    });
+    var off = player === "guitar" || player === "bass" ? 12 : xp, sum = 0, dd = ex.state === "idle" ? curDef() : ex.def;
+    var sig = keySig(dd, (ex.state === "idle" ? +rootSel.value : ex.root) + off);
+    var ds = steps.map(function (m) { var w = Math.round(m) + off; sum += w; return spell(w, sig); });
     var bass = player === "bass" || (player === "voice" && sum / steps.length < 55), bottom = bass ? 18 : 30, top = bottom + 8;
     var minD = Math.min.apply(null, ds.map(function (x) { return x.d; })), maxD = Math.max.apply(null, ds.map(function (x) { return x.d; }));
-    var lowD = Math.min(minD, bottom) - 5, highD = Math.max(maxD, top) + 5, sp = Math.min(11 * k, H / ((highD - lowD) / 2));
+    var lowD = Math.min(minD, bottom) - 6, highD = Math.max(maxD, top) + 6, sp = Math.min(11 * k, H / ((highD - lowD) / 2));
     function yOf(d) { return H / 2 + ((lowD + highD) / 2 - d) * sp / 2; }
-    var left = 62 * k, n = ds.length, nw = (W - left - 8 * k) / n, INK = "#c9d0dd", i, j;
-    c.fillStyle = "#0f131b"; c.fillRect(0, 0, W, H);
+    var INK = TH.text, i, j, sigX = 14 * k + 3.1 * sp, left = sigX + sig.n * 1.05 * sp + 1.6 * sp, n = ds.length, nw = (W - left - 8 * k) / n;
+    c.fillStyle = TH.chart; c.fillRect(0, 0, W, H);
     c.strokeStyle = INK; c.lineWidth = Math.max(1, k); c.lineCap = "butt";
     for (j = 0; j < 5; j++) { var ly = Math.round(yOf(bottom + 2 * j)) + 0.5; c.beginPath(); c.moveTo(8 * k, ly); c.lineTo(W - 8 * k, ly); c.stroke(); }
     c.fillStyle = INK; c.textAlign = "left"; c.textBaseline = "alphabetic"; c.font = (4 * sp) + "px NotoMusicSub";
-    c.fillText(bass ? "\uD834\uDD22" : "\uD834\uDD1E", 14 * k, yOf(bottom));
+    c.fillText(bass ? "𝄢" : "𝄞", 14 * k, yOf(bottom));
+    for (i = 0; i < sig.n; i++) {
+      var sd = (sig.type === "sharp" ? SHARP_POS : FLAT_POS)[i] - (bass ? 14 : 0);
+      c.fillText(sig.type === "sharp" ? "♯" : "♭", sigX + i * 1.05 * sp, yOf(sd) + 0.5 * sp);
+    }
     if (player === "guitar") { c.font = "700 " + Math.round(1.5 * sp) + "px system-ui, sans-serif"; c.fillText("8", 14 * k + 1.1 * sp, yOf(bottom) + 3.1 * sp); }
     var rx = sp * 0.66, ry = sp * 0.47;
     for (i = 0; i < n; i++) {
@@ -1111,7 +1245,7 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
       c.strokeStyle = INK; c.lineWidth = Math.max(1, k);
       for (j = bottom - 2; j >= d; j -= 2) { c.beginPath(); c.moveTo(x - rx * 1.7, Math.round(yOf(j)) + 0.5); c.lineTo(x + rx * 1.7, Math.round(yOf(j)) + 0.5); c.stroke(); }
       for (j = top + 2; j <= d; j += 2) { c.beginPath(); c.moveTo(x - rx * 1.7, Math.round(yOf(j)) + 0.5); c.lineTo(x + rx * 1.7, Math.round(yOf(j)) + 0.5); c.stroke(); }
-      var col = done ? (ex.results[i] >= 0.7 ? GOOD : WARN) : cur ? "#ffffff" : "#aab4ff";
+      var col = done ? (ex.results[i] >= 0.7 ? GOOD : WARN) : cur ? TH.cur : TH.note;
       c.fillStyle = col; c.strokeStyle = col;
       if (ds[i].acc) { c.font = (4 * sp) + "px NotoMusicSub"; c.textAlign = "right"; c.fillText(ds[i].acc, x - rx - 0.25 * sp, y + 0.5 * sp); c.textAlign = "left"; }
       c.beginPath(); c.ellipse(x, y, rx, ry, -0.35, 0, Math.PI * 2); c.fill();
@@ -1119,6 +1253,11 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
       if (d < bottom + 4) { c.moveTo(x + rx * 0.9, y - ry * 0.3); c.lineTo(x + rx * 0.9, y - 3.4 * sp); }
       else { c.moveTo(x - rx * 0.9, y + ry * 0.3); c.lineTo(x - rx * 0.9, y + 3.4 * sp); }
       c.stroke();
+      c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = TH.text;
+      if (aids.names) { c.font = "700 " + Math.round(11 * k) + "px ui-monospace, Menlo, Consolas, monospace"; c.fillText(ds[i].name, x, H - 10 * k); }
+      var sdg = aids.deg ? degLabel(steps[i]) : null;
+      if (sdg) { c.font = Math.round(10 * k) + "px ui-monospace, Menlo, Consolas, monospace"; c.fillStyle = TH.muted; c.fillText(sdg, x, 10 * k); }
+      c.textAlign = "left"; c.textBaseline = "alphabetic";
     }
   }
   function setMapView(v) {
@@ -1148,7 +1287,7 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     $("map-notes").textContent = names.join("  ");
     var boxW = cv.parentNode.clientWidth;
     if (!boxW) return;
-    var sheet = mapView === "sheet", W = Math.max(boxW, sheet ? 70 + st.length * 44 : 40 + st.length * 24), H = 210, dpr = window.devicePixelRatio || 1, c = cv.getContext("2d");
+    var sheet = mapView === "sheet", W = Math.max(boxW, sheet ? 150 + st.length * 36 : 40 + st.length * 24), H = 210, dpr = window.devicePixelRatio || 1, c = cv.getContext("2d");
     cv.style.width = W + "px"; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
     (sheet ? drawStaff : drawMap)(c, W, H, 1, st, ex.state !== "idle");
@@ -1159,10 +1298,10 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     var st = mapSteps(); if (!st) return;
     var W = Math.max(1100, 120 + st.length * 60), H = 640, cv = document.createElement("canvas"), c = cv.getContext("2d");
     cv.width = W; cv.height = H;
-    c.fillStyle = "#12151c"; c.fillRect(0, 0, W, H);
-    c.textBaseline = "alphabetic"; c.fillStyle = "#eef1f6"; c.font = "700 36px system-ui, -apple-system, 'Segoe UI', sans-serif";
+    c.fillStyle = TH.bg; c.fillRect(0, 0, W, H);
+    c.textBaseline = "alphabetic"; c.fillStyle = TH.text; c.font = "700 36px system-ui, -apple-system, 'Segoe UI', sans-serif";
     c.fillText($("map-title").textContent, 40, 62);
-    c.fillStyle = "#8e97aa"; c.font = "24px ui-monospace, Menlo, Consolas, monospace";
+    c.fillStyle = TH.muted; c.font = "24px ui-monospace, Menlo, Consolas, monospace";
     c.fillText($("map-notes").textContent + ($("player").value === "voice" ? "" : "   ·   " + $("player").selectedOptions[0].textContent), 40, 102);
     c.save(); c.translate(40, 130); (mapView === "sheet" ? drawStaff : drawMap)(c, W - 80, H - 170, 2, st, false); c.restore();
     cv.toBlob(function (blob) {
@@ -1652,15 +1791,15 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     var gut = 36 * k, foot = 18 * k, ph = h - foot, rows = rv.hi - rv.lo + 1, rowH = ph / rows, MONO = "px ui-monospace, Menlo, Consolas, monospace";
     function y(m) { return (rv.hi + 0.5 - m) * rowH; }
     function x(t) { return gut + (w - gut) * (t - t0) / (t1 - t0); }
-    c.fillStyle = "#151a23"; c.fillRect(0, 0, w, h);
+    c.fillStyle = TH.chart; c.fillRect(0, 0, w, h);
     c.textBaseline = "middle"; c.textAlign = "left";
     for (var m = rv.lo; m <= rv.hi; m++) {
       var pc = pcOf(m + xp), black = [1, 3, 6, 8, 10].indexOf(pc) >= 0;
-      c.fillStyle = black ? "#10141a" : "#252d3b";
+      c.fillStyle = black ? TH.rowB : TH.rowA;
       c.fillRect(gut, y(m) - rowH / 2, w - gut, Math.max(1, rowH - k));
       if (rowH >= 9 * k || pc === 0 || (rowH >= 5 * k && !black && pc !== 4 && pc !== 11)) {
         c.font = (pc === 0 ? "600 " : "") + Math.round(Math.min(10 * k, Math.max(8 * k, rowH * 0.9))) + MONO;
-        c.fillStyle = pc === 0 ? "#eef1f6" : "#8b94a5";
+        c.fillStyle = pc === 0 ? TH.text : TH.muted;
         c.fillText(noteLabel(m), 3 * k, y(m));
       }
     }
@@ -1669,7 +1808,7 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     c.font = Math.round(10 * k) + MONO; c.textAlign = "center";
     for (var tk = Math.ceil(t0 / step) * step; tk <= t1 + 0.001; tk += step) {
       c.fillStyle = "rgba(238,241,246,.14)"; c.fillRect(x(tk), 0, k, ph);
-      c.fillStyle = "#8b94a5"; c.fillText(fmt(tk), clamp(x(tk), gut + 12 * k, w - 14 * k), ph + foot / 2);
+      c.fillStyle = TH.muted; c.fillText(fmt(tk), clamp(x(tk), gut + 12 * k, w - 14 * k), ph + foot / 2);
     }
     c.textAlign = "left";
     c.save(); c.beginPath(); c.rect(gut, 0, w - gut, ph); c.clip();
@@ -1690,7 +1829,7 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     }
     c.restore();
     if (k === 1 && rv.cursor != null && rv.cursor >= t0 && rv.cursor <= t1) {
-      c.fillStyle = "#eef1f6"; c.fillRect(x(rv.cursor) - 1, 0, 2, ph);
+      c.fillStyle = TH.text; c.fillRect(x(rv.cursor) - 1, 0, 2, ph);
     }
   }
   function rvWindow() {
@@ -1739,10 +1878,10 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     if (!rv) return;
     var wn = rvWindow(), W = 1200, H = 780, cv = document.createElement("canvas"), c = cv.getContext("2d");
     cv.width = W; cv.height = H;
-    c.fillStyle = "#12151c"; c.fillRect(0, 0, W, H);
-    c.textBaseline = "alphabetic"; c.fillStyle = "#eef1f6"; c.font = "700 34px system-ui, -apple-system, 'Segoe UI', sans-serif";
-    c.fillText("Pitch Monitor", 40, 58);
-    c.fillStyle = "#8b94a5"; c.font = "22px system-ui, -apple-system, 'Segoe UI', sans-serif";
+    c.fillStyle = TH.bg; c.fillRect(0, 0, W, H);
+    c.textBaseline = "alphabetic"; c.fillStyle = TH.text; c.font = "700 34px system-ui, -apple-system, 'Segoe UI', sans-serif";
+    c.fillText("Ricardo’s Pitchy App", 40, 58);
+    c.fillStyle = TH.muted; c.font = "22px system-ui, -apple-system, 'Segoe UI', sans-serif";
     c.fillText(rv.title + " · " + fmt(wn[0]) + " to " + fmt(wn[1]) + " · " + $("rv-info").textContent.split(" · ").slice(1).join(" · ") + " · " + new Date().toLocaleDateString(), 40, 94);
     c.save(); c.translate(40, 120); drawReview(c, W - 80, H - 150, wn[0], wn[1], 2); c.restore();
     cv.toBlob(function (blob) {
@@ -1908,22 +2047,22 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
       for (var fm = Math.ceil(lo2); fm <= Math.floor(hi2); fm++) {
         var fy = yOf(fm), fpc = pcOf(fm + xp), black = [1, 3, 6, 8, 10].indexOf(fpc) >= 0;
         var bright = mode === "key" ? keyDegree(fpc) >= 0 : !black, isAct = fm === act;
-        ctx2d.fillStyle = bright ? "#252d3b" : "#10141a";
+        ctx2d.fillStyle = bright ? TH.rowA : TH.rowB;
         ctx2d.fillRect(34, fy - rowH / 2, w - 34, rowH - 1);
         if (isAct) { ctx2d.fillStyle = curGood ? "rgba(47,210,122,.3)" : "rgba(245,197,24,.3)"; ctx2d.fillRect(0, fy - rowH / 2, w, rowH - 1); }
-        if (fpc === 0 && !isAct) { ctx2d.fillStyle = "#3a4458"; ctx2d.fillRect(34, fy + rowH / 2 - 1, w - 34, 1); }
+        if (fpc === 0 && !isAct) { ctx2d.fillStyle = TH.grid; ctx2d.fillRect(34, fy + rowH / 2 - 1, w - 34, 1); }
         if (bright || isAct) {
           ctx2d.font = (isAct || fpc === 0 ? "600 " : "") + (isAct ? 10 : 9) + MONO;
-          ctx2d.fillStyle = isAct ? (curGood ? GOOD : WARN) : fpc === 0 ? "#eef1f6" : "#737c8d";
+          ctx2d.fillStyle = isAct ? (curGood ? GOOD : WARN) : fpc === 0 ? TH.text : TH.muted;
           ctx2d.fillText(nm(fpc) + (Math.floor((fm + xp) / 12) - 1), 4, fy);
         }
       }
     }
     for (var m = Math.ceil(lo2); !full && m <= Math.floor(hi2); m++) {
       var y = yOf(m), inKey = mode !== "key" || keyDegree(pcOf(m + xp)) >= 0;
-      ctx2d.strokeStyle = mode === "key" && inKey ? "#4a556b" : mode === "key" ? "#1f2531" : "#2a3140"; ctx2d.lineWidth = 1;
+      ctx2d.strokeStyle = mode === "key" && inKey ? TH.grid : mode === "key" ? TH.rowB : TH.grid; ctx2d.lineWidth = 1;
       ctx2d.beginPath(); ctx2d.moveTo(34, y); ctx2d.lineTo(w, y); ctx2d.stroke();
-      ctx2d.fillStyle = mode === "key" ? (inKey ? "#eef1f6" : "#4d5564") : "#8b94a5"; ctx2d.fillText(noteLabel(m), 3, y);
+      ctx2d.fillStyle = mode === "key" ? (inKey ? TH.text : TH.dim) : TH.muted; ctx2d.fillText(noteLabel(m), 3, y);
     }
     if (gl) {
       var from = Math.max(ex.t0, now - WINDOW * nowFrac), to = Math.min(ex.gEnd, now + WINDOW * (1 - nowFrac));
@@ -1970,7 +2109,7 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
     if (full && hasPitch) {
       ctx2d.fillStyle = curGood ? GOOD : WARN;
       ctx2d.beginPath(); ctx2d.arc(sp ? xOf(now) : w - 7, yOf(curSm), 5, 0, 6.3); ctx2d.fill();
-      ctx2d.strokeStyle = "#151a23"; ctx2d.lineWidth = 2; ctx2d.stroke();
+      ctx2d.strokeStyle = TH.chart; ctx2d.lineWidth = 2; ctx2d.stroke();
     }
   }
 
@@ -2105,6 +2244,33 @@ h1 select { width: auto; max-width: 180px; min-height: 38px; font-size: 14px; pa
   });
 
   msg.addEventListener("click", function () { msg.textContent = ""; });
+  document.querySelectorAll("main > details").forEach(function (d) { $("drawer-slot").appendChild(d); });
+  function drawerOpen(on) { $("drawer").hidden = !on; if (on) { renderProgress(); $("drawer").scrollTop = 0; } }
+  $("menu-btn").addEventListener("click", function () { drawerOpen(true); });
+  $("menu-close").addEventListener("click", function () { drawerOpen(false); });
+  $("drawer").addEventListener("click", function (e) { if (e.target === $("drawer")) drawerOpen(false); });
+  function themeUI() {
+    var t = curTheme(), grid = $("theme-grid");
+    grid.innerHTML = "";
+    Object.keys(THEMES).forEach(function (id) {
+      var th = THEMES[id], b = document.createElement("button"), dot = document.createElement("i"), lab = document.createElement("span");
+      b.type = "button"; b.setAttribute("aria-pressed", String(t.id === id));
+      b.style.background = (th.img ? th.img.replace(/900px 420px at 50% -120px|700px 360px at 50% -80px/, "140% 120% at 50% -20%") + ", " : "") + th.bg; b.style.color = th.text;
+      lab.textContent = th.name; dot.style.background = th.note;
+      b.appendChild(lab); b.appendChild(dot);
+      b.addEventListener("click", function () { prefs.theme = { id: id }; savePrefs(); applyTheme(); });
+      grid.appendChild(b);
+    });
+    $("c-bg").value = t.bg; $("c-text").value = t.text; $("c-note").value = t.note; $("c-accent").value = t.accent;
+  }
+  ["c-bg", "c-text", "c-note", "c-accent"].forEach(function (id) {
+    $(id).addEventListener("input", function () {
+      prefs.theme = { id: "custom", bg: $("c-bg").value, text: $("c-text").value, note: $("c-note").value, accent: $("c-accent").value };
+      savePrefs(); applyTheme();
+    });
+  });
+  $("c-reset").addEventListener("click", function () { prefs.theme = { id: "midnight" }; savePrefs(); applyTheme(); });
+  themeReady = true; themeUI();
   $("player").value = player;
   $("player").addEventListener("change", function (e) {
     var tv = +$("target-sel").value, old = +rootSel.value;
