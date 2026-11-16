@@ -238,6 +238,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     <button type="button" data-mode="exercise" aria-pressed="false">Exercises</button>
     <button type="button" data-mode="song" aria-pressed="false">Song</button>
     <button type="button" data-mode="jam" aria-pressed="false">Jam</button>
+    <button type="button" data-mode="build" aria-pressed="false">Builder</button>
     <button type="button" data-mode="rhythm" aria-pressed="false">Rhythm</button>
   </div>
 
@@ -440,7 +441,11 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         <label class="fld">Song form<select id="sf-form"><option value="auto">Suggested for this groove</option></select></label>
         <div class="chips" id="sf-secs"></div>
         <div class="sing"><b id="sf-now" style="font-size:18px">Ready</b><span id="sf-len"></span></div>
-        <p class="small">Tap a section to change how many bars it lasts. Every section ends with a fill and the song finishes with an ending. Verses use the chords you picked; choruses and bridges move to related chords.</p>
+        <p class="small">Tap a section to play from there. Every section ends with a fill and the song finishes with an ending. Verses use the chords you picked; choruses and bridges move to related chords.</p>
+        <div class="row">
+          <button type="button" class="ghost" id="sf-shorter">Selected section shorter</button>
+          <button type="button" class="ghost" id="sf-longer">Selected section longer</button>
+        </div>
         <div class="row" style="gap:6px">
           <button type="button" class="ghost" data-sfadd="verse" style="flex:1 1 70px;font-size:13px">+ Verse</button>
           <button type="button" class="ghost" data-sfadd="chorus" style="flex:1 1 70px;font-size:13px">+ Chorus</button>
@@ -480,6 +485,27 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     <p>To record yourself over the groove, wear headphones and tap Start listening. When you tap Stop, your take plays back with the groove mixed in, and you can download it.</p>
   </section>
 
+  <section class="panel" id="panel-build" hidden>
+    <p class="small" id="sb-info"></p>
+    <button type="button" class="big" id="sb-play">Play the song</button>
+    <label class="check"><input type="checkbox" id="sb-loop"> Repeat the current section until I tap another one</label>
+    <div class="sing"><b id="sb-sec" style="font-size:20px">Intro</b><span id="sb-chord" style="font-family:var(--mono);font-size:20px"></span></div>
+    <b>Song map</b>
+    <canvas id="sb-map" style="width:100%;height:64px;display:block;cursor:pointer"></canvas>
+    <p class="small">Tap a section on the map, or its name in the list below, to play from there.</p>
+    <b>Notes</b>
+    <p class="small"><span id="sb-roll-lbl"></span>. Bright blocks are the melody, blue is the bass, faint blocks are the chord.</p>
+    <canvas id="sb-roll" style="width:100%;height:230px;display:block"></canvas>
+    <b>Melody as sheet music</b>
+    <canvas id="sb-staff" style="width:100%;height:150px;display:block"></canvas>
+    <p class="small" id="sb-staff-note"></p>
+    <b>Rhythm of this bar</b>
+    <canvas id="sb-grid" style="width:100%;height:150px;display:block"></canvas>
+    <p class="small">Each column is one slice of the bar. The numbers are the beats. A lit square means that instrument plays there.</p>
+    <b>Edit the song</b>
+    <div id="sb-host"></div>
+    <p class="small">The groove, chords, key, tempo and instruments come from the Jam tab.</p>
+  </section>
   <section class="panel" id="panel-rhythm" hidden>
     <div class="row">
       <label class="fld">Rhythm<select id="rh-sel"></select></label>
@@ -2272,7 +2298,17 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
 
   /* ---------- master bus: everything the app plays goes through here, so a take can record it mixed with the mic ---------- */
   var masterOut = null, recDest = null;
-  function master() { if (!masterOut) { masterOut = ac.createGain(); masterOut.connect(ac.destination); } return masterOut; }
+  /* Everything the app plays goes through here. The speaker path gets a boost and a limiter so it is loud without crackling;
+     recordings tap the signal before the boost. */
+  function master() {
+    if (!masterOut) {
+      masterOut = ac.createGain();
+      var boost = ac.createGain(), lim = ac.createDynamicsCompressor(); boost.gain.value = 2;
+      lim.threshold.value = -4; lim.knee.value = 3; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.12;
+      masterOut.connect(boost); boost.connect(lim); lim.connect(ac.destination);
+    }
+    return masterOut;
+  }
 
   /* ---------- backing grooves ---------- */
   var PROGS = [
@@ -2472,6 +2508,11 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         gvFinal(GV.t); GV.on = false; GV.ending = true; clearInterval(GV.timer);
         GV.endTimer = setTimeout(gvStop, Math.max(600, (GV.t - ac.currentTime) * 1000 + 2200)); return;
       }
+      if (GV.step === 0 && GV.song) {
+        var psi = GV.plan[Math.min(GV.bar, GV.plan.length - 1)].si;
+        if (SF.loop && GV.curSi != null && psi !== GV.curSi && GV.curSi < SF.secs.length) { GV.bar = sbFirst(GV.plan, GV.curSi); psi = GV.curSi; }
+        GV.curSi = psi;
+      }
       gvStep(GV.bar, GV.step, GV.t);
       GV.t += gvStepDur(); GV.step++;
       if (GV.step >= GV.style.steps) { GV.step = 0; GV.bar++; }
@@ -2481,14 +2522,15 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (!GV.on && !GV.ending) return;
     GV.on = false; GV.ending = false; clearInterval(GV.timer); clearTimeout(GV.endTimer); GV.marks = []; GV.shown = ""; GV.endBar = null; GV.fillBar = null; GV.ck = null; GV.song = false;
     $("gv-play").textContent = SF.on ? "Play the song" : "Play groove"; $("gv-play").classList.remove("stop"); gvChips(-1);
-    SF.cur = -1; sfRender(); $("sf-now").textContent = "Ready"; GV.nowCh = null; csDraw();
+    SF.cur = -1; SB.now = null; $("sb-play").textContent = "Play the song"; $("sb-play").classList.remove("stop"); sfRender(); $("sf-now").textContent = "Ready"; GV.nowCh = null; csDraw(); sbDraw();
   }
-  function gvStart() {
+  function gvStart(si) {
     ensureContext().then(gvLoadMel).then(function () {
       GV.song = SF.on; GV.plan = SF.on ? gvBuildPlan() : null; GV.endBar = null; GV.fillBar = null; GV.ending = false; clearTimeout(GV.endTimer);
-      GV.on = true; GV.step = 0; GV.bar = 0; GV.arp = 0; GV.marks = []; GV.t = ac.currentTime + 0.1;
+      GV.on = true; GV.step = 0; GV.bar = GV.song && si > 0 ? sbFirst(GV.plan, si) : 0; GV.curSi = null; SB.now = null; GV.arp = 0; GV.marks = []; GV.t = ac.currentTime + 0.1;
       GV.timer = setInterval(gvPump, 25); gvPump();
       $("gv-play").textContent = "Stop groove"; $("gv-play").classList.add("stop");
+      $("sb-play").textContent = "Stop"; $("sb-play").classList.add("stop");
     });
   }
   function gvChips(cur, bars, key) {
@@ -2504,8 +2546,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     var now = ac.currentTime, last = null;
     while (GV.marks.length && GV.marks[0].t <= now) { var mk = GV.marks.shift(); if (mk.ch) { GV.nowCh = mk.ch; GV.nowKey = mk.key; csDraw(); } else last = mk; }
     if (!last) return;
-    if (last.final) { $("sf-now").textContent = "The end"; $("gv-chord").textContent = last.name; $("gv-next").textContent = ""; return; }
+    if (last.final) { $("sf-now").textContent = "The end"; $("sb-sec").textContent = "The end"; $("sb-chord").textContent = last.name; $("gv-chord").textContent = last.name; $("gv-next").textContent = ""; return; }
     var P = last.P, bi = P.bi % P.bars.length, tag = P.si + ":" + bi + ":" + P.key;
+    SB.now = last; if (GV.song) { if (P.si < SF.secs.length) SF.sel = P.si; sbDraw(); }
     if (tag !== GV.shown) { GV.shown = tag; gvChips(bi, P.bars, P.key); }
     if (GV.song) {
       if (P.si !== SF.cur) { SF.cur = P.si; sfRender(); }
@@ -2698,7 +2741,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function sfFormId() { return SF.form !== "auto" ? SF.form : FORM_OF[GV.style.id] || FORM_GROUP[GV.style.group] || "pop"; }
   function sfLoad() {
     var f = FORMS.filter(function (x) { return x.id === sfFormId(); })[0] || FORMS[0];
-    SF.secs = f.secs.map(function (x) { return { type: x[0], bars: x[1] }; }); SF.same = !!f.same; SF.shift = f.shift || 0;
+    SF.secs = f.secs.map(function (x) { return { type: x[0], bars: x[1] }; }); SF.same = !!f.same; SF.shift = f.shift || 0; SF.sel = 0;
     $("sf-key").value = String(SF.shift); sfRender();
   }
   function sfNames() {
@@ -2709,13 +2752,14 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function sfRender() {
     var host = $("sf-secs"), names = sfNames(), bars = 0; host.innerHTML = "";
     SF.secs.forEach(function (x, i) {
-      var b = document.createElement("button"); b.type = "button"; b.className = "chip" + (i === SF.cur ? " cur" : ""); b.style.cursor = "pointer"; b.style.background = "transparent";
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip" + (i === SF.cur || (SF.cur < 0 && i === (SF.sel || 0)) ? " cur" : ""); b.style.cursor = "pointer"; b.style.background = "transparent"; b.style.borderBottomColor = SEC_COL[x.type]; b.style.borderBottomWidth = "4px";
       b.textContent = names[i] + " · " + x.bars; bars += x.bars;
-      b.addEventListener("click", function () { if (GV.on) return; var opts = [4, 8, 12, 16]; x.bars = opts[(opts.indexOf(x.bars) + 1) % opts.length]; sfRender(); });
+      b.addEventListener("click", function () { sbGo(i); });
       host.appendChild(b);
     });
     var end = document.createElement("span"); end.className = "chip" + (SF.cur === SF.secs.length ? " cur" : ""); end.textContent = "Ending"; host.appendChild(end);
     var secs = Math.round((bars + 2) * GV.style.beats * 60 / GV.bpm);
+    if (typeof sbDraw === "function" && !GV.on) sbDraw();
     $("sf-len").textContent = bars + " bars, about " + Math.floor(secs / 60) + ":" + ("0" + secs % 60).slice(-2);
   }
   function secProg(type) {
@@ -2775,7 +2819,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   document.querySelectorAll("[data-sfadd]").forEach(function (b) {
     b.addEventListener("click", function () { if (GV.on || SF.secs.length >= 16) return; SF.secs.push({ type: b.getAttribute("data-sfadd"), bars: 8 }); sfRender(); });
   });
-  $("sf-del").addEventListener("click", function () { if (GV.on || SF.secs.length < 2) return; SF.secs.pop(); sfRender(); });
+  $("sf-del").addEventListener("click", function () { if (GV.on || SF.secs.length < 2) return; SF.secs.pop(); SF.sel = Math.min(SF.sel || 0, SF.secs.length - 1); sfRender(); });
   $("sf-reset").addEventListener("click", function () { if (GV.on || GV.ending) gvStop(); sfLoad(); });
   $("gv-fill").addEventListener("click", function () { if (GV.on && !GV.song) GV.fillBar = GV.step < GV.style.steps / 2 ? GV.bar : GV.bar + 1; });
   $("gv-end").addEventListener("click", function () {
@@ -2892,6 +2936,198 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       v.f.forEach(function (fr, s) { if (fr >= 0) { synth(ac, busOf("chBus", 0.3), I.snd, I.tun[s] + fr + (I.drop || 0), t + k * 0.05, 1.8); k++; } });
     });
   });
+  /* ---------- song builder tab: song map, melody chart, sheet music, rhythm grid ---------- */
+  var SEC_COL = { intro: "#7aa2f7", verse: "#2fd27a", pre: "#e0af68", chorus: "#f7768e", inter: "#bb9af7", bridge: "#ff9e64", solo: "#7dcfff", outro: "#9aa5ce", end: "#c0caf5" };
+  var SEC_ABBR = { intro: "In", verse: "V", pre: "Pre", chorus: "C", inter: "Int", bridge: "Br", solo: "Solo", outro: "Out" };
+  var SB = { now: null, hit: [] };
+  function sbPlan() { return GV.on && GV.song && GV.plan ? GV.plan : gvBuildPlan(); }
+  function sbFirst(plan, si) { for (var i = 0; i < plan.length; i++) if (plan[i].si === si) return i; return 0; }
+  function sbChord(P) { return chordOf(P.bars[P.bi % P.bars.length], P.key); }
+  /* The lead melody notes of one bar: [{ st, len (steps), m }] */
+  function sbMel(P) {
+    var M = P.mel && MELS.filter(function (x) { return x.id === P.mel; })[0], v = (MEL_VOICES[GV.by] || [])[0], S = GV.style, out = [], used = {};
+    if (!M || !M.bars || !v) return out;
+    var keep = GV.ck, ch = sbChord(P); GV.ck = P.key;
+    M.bars[P.bi % M.bars.length].forEach(function (ev) {
+      var st = Math.min(S.steps - 1, Math.round(ev[0] * S.steps));
+      if (used[st]) return; used[st] = 1;
+      out.push({ st: st, len: Math.max(1, ev[1] * S.steps), m: degNote(ch, ev[2] + v[2], v[1]) });
+    });
+    GV.ck = keep; return out;
+  }
+  /* Bass notes and chord hits of one bar, worked out the same way the groove plays them. */
+  function sbBar(P, PN, odd) {
+    var S = GV.style, ch = sbChord(P), nxt = PN ? sbChord(PN) : ch, SBs = odd && S.bAlt ? S.bAlt : S.b, SC = odd && S.cAlt ? S.cAlt : S.c, bass = [], hits = [], i, j;
+    var b0 = 36 + ch.root; if (b0 > 44) b0 -= 12;
+    if (SBs) for (i = 0; i < SBs.length; i++) {
+      var dg = SBs[i][1], nb = 36 + nxt.root, m = b0; if (nb > 44) nb -= 12;
+      if (dg === "r5") dg = odd ? "5" : "r";
+      if (dg === "5") m = b0 + 7 > 47 ? b0 - 5 : b0 + 7; else if (dg === "3") m = b0 + ch.tones[1]; else if (dg === "6") m = b0 + 9; else if (dg === "a") m = nb - 1;
+      var nx = S.steps; for (j = 0; j < SBs.length; j++) if (SBs[j][0] > SBs[i][0]) { nx = SBs[j][0]; break; }
+      bass.push({ st: SBs[i][0], len: nx - SBs[i][0], m: m });
+    }
+    var base = 48 + ch.root; if (base > 57) base -= 12;
+    if (SC) for (i = 0; i < SC.length; i++) hits.push({ st: SC[i][0], len: Math.max(0.6, Math.min(SC[i][1], S.steps - SC[i][0])) });
+    return { ch: ch, bass: bass, hits: hits, notes: ch.tones.map(function (x) { return base + x; }) };
+  }
+  function sbCanvas(id, H) {
+    var cv = $(id), dpr = window.devicePixelRatio || 1, W = cv.clientWidth || 340;
+    if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    var g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+    return { g: g, W: W, H: H };
+  }
+  function sbCur(plan) {
+    if (GV.on && GV.song && SB.now) return { pi: Math.min(SB.now.bar, plan.length - 1), st: SB.now.st, live: true };
+    return { pi: sbFirst(plan, Math.min(SF.sel || 0, SF.secs.length - 1)), st: -1, live: false };
+  }
+  function sbDrawMap(plan, cur) {
+    var c = sbCanvas("sb-map", 64), g = c.g, total = plan.length, x = 0, pw = c.W / total, counts = {}, totals = {}, i;
+    SF.secs.forEach(function (s) { totals[s.type] = (totals[s.type] || 0) + 1; });
+    SB.hit = [];
+    for (i = 0; i <= SF.secs.length; i++) {
+      var end = i === SF.secs.length, type = end ? "end" : SF.secs[i].type, n = end ? 1 : SF.secs[i].bars, w = n * pw, on = plan[cur.pi].si === i;
+      if (!end) counts[type] = (counts[type] || 0) + 1;
+      g.globalAlpha = on ? 1 : 0.55; g.fillStyle = SEC_COL[type]; g.fillRect(x + 1, 14, Math.max(1, w - 2), 36);
+      g.globalAlpha = 1;
+      if (on) { g.strokeStyle = TH.text; g.lineWidth = 2; g.strokeRect(x + 1, 14, Math.max(1, w - 2), 36); }
+      g.fillStyle = "#0b0f14"; g.font = "700 12px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+      var lab = end ? "" : SEC_ABBR[type] + (totals[type] > 1 && type !== "intro" ? counts[type] : "");
+      if (w > g.measureText(lab).width + 4) g.fillText(lab, x + w / 2, 32);
+      g.strokeStyle = "rgba(11,15,20,.35)"; g.lineWidth = 1;
+      for (var b = 4; b < n; b += 4) { g.beginPath(); g.moveTo(x + b * pw, 44); g.lineTo(x + b * pw, 50); g.stroke(); }
+      SB.hit.push({ x0: x, x1: x + w, si: i });
+      x += w;
+    }
+    var px = (cur.pi + (cur.st >= 0 ? cur.st / GV.style.steps : 0)) * pw;
+    g.fillStyle = TH.text; g.beginPath(); g.moveTo(px - 6, 2); g.lineTo(px + 6, 2); g.lineTo(px, 12); g.fill();
+    g.fillRect(px - 1, 12, 2, 42);
+    g.fillStyle = TH.muted; g.font = "11px ui-monospace, monospace"; g.textAlign = "left"; g.fillText("bar " + (cur.pi + 1) + " of " + total, 2, 59); g.textAlign = "center";
+  }
+  function sbWindow(plan, cur, size) {
+    var P = plan[cur.pi], first = cur.pi - P.bi, page = Math.floor(P.bi / size) * size, n = Math.min(size, P.n - page), out = [];
+    for (var i = 0; i < n; i++) out.push(first + page + i);
+    return out;
+  }
+  function sbDrawRoll(plan, cur) {
+    var c = sbCanvas("sb-roll", 230), g = c.g, S = GV.style, win = sbWindow(plan, cur, 8), L = 30, T = 20, bw = (c.W - L - 4) / win.length, sw2 = bw / S.steps, names = flats ? FLAT : SHARP;
+    var data = win.map(function (pi) { var P = plan[pi]; return { P: P, pi: pi, b: sbBar(P, plan[pi + 1], pi % 2), mel: sbMel(P) }; }), lo = 99, hi = 0;
+    data.forEach(function (d) { d.b.bass.forEach(function (n) { lo = Math.min(lo, n.m); }); hi = Math.max(hi, d.b.notes[d.b.notes.length - 1]); lo = Math.min(lo, d.b.notes[0]); d.mel.forEach(function (n) { hi = Math.max(hi, n.m); lo = Math.min(lo, n.m); }); });
+    if (lo > hi) { lo = 48; hi = 72; } lo -= 1; hi += 1;
+    var rh = (c.H - T - 6) / (hi - lo + 1); function y(m) { return T + (hi - m) * rh; }
+    for (var m = lo; m <= hi; m++) {
+      var pc = ((m % 12) + 12) % 12;
+      g.fillStyle = BLACK[pc] ? TH.rowB : TH.rowA; g.fillRect(L, y(m), c.W - L - 4, rh);
+      if (pc === 0 || rh > 9) { g.fillStyle = TH.muted; g.font = (pc === 0 ? "700 " : "") + "9px ui-monospace, monospace"; g.textAlign = "right"; g.textBaseline = "middle"; if (pc === 0 || !BLACK[pc]) g.fillText(names[(pc + xp) % 12] + (pc === 0 ? Math.floor((m + xp) / 12) - 1 : ""), L - 3, y(m) + rh / 2); }
+    }
+    data.forEach(function (d, i) {
+      var x0 = L + i * bw, on = cur.live && d.pi === cur.pi;
+      g.strokeStyle = TH.grid; g.lineWidth = 1; g.beginPath(); g.moveTo(x0 + 0.5, T); g.lineTo(x0 + 0.5, c.H - 6); g.stroke();
+      g.fillStyle = on ? TH.text : TH.muted; g.font = (on ? "700 " : "") + "12px ui-monospace, monospace"; g.textAlign = "left"; g.textBaseline = "middle";
+      g.fillText(chordName(d.b.ch, d.P.key), x0 + 3, 9);
+      g.globalAlpha = 0.28; g.fillStyle = TH.text;
+      d.b.hits.forEach(function (h) { d.b.notes.forEach(function (n) { g.fillRect(x0 + h.st * sw2 + 1, y(n) + 1, Math.max(2, h.len * sw2 - 2), Math.max(2, rh - 2)); }); });
+      g.globalAlpha = 0.6; g.fillStyle = SEC_COL.intro;
+      d.b.bass.forEach(function (n) { g.fillRect(x0 + n.st * sw2 + 1, y(n.m) + 1, Math.max(2, n.len * sw2 - 2), Math.max(2, rh - 2)); });
+      g.globalAlpha = 1; g.fillStyle = TH.note;
+      d.mel.forEach(function (n) { g.fillRect(x0 + n.st * sw2 + 1, y(n.m), Math.max(3, Math.min(n.len, S.steps - n.st) * sw2 - 2), Math.max(3, rh)); });
+    });
+    if (cur.live) { var k = win.indexOf(cur.pi); if (k >= 0) { var px = L + (k + cur.st / S.steps) * bw; g.fillStyle = TH.cur; g.fillRect(px - 1, T, 2, c.H - T - 6); } }
+  }
+  function sbDrawStaff(plan, cur) {
+    var c = sbCanvas("sb-staff", 150), g = c.g, S = GV.style, win = sbWindow(plan, cur, 4), minor = GV.prog.mode === "min", P0 = plan[cur.pi];
+    var off = player === "guitar" || player === "bass" ? 12 : xp, pc = pcOf(P0.key + off + (minor ? 3 : 0));
+    var sig = MAJ_FLATS[pc] != null ? { type: "flat", n: MAJ_FLATS[pc], letters: SIG_FLATS.slice(0, MAJ_FLATS[pc]) } : { type: "sharp", n: MAJ_SHARPS[pc] || 0, letters: SIG_SHARPS.slice(0, MAJ_SHARPS[pc] || 0) };
+    var data = win.map(function (pi) { return { pi: pi, mel: sbMel(plan[pi]) }; }), sum = 0, cnt = 0, shift = 0;
+    data.forEach(function (d) { d.mel.forEach(function (n) { sum += n.m + off; cnt++; }); });
+    if (cnt) { while (sum / cnt + shift > 79) shift -= 12; while (sum / cnt + shift < 62) shift += 12; }
+    var sp = 9, bottom = 30, H = c.H, mid = 66; function yOf(d) { return mid + (34 - d) * sp / 2; }
+    var INK = TH.text, sigX = 6 + 3.1 * sp, left = sigX + sig.n * 1.05 * sp + 1.2 * sp, bw = (c.W - left - 6) / win.length, j;
+    g.strokeStyle = INK; g.lineWidth = 1;
+    for (j = 0; j < 5; j++) { var ly = Math.round(yOf(bottom + 2 * j)) + 0.5; g.beginPath(); g.moveTo(4, ly); g.lineTo(c.W - 4, ly); g.stroke(); }
+    g.fillStyle = INK; g.textAlign = "left"; g.textBaseline = "alphabetic"; g.font = (4 * sp) + "px NotoMusicSub";
+    g.fillText("𝄞", 6, yOf(bottom));
+    for (j = 0; j < sig.n; j++) g.fillText(sig.type === "sharp" ? "♯" : "♭", sigX + j * 1.05 * sp, yOf((sig.type === "sharp" ? SHARP_POS : FLAT_POS)[j]) + 0.5 * sp);
+    var rx = sp * 0.66, ry = sp * 0.47;
+    data.forEach(function (d, i) {
+      var x0 = left + i * bw, on = cur.live && d.pi === cur.pi;
+      g.strokeStyle = INK; g.lineWidth = 1; g.beginPath(); g.moveTo(Math.round(x0 + bw) - 0.5, yOf(bottom + 8)); g.lineTo(Math.round(x0 + bw) - 0.5, yOf(bottom)); g.stroke();
+      g.fillStyle = on ? TH.text : TH.muted; g.font = (on ? "700 " : "") + "11px ui-monospace, monospace"; g.textAlign = "left"; g.fillText(chordName(sbChord(plan[d.pi]), plan[d.pi].key), x0 + 4, 12);
+      d.mel.forEach(function (n) {
+        var w = n.m + off + shift, s = spell(w, sig), x = x0 + 10 + (n.st / S.steps) * (bw - 14), yy = yOf(s.d), beats = n.len / S.steps * S.beats, open = beats >= 1.5, col = on ? TH.cur : TH.note;
+        g.strokeStyle = INK; g.lineWidth = 1;
+        for (j = bottom - 2; j >= s.d; j -= 2) { g.beginPath(); g.moveTo(x - rx * 1.7, Math.round(yOf(j)) + 0.5); g.lineTo(x + rx * 1.7, Math.round(yOf(j)) + 0.5); g.stroke(); }
+        for (j = bottom + 10; j <= s.d; j += 2) { g.beginPath(); g.moveTo(x - rx * 1.7, Math.round(yOf(j)) + 0.5); g.lineTo(x + rx * 1.7, Math.round(yOf(j)) + 0.5); g.stroke(); }
+        g.fillStyle = col; g.strokeStyle = col;
+        if (s.acc) { g.font = (4 * sp) + "px NotoMusicSub"; g.textAlign = "right"; g.fillText(s.acc, x - rx - 0.25 * sp, yy + 0.5 * sp); g.textAlign = "left"; }
+        g.lineWidth = 1.6; g.beginPath(); g.ellipse(x, yy, rx, ry, -0.35, 0, Math.PI * 2); if (open) g.stroke(); else g.fill();
+        if (beats < 3.5) {
+          var up = s.d < bottom + 4, sx = up ? x + rx * 0.9 : x - rx * 0.9, ey = up ? yy - 3.2 * sp : yy + 3.2 * sp;
+          g.lineWidth = 1.3; g.beginPath(); g.moveTo(sx, yy); g.lineTo(sx, ey); g.stroke();
+          if (beats < 0.75) { g.beginPath(); g.moveTo(sx, ey); g.quadraticCurveTo(sx + sp * 1.1, ey + (up ? 1 : -1) * sp * 0.9, sx + sp * 0.8, ey + (up ? 1 : -1) * sp * 2); g.stroke(); }
+        }
+        g.fillStyle = TH.muted; g.font = "10px ui-monospace, monospace"; g.textAlign = "center"; g.fillText(s.name, x, H - 6); g.textAlign = "left";
+      });
+    });
+    $("sb-staff-note").textContent = cnt ? "Melody for " + (MEL_BY.filter(function (x) { return x[0] === GV.by; })[0] || ["", "the lead instrument"])[1].toLowerCase() + ", written in a comfortable octave. Note lengths are simplified and rests are left out." : "No written melody in these bars. This is space for the singer or for you.";
+  }
+  var SB_ROWS = [["k", "Kick"], ["s", "Snare"], ["s2", "Rim"], ["h", "Hi-hat"], ["p", "Perc"]];
+  function sbDrawGrid(plan, cur) {
+    var S = GV.style, P = plan[cur.pi], d = sbBar(P, plan[cur.pi + 1], cur.pi % 2), mel = sbMel(P), rows = [], i;
+    SB_ROWS.forEach(function (r) { if (S[r[0]] && S[r[0]].length) rows.push({ name: r[0] === "p" && S.pv === "shake" ? "Shaker" : r[0] === "p" && S.pv === "golpe" ? "Golpe" : r[1], on: S[r[0]], col: TH.text }); });
+    if (P.fill && rows.length) { var f = []; for (i = S.steps / 2; i < S.steps; i++) f.push(i); rows.push({ name: "Fill", on: f, col: SEC_COL.chorus }); }
+    if (d.bass.length) rows.push({ name: "Bass", on: d.bass.map(function (n) { return n.st; }), col: SEC_COL.intro });
+    if (d.hits.length) rows.push({ name: "Chords", on: d.hits.map(function (n) { return n.st; }), col: SEC_COL.pre });
+    if (mel.length) rows.push({ name: "Melody", on: mel.map(function (n) { return n.st; }), col: TH.note });
+    var rh = 24, c = sbCanvas("sb-grid", 22 + rows.length * rh + 4), g = c.g, L = 58, cw = (c.W - L - 4) / S.steps, per = S.steps / S.beats;
+    $("sb-grid").style.height = (22 + rows.length * rh + 4) + "px";
+    for (i = 0; i < S.steps; i++) {
+      var beat = i % per === 0, x = L + i * cw;
+      if (i === cur.st) { g.fillStyle = TH.grid; g.fillRect(x, 0, cw, c.H); }
+      g.fillStyle = beat ? TH.text : TH.muted; g.font = (beat ? "700 12px" : "10px") + " ui-monospace, monospace"; g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillText(beat ? String(i / per + 1) : (per === 4 ? ["", "e", "&", "a"][i % 4] : per === 2 ? "&" : "·"), x + cw / 2, 10);
+    }
+    rows.forEach(function (r, ri) {
+      var y0 = 22 + ri * rh;
+      g.fillStyle = TH.muted; g.font = "11px system-ui, sans-serif"; g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(r.name, L - 6, y0 + rh / 2);
+      for (i = 0; i < S.steps; i++) {
+        var x = L + i * cw, hit = r.on.indexOf(i) >= 0, sz = Math.min(cw - 2, rh - 6);
+        g.globalAlpha = hit ? (i === cur.st ? 1 : 0.85) : 0.12; g.fillStyle = hit ? r.col : TH.text;
+        g.beginPath(); if (g.roundRect) g.roundRect(x + (cw - sz) / 2, y0 + (rh - sz) / 2, sz, sz, 4); else g.rect(x + (cw - sz) / 2, y0 + (rh - sz) / 2, sz, sz); g.fill();
+      }
+      g.globalAlpha = 1;
+    });
+  }
+  function sbDraw() {
+    if (mode !== "build" || !SF.secs.length) return;
+    var plan = sbPlan(), cur = sbCur(plan), P = plan[cur.pi];
+    sbDrawMap(plan, cur); sbDrawRoll(plan, cur); sbDrawStaff(plan, cur); sbDrawGrid(plan, cur);
+    $("sb-sec").textContent = P.name + (cur.live && P.n > 1 ? " · bar " + (P.bi + 1) + " of " + P.n : "");
+    $("sb-sec").style.color = SEC_COL[P.si >= SF.secs.length ? "end" : SF.secs[P.si].type];
+    $("sb-chord").textContent = chordName(sbChord(P), P.key);
+    var n = sbWindow(plan, cur, 8), first = plan[n[0]].bi + 1;
+    $("sb-roll-lbl").textContent = "Bars " + first + " to " + (first + n.length - 1) + " of this section";
+  }
+  /* Jump to a section. Starts the song there if it is not playing. */
+  function sbGo(si) {
+    if (si >= SF.secs.length) return;
+    SF.sel = si;
+    if (GV.on && GV.song) { GV.bar = sbFirst(GV.plan, si); GV.step = 0; GV.curSi = si; GV.t = Math.max(GV.t, ac.currentTime + 0.05); }
+    else if (!GV.ending) { if (GV.on) gvStop(); if (!SF.on) { SF.on = true; $("sf-on").checked = true; $("sf-body").hidden = false; } gvStart(si); }
+    sfRender(); sbDraw();
+  }
+  $("sb-map").addEventListener("click", function (e) {
+    var r = e.currentTarget.getBoundingClientRect(), x = e.clientX - r.left;
+    for (var i = 0; i < SB.hit.length; i++) if (x >= SB.hit[i].x0 && x < SB.hit[i].x1) { sbGo(SB.hit[i].si); return; }
+  });
+  $("sb-play").addEventListener("click", function () {
+    if (GV.on || GV.ending) { gvStop(); return; }
+    if (!SF.on) { SF.on = true; $("sf-on").checked = true; $("sf-body").hidden = false; prefs.sf = { on: true }; savePrefs(); }
+    gvStart(0);
+  });
+  $("sb-loop").addEventListener("change", function (e) { SF.loop = e.target.checked; });
+  $("sf-longer").addEventListener("click", function () { if (GV.on) return; var x = SF.secs[SF.sel || 0]; if (x) { x.bars = [8, 12, 16, 16][[4, 8, 12, 16].indexOf(x.bars)] || 8; sfRender(); sbDraw(); } });
+  $("sf-shorter").addEventListener("click", function () { if (GV.on) return; var x = SF.secs[SF.sel || 0]; if (x) { x.bars = [4, 4, 8, 12][[4, 8, 12, 16].indexOf(x.bars)] || 4; sfRender(); sbDraw(); } });
+  window.addEventListener("resize", sbDraw);
   function gvProgFill(modeV, want) {
     var ps = $("gv-prog"); ps.innerHTML = "";
     PROGS.forEach(function (pg) { if (pg.mode !== modeV) return; var o = document.createElement("option"); o.value = pg.id; o.textContent = pg.name; ps.appendChild(o); });
@@ -2954,7 +3190,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   $("gv-scale").addEventListener("change", function () { gvApply("scale"); });
   ["gv-prog", "gv-key", "gv-mel", "gv-by", "gv-cv", "gv-bv"].forEach(function (id) { $(id).addEventListener("change", function () { gvApply(""); }); });
   $("gv-bpm").addEventListener("input", function () { gvApply(""); });
-  $("gv-play").addEventListener("click", function () { if (GV.on || GV.ending) gvStop(); else gvStart(); });
+  $("gv-play").addEventListener("click", function () { if (GV.on || GV.ending) gvStop(); else gvStart(0); });
 
   /* ---------- rhythm practice ---------- */
   var RHY = [
@@ -3120,15 +3356,22 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (m !== "exercise") { exStop(); if (pv.on) pvStop(); }
     if (m !== "range" && rf.step !== 3) rf.step = 0;
     if (m !== "song") songPause();
-    if (m !== "jam") gvStop();
+    if (m !== "jam" && m !== "build") gvStop();
     if (m !== "rhythm") rhStop("Ready");
     mode = m; R = (m === "target" || m === "exercise" || (m === "song" && song.track)) ? 100 : 50;
     document.querySelectorAll(".seg button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-mode") === m)); });
     ["target", "key", "range"].forEach(function (p) { $("panel-" + p).hidden = m !== p; });
     $("panel-ex").hidden = m !== "exercise";
-    $("panel-jam").hidden = m !== "jam"; $("panel-rhythm").hidden = m !== "rhythm";
+    $("panel-jam").hidden = m !== "jam"; $("panel-rhythm").hidden = m !== "rhythm"; $("panel-build").hidden = m !== "build";
+    if (m === "build") {
+      if (GV.on && !GV.song) gvStop();
+      if (!SF.on) { SF.on = true; $("sf-on").checked = true; prefs.sf = { on: true }; savePrefs(); $("gv-play").textContent = "Play the song"; }
+      $("sf-body").hidden = false; $("sb-host").appendChild($("sf-body"));
+      $("sb-info").textContent = GV.style.name + " \u00B7 " + GV.prog.name + " \u00B7 " + Math.round(GV.bpm) + " bpm";
+      setTimeout(sbDraw, 0);
+    } else if ($("sf-body").parentNode !== $("sf-box")) $("sf-box").appendChild($("sf-body"));
     document.querySelector(".trace-wrap").hidden = m === "rhythm";
-    sizeChart(); $("kb-card").hidden = m === "song" || m === "rhythm" || !sw("kb");
+    sizeChart(); $("kb-card").hidden = m === "song" || m === "rhythm" || m === "build" || !sw("kb");
     if (m === "exercise") { setFlats(); renderChips(); }
     kbHint();
     $("panel-song").hidden = m !== "song";
