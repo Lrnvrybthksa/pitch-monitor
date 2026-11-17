@@ -2513,7 +2513,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function chordOf(sym, keyPc) {
     if (typeof sym === "object") return { root: ((sym.root + keyPc - sym.key0) % 12 + 12) % 12, tones: sym.tones, minor: sym.minor, q: sym.q };
     var m = /^(b|#)?([ivIV]+)(.*)$/.exec(sym), up = m[2].toUpperCase(), minor = m[2] !== up, q = m[3];
-    var tones = q === "m7b5" ? [0, 3, 6, 10] : q === "maj7" ? [0, 4, 7, 11] : q === "7" ? (minor ? [0, 3, 7, 10] : [0, 4, 7, 10]) : minor ? [0, 3, 7] : [0, 4, 7];
+    var XQ = { sus2: [0, 2, 7], sus4: [0, 5, 7], "7sus4": [0, 5, 7, 10], "6": minor ? [0, 3, 7, 9] : [0, 4, 7, 9], add9: minor ? [0, 3, 7, 14] : [0, 4, 7, 14], "9": minor ? [0, 3, 7, 10, 14] : [0, 4, 7, 10, 14], maj9: [0, 4, 7, 11, 14], dim: [0, 3, 6], dim7: [0, 3, 6, 9], aug: [0, 4, 8] };
+    var tones = XQ[q] ? XQ[q] : q === "m7b5" ? [0, 3, 6, 10] : q === "maj7" ? [0, 4, 7, 11] : q === "7" ? (minor ? [0, 3, 7, 10] : [0, 4, 7, 10]) : minor ? [0, 3, 7] : [0, 4, 7];
     return { root: ((keyPc + ROM[up] + (m[1] === "b" ? -1 : m[1] === "#" ? 1 : 0)) % 12 + 12) % 12, tones: tones, minor: minor, q: q };
   }
   function chordName(ch, key) {
@@ -3498,7 +3499,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     { id: "sexto", name: "Bajo sexto", tun: [40, 45, 50, 55, 60, 65], snd: "guitar12", bass: true, drop: -12 },
     { id: "quinto", name: "Bajo quinto", tun: [45, 50, 55, 60, 65], snd: "guitar12", bass: true, drop: -12 },
     { id: "vihuela", name: "Vihuela", tun: [57, 62, 67, 59, 64], snd: "nylon", bass: false },
-    { id: "requinto", name: "Requinto", tun: [45, 50, 55, 60, 64, 69], snd: "nylon", bass: true }
+    { id: "requinto", name: "Requinto", tun: [45, 50, 55, 60, 64, 69], snd: "nylon", bass: true },
+    { id: "piano", name: "Piano keyboard", piano: true, snd: "piano" }
   ];
   var CS_TYPES = [["", "major", [0, 4, 7]], ["m", "minor", [0, 3, 7]], ["7", "7", [0, 4, 7, 10]], ["maj7", "maj7", [0, 4, 7, 11]], ["m7", "m7", [0, 3, 7, 10]],
     ["6", "6", [0, 4, 7, 9]], ["m6", "m6", [0, 3, 7, 9]], ["9", "9", [0, 4, 7, 10, 14]], ["add9", "add9", [0, 4, 7, 14]], ["sus2", "sus2", [0, 2, 7]], ["sus4", "sus4", [0, 5, 7]],
@@ -3556,11 +3558,51 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     var t = CS_TYPES[CSV.type];
     return { root: CSV.root, tones: t[2], name: (flats ? FLAT : SHARP)[(CSV.root + xp) % 12] + t[0] };
   }
+  /* Piano keyboard view for chord shapes: root position, and the same chord moved near middle C so the hand barely moves. */
+  function pianoVoicings(C) {
+    var root = 48 + C.root, rp = C.tones.map(function (x) { return root + x; }), best = null;
+    for (var inv = 0; inv < C.tones.length; inv++) {
+      var v = C.tones.map(function (x, i) { return root + x + (i < inv ? 12 : 0); }).sort(function (a, b) { return a - b; });
+      while (v[0] < 53) v = v.map(function (m) { return m + 12; }); while (v[0] > 64) v = v.map(function (m) { return m - 12; });
+      var mid = (v[0] + v[v.length - 1]) / 2, sc = Math.abs(mid - 64) + (v[v.length - 1] - v[0]) * 0.3;
+      if (!best || sc < best.sc) best = { v: v, sc: sc, inv: inv };
+    }
+    return [{ label: "Root position", v: rp }, { label: best.inv === 0 ? "Near middle C" : (best.inv === 1 ? "First inversion" : best.inv === 2 ? "Second inversion" : "Third inversion") + ", near middle C", v: best.v }];
+  }
+  function pianoDraw(C) {
+    var cv = $("cs-canvas"), dpr = window.devicePixelRatio || 1, W = cv.clientWidth || 320, H = 190, names = flats ? FLAT : SHARP;
+    cv.width = W * dpr; cv.height = H * dpr; var g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+    var vs = pianoVoicings(C), txt = [];
+    vs.forEach(function (vo, k) {
+      var lo = Math.min.apply(null, vo.v), start = lo - ((lo % 12) + 12) % 12, end = start + 24, whites = [], m, y0 = 18 + k * 88, kh = 62;
+      if (Math.max.apply(null, vo.v) >= end) end += 12;
+      for (m = start; m < end; m++) if (!BLACK[((m % 12) + 12) % 12]) whites.push(m);
+      var ww = (W - 8) / whites.length;
+      g.fillStyle = TH.muted; g.font = "11px ui-monospace, monospace"; g.textAlign = "left"; g.textBaseline = "alphabetic"; g.fillText(vo.label, 4, y0 - 2);
+      whites.forEach(function (wm, i) {
+        var on = vo.v.indexOf(wm) >= 0, isR = ((wm - C.root) % 12 + 12) % 12 === 0;
+        g.fillStyle = on ? (isR ? TH.note : "#2fd27a") : "#f4f4f4"; g.fillRect(4 + i * ww, y0, ww - 1, kh);
+        if (on) { g.fillStyle = "#111"; g.font = "700 10px ui-monospace, monospace"; g.textAlign = "center"; g.fillText(names[(wm + xp) % 12], 4 + i * ww + ww / 2, y0 + kh - 6); }
+      });
+      for (m = start; m < end; m++) {
+        if (!BLACK[((m % 12) + 12) % 12]) continue;
+        var wi = whites.filter(function (w) { return w < m; }).length, x = 4 + wi * ww - ww * 0.3, on2 = vo.v.indexOf(m) >= 0, isR2 = ((m - C.root) % 12 + 12) % 12 === 0;
+        g.fillStyle = on2 ? (isR2 ? TH.note : "#2fd27a") : "#222"; g.fillRect(x, y0, ww * 0.6, kh * 0.6);
+        if (on2) { g.fillStyle = "#111"; g.font = "700 9px ui-monospace, monospace"; g.textAlign = "center"; g.fillText(names[(m + xp) % 12], x + ww * 0.3, y0 + kh * 0.6 - 4); }
+      }
+      txt.push(vo.label + ": " + vo.v.map(function (n) { return names[((n + xp) % 12 + 12) % 12]; }).join(" "));
+    });
+    CSV.piano = vs;
+    $("cs-name").textContent = C.name + " on piano";
+    $("cs-txt").textContent = txt.join(".  ") + ". Green keys are the chord notes; the key in your theme color is the root.";
+  }
   function csDraw() {
     if (!CSV.on) return;
     var I = csInst(), C = csChord(), tag = I.id + C.root + C.tones.join(".") + C.name + TH.id;
     if (tag === CSV.shown) return;
-    CSV.shown = tag; CSV.shapes = csSolve(I.tun, C.root, C.tones, I.bass); CSV.chord = C;
+    CSV.shown = tag; CSV.chord = C;
+    if (I.piano) { CSV.shapes = []; pianoDraw(C); return; }
+    CSV.shapes = csSolve(I.tun, C.root, C.tones, I.bass);
     var cv = $("cs-canvas"), dpr = window.devicePixelRatio || 1, W = cv.clientWidth || 320, H = 190;
     cv.width = W * dpr; cv.height = H * dpr; var g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
     var names = flats ? FLAT : SHARP, n = I.tun.length, txt = [];
@@ -3595,7 +3637,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   $("cs-root").addEventListener("change", function (e) { CSV.root = +e.target.value; csDraw(); });
   $("cs-type").addEventListener("change", function (e) { CSV.type = +e.target.value; csDraw(); });
   $("cs-hear").addEventListener("click", function () {
-    var I = csInst(), v = CSV.shapes[0]; if (!v) return;
+    var I = csInst(), v = CSV.shapes[0];
+    if (I.piano && CSV.piano) { ensureContext().then(function () { return loadSamples("piano"); }).then(function () { var t = ac.currentTime + 0.05; CSV.piano[1].v.forEach(function (m, k) { synth(ac, busOf("chBus", 0.3), "piano", m, t + k * 0.03, 1.8); }); }); return; }
+    if (!v) return;
     ensureContext().then(function () { return loadSamples(I.snd); }).then(function () {
       var t = ac.currentTime + 0.05, k = 0;
       v.f.forEach(function (fr, s) { if (fr >= 0) { synth(ac, busOf("chBus", 0.3), I.snd, I.tun[s] + fr + (I.drop || 0), t + k * 0.05, 1.8); k++; } });
@@ -4291,11 +4335,13 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   function learnPreset(id) { goTab("build"); if (GV.on || GV.ending) gvStop(); SF.form = id; $("sf-form").value = id; sfLoad(); sbDraw(); window.scrollTo(0, 0); }
   function styleByName(nm) { return STYLES.filter(function (st) { return st.name === nm || st.id === nm; })[0]; }
-  function learnStyle(nm, formId) {
+  function learnStyle(nm, formId, progId) {
     var st = styleByName(nm); if (!st) { goTab("jam"); return; }
     goTab("jam"); if (GV.on || GV.ending) gvStop();
     GV.q = ""; $("gv-q").value = ""; if (GV.shelf !== "all") { GV.shelf = "all"; $("gv-shelf").value = "all"; prefs.shelf = "all"; savePrefs(); }
     gvFill(); $("gv-style").value = st.id; gvApply("style");
+    var pg = progId && PROGS.filter(function (x) { return x.id === progId; })[0];
+    if (pg) { $("gv-scale").value = pg.mode; gvProgFill(pg.mode, pg.id); $("gv-prog").value = pg.id; gvApply(""); }
     if (formId) learnPreset(formId); else window.scrollTo(0, 0);
   }
   function LS(id, t, p, steps, acts) { return { id: id, t: t, p: [p], steps: steps, acts: acts || [] }; }
@@ -4359,32 +4405,105 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       steps: ["In the Builder, type a song name and tap Save.", "Tap Record me over the whole song and sing or play along.", "Download the take and make the chord chart. That is one finished sketch."], acts: [toB] },
     LS("f2", "Listen back and fix one thing", "After a take, do not start over. Listen once, pick the single weakest moment, and fix only that.", ["Play your take back.", "Tap Loop my weakest section and practice it five times.", "Record the whole song once more and compare the scores in the practice log."], [toB]),
     LS("f3", "Three sketches in a week", "Speed teaches structure faster than polish. Three quick, different songs will show you what you always do and what you always avoid.", ["Use Surprise me in the Jam tab three times to pick three grooves.", "For each, build a form, write a chorus line, and save it.", "Add all three to the setlist and play them back to back."], [toJ]),
-    { part: "Style guide: Regional Mexican", about: "Corridos, rancheras and norteño." },
-    LS("g-mx1", "A corrido is a story", "A corrido has no chorus. It is verse after verse, each usually four lines of about eight syllables, telling what happened in order: who, where, what, and how it ended. An instrumental interlude gives the listener a breath.", ["Load the corrido groove and shape.", "Plan the story as four verses: introduce the person, the problem, what happened, the farewell.", "Use the 16-bar corrido verse in the Chords menu."], [["Load a corrido", function () { learnStyle("corrido", "corrido"); }]]),
-    LS("g-mx2", "Two chords are enough", "Most rancheras and corridos live on the one chord and the five-seven, with the four chord for colour. The interest comes from the story, the voice and the remates between lines.", ["Pick a Regional Mexican groove and try the chords under Fits this style.", "Choose the Remate fills melody and sing a line, letting the accordion or trumpets answer."], [["Load a ranchera", function () { learnStyle("vals", "ranchera"); }]]),
-    LS("g-mx3", "Second voice in thirds", "The sound of the style is two voices moving together a third apart. The lower or upper voice follows the same rhythm and shape as the lead.", ["In the Builder, set the Harmony guide to a third above or below.", "Sing the harmony against the melody and watch your score."], [toB]),
+    { part: "Style guide: Regional Mexican", about: "Corridos, rancheras, norteño and banda." },
+    LS("g-mx1", "A corrido is a story", "A corrido has no chorus. It is verse after verse, each usually four lines of about eight syllables, telling what happened in order: who, where, what, and how it ended. An instrumental interlude gives the listener a breath between parts of the story.", ["Load the corrido groove and shape.", "Plan the story as four verses: introduce the person, the problem, what happened, the farewell.", "Try the 16-bar corrido verse in the Chords menu."], [["Load a corrido", function () { learnStyle("corrido", "corrido", "mx1"); }]]),
+    LS("g-mx2", "Two chords are enough", "Most rancheras and corridos live on the one chord and the five-seven, with the four chord for colour. The interest comes from the story, the voice and the remates between lines, not from clever harmony.", ["Pick a Regional Mexican groove and try the chords under Fits this style.", "Choose the Remate fills melody and sing a line, letting the accordion or trumpets answer."], [["Load a ranchera", function () { learnStyle("vals", "ranchera", "ranch8"); }]]),
+    LS("g-mx3", "Second voice in thirds", "The sound of the style is two voices moving together a third apart. The second voice follows the same rhythm and shape as the lead, staying a third below most of the time and moving to a sixth when a third would sound wrong.", ["In the Builder, set the Harmony guide to a third below.", "Sing the harmony against the melody and watch your score.", "Try a sixth below on the same section and notice which feels more natural."], [toB]),
+    LS("g-mx4", "The opening says who you are", "Norteño songs often open with an accordion line, mariachi songs with trumpets and violins, banda songs with the brass. Four to eight bars, and the listener already knows the style before a word is sung.", ["Load a norteño groove and pick the Accordion run melody.", "Loop just the Intro and change the melody until it sounds like an opening you would recognise."], [["Load norteño", function () { learnStyle("nortacc", "corrido"); }]]),
+    LS("g-mx5", "The remate: the button at the end", "Many songs in this style end with a quick two-chord hit, five-seven then one, often called “pa-pam”. It closes the story with a wink instead of fading away.", ["Play a polka groove and tap Finish with an ending.", "Listen to the two hits at the end. Try it on a waltz too and hear how the same idea feels different in three."], [["Load a polka", function () { learnStyle("corrido"); }]]),
+    LS("g-mx6", "Waltz, polka or bolero: pick the dance", "The same melody changes character with the rhythm: a ranchera waltz in three feels like a toast, a polka in two feels like a party, a bolero ranchero feels like a slow dance. Choose the dance that fits the story before you write.", ["Keep one chord progression and switch between the ranchera waltz, the polka and the bolero ranchero.", "Hum the same line over each and decide which one your story wants."], [["Load a bolero ranchero", function () { learnStyle("bolranch", "ranchera"); }]]),
+    { part: "Style guide: Modern regional Mexican", about: "Sierreño, corridos tumbados and banda pop." },
+    LS("g-tu1", "Requinto riffs carry the song", "In sierreño and tumbado songs the requinto guitar plays fast melodic runs between and under the vocal lines, while the bass instrument (tololoche or tuba) walks underneath. The requinto is the hook.", ["Load the corrido tumbado groove and pick the Requinto riff melody.", "Write your own two-bar riff in My melody using mostly fast notes."], [["Load a tumbado groove", function () { learnStyle("tumbado", "sierreno"); }]]),
+    LS("g-tu2", "Minor keys and sad endings", "Many modern corridos and sad sierreños sit in a minor key, and progressions like i – VII – VI – V7 give that heavy, late-night feeling. The words are often confessional, closer to a ballad than an old story corrido.", ["Switch Key and scale to minor and try Sad corrido and Minor corrido in the Chords menu.", "Write a verse about one feeling, not a whole story."], [["Load sad sierreño", function () { learnStyle("tumbado44", "sierreno", "tb1"); }]]),
+    LS("g-tu3", "Relaxed, behind-the-beat delivery", "The vocal style is laid back: lines start a little late, words are almost spoken, and the melody stays in a narrow range in the verse. The chorus opens up but stays cool rather than shouting.", ["Hum a verse line that starts on beat two instead of beat one.", "Keep the verse inside four or five notes; let the chorus go higher."], [toJ]),
+    LS("g-tu4", "Brass or guitars for the chorus", "A modern trick is to keep the verse guitar-only and bring in trombones and tuba for the chorus, so the song grows from a small group into a full banda.", ["In the Builder, turn off Chords and Melody in the verses of a tumbado song.", "Change the melody instrument to Trombones for the chorus sections by trying different sounds in the Jam tab."], [toB]),
     { part: "Style guide: Grupera", about: "Keyboard bands and romantic ballads." },
     LS("g-gr1", "Open with the keyboard hook", "Grupera songs usually start with a short keyboard or guitar melody, four or eight bars, that returns between verses. People recognise the song from that hook before the singer starts.", ["Load a grupera ballad.", "Pick the Keyboard hook melody and loop the Intro.", "Write your own hook in My melody and use it in the Intro and Interlude."], [["Load a grupera ballad", function () { learnStyle("grupbalada", "balada"); }]]),
-    LS("g-gr2", "Simple words, direct feeling", "The lyrics speak straight to one person: I love you, I miss you, forgive me. Verses set the situation in a few lines and the chorus repeats the plea.", ["Write a chorus that says the feeling in the first line, to one person, as “tú” or “you”.", "Try the Romantic chords under Fits this style."], [toB]),
+    LS("g-gr2", "Simple words, direct feeling", "The lyrics speak straight to one person: I love you, I miss you, forgive me. Verses set the situation in a few lines and the chorus repeats the plea. Plain, everyday words sung with feeling beat clever wordplay.", ["Write a chorus that says the feeling in the first line, to one person, as “tú” or “you”.", "Try the Romantic chords under Fits this style."], [toB]),
     LS("g-gr3", "Ballad or cumbia", "The same band plays slow ballads for dancing close and cumbias for dancing apart. The song shape is the same; the beat and tempo change the whole mood.", ["Load a grupera cumbia, then a ballad, with the same chords.", "Notice which one your chorus idea fits."], [["Load a grupera cumbia", function () { learnStyle("grupcumbia", "cumbia"); }]]),
-    { part: "Style guide: Ballads", about: "Romantic and dramatic ballads." },
-    LS("g-ba1", "Build slowly", "A ballad starts almost empty, often just piano or guitar, and adds something in each section until the last chorus is the biggest moment of the song.", ["Load a ballad and the ballad shape.", "Set the Intro and Verse 1 to chords only and add one part per section.", "Use the key change on the last chorus."], [["Load a ballad", function () { learnStyle("Pop ballad with orchestra", "balada"); }]]),
+    LS("g-gr4", "The chord that lifts", "A favourite grupera move is a major chord on the third step (III7) leading to the four chord. It gives a hopeful lift in the middle of a sad line.", ["Choose Keyboard ballad: I – III7 – IV – V7 in the Chords menu.", "Sing a line over it and put your most emotional word on the III7 bar."], [["Load it", function () { learnStyle("grupbalada", "balada", "gp3"); }]]),
+    LS("g-gr5", "Electric piano and synth strings", "The band sound is built on electric piano or organ chords, synth strings holding long notes, a clean guitar playing small fills, and a steady, simple drum pattern. Nothing is busy; everything supports the voice.", ["In the Jam tab, pick a grupera groove and look at Who is playing.", "Use the Mix sliders to hear each part alone, then put them back together."], [toJ]),
+    { part: "Style guide: Los Bukis style", about: "Keyboard-led romantic songs with a soft voice." },
+    LS("g-bu1", "A tune you can whistle", "The instrumental hook is as important as the vocal. It is usually a smooth line on keyboard or guitar, mostly steps with one small leap, repeated between verses.", ["Load a Los Bukis style ballad and pick the Keyboard riff melody.", "Write a four-bar hook in My melody using mostly neighbouring notes and one jump."], [["Load a ballad", function () { learnStyle("Slow romantic ballad", "balada"); }]]),
+    LS("g-bu2", "Soft voice, close to the microphone", "The singing is gentle and intimate rather than loud. Melodies stay in a comfortable middle range so the voice never has to strain; the chorus is only a little higher than the verse.", ["Use Move the song into my range, then check that your verse and chorus are only three or four notes apart at the top.", "Sing the whole song quietly and see if it still works."], [toB]),
+    LS("g-bu3", "Story of love and loss, told plainly", "Lyrics describe a relationship in simple images: a goodbye, an empty house, a promise. Many songs are written as a direct conversation with the person who left.", ["Write Verse 1 as what you would say if they were in the room.", "Write the chorus as the one sentence you never got to say."], [toB]),
+    LS("g-bu4", "Ballad, cumbia and mid-tempo in one album", "Albums mix slow ballads, cumbias and steady mid-tempo love songs, all with the same keyboard sound. Practice writing one idea in all three feels.", ["Pick Slow romantic ballad, then Cumbia grupera with organ, then Rhythmic ballad.", "Keep the same chords and hum the same melody over each."], [["Load the cumbia", function () { learnStyle("Cumbia grupera with organ", "cumbia"); }]]),
+    { part: "Style guide: Los Temerarios style", about: "Slow, lush romantic ballads." },
+    LS("g-te1", "Slow and lush", "Tempos are slow and the sound is full: glassy electric piano, big synth strings, a soft drum machine and a sax or synth line answering the voice.", ["Load Slow synth ballad and listen to Who is playing.", "Pull the strings (Chords) up and drums down in the Mix."], [["Load a slow ballad", function () { learnStyle("Slow synth ballad", "balada"); }]]),
+    LS("g-te2", "The answering instrument", "Between vocal lines an instrument answers, often a sax or a synth lead. The singer leaves a gap at the end of each line and the answer fills it.", ["Pick the Sax sighs melody.", "Sing a line that stops two beats before the end of the bar and let the sax answer."], [toJ]),
+    LS("g-te3", "Long held notes at the end of lines", "The melody often lands on a long note at the end of each line, held while the chords move underneath. That long note is where the feeling lives.", ["In My melody, make the last note of each bar last at least two beats.", "Sing it and hold the note while you listen to the chord change under you."], [toJ]),
+    LS("g-te4", "The six-eight slow dance", "Many romantic songs use a slow six-eight feel: two big beats per bar, each split into three. It sways rather than walks.", ["Load Six-eight slow dance and count “one-two-three, four-five-six”.", "Write a melody with a long note on each “one” and “four”."], [["Load it", function () { learnStyle("Six-eight slow dance", "balada"); }]]),
+    { part: "Style guide: Juan Gabriel style", about: "Mariachi, pop and drama in one voice." },
+    LS("g-jg1", "Mariachi with pop songwriting", "The songs often use a mariachi band but the shape of a pop song: verses that build, a big chorus that repeats, and a key change or a held note near the end.", ["Load Slow mariachi ranchera with the ballad shape.", "Turn on the key change for the last chorus."], [["Load it", function () { learnStyle("Slow mariachi ranchera", "balada"); }]]),
+    LS("g-jg2", "Write for the singer you are not", "Many of his songs became famous in other singers’ voices. Writing a song meant for someone else’s range and personality is a useful exercise: it forces you to think about the story first.", ["Pick a singer you know and write a chorus they would sing.", "Use Move the song into my range, then move it back up or down for them."], [toB]),
+    LS("g-jg3", "From slow to party", "Albums go from slow heartbreak rancheras to bright dance songs with strings and trumpets. A good test of an idea is whether it works both slow and fast.", ["Load Disco-pop with strings and sing the same chorus you wrote for the ranchera.", "Change the tempo with Tap the tempo until it feels right."], [["Load the disco groove", function () { learnStyle("Disco-pop with strings", "pop"); }]]),
+    LS("g-jg4", "Violins sing with you, trumpets answer", "In the arrangement the violins often double or harmonise the vocal melody, while the trumpets play short answers at the ends of lines.", ["Pick Violins singing along for the chorus and Trumpet answers for the verse.", "Set the melody instrument to Strings, then to Trumpets, and hear the difference."], [toJ]),
+    { part: "Style guide: Camilo Sesto style", about: "Dramatic Spanish ballads that build to a peak." },
+    LS("g-cs1", "Start small, end huge", "These ballads open with piano or soft strings and keep adding until the last chorus is a wall of strings, drums and a high held note. The whole song is one long build.", ["Load Piano and strings ballad and the ballad shape.", "In the Builder, turn off Drums and Bass for the first verse, add one part each section, and use the key change."], [["Load it", function () { learnStyle("Piano and strings ballad", "balada"); }]]),
+    LS("g-cs2", "Put the highest note on the most important word", "The peak of the chorus is usually one high, long note on the title or the key word, sung at full voice.", ["Pick the High held note melody and listen.", "Write a chorus melody with exactly one highest note and put your title word on it."], [toB]),
+    LS("g-cs3", "Minor key drama", "Minor-key verses that move to a brighter chorus, or a minor chorus that circles through many chords, give the operatic feeling. He also sang in rock opera, and some songs have that theatrical weight.", ["Switch to minor and try Minor circle and Dramatic minor build.", "Load Rock opera and compare."], [["Load Rock opera", function () { learnStyle("Rock opera", "rock"); }]]),
+    LS("g-cs4", "Triplet piano under the voice", "A rolling triplet piano (three notes per beat) under a slow beat gives forward motion without speeding up.", ["Load Triplet power ballad and watch the rhythm grid.", "Sing long notes over the moving piano."], [["Load it", function () { learnStyle("Triplet power ballad", "balada"); }]]),
+    { part: "Style guide: José José style", about: "Elegant romantic ballads with an orchestra." },
+    LS("g-jj1", "Seventh chords and smooth moves", "The harmony is richer than most pop: major sevenths, minor sevenths and chords that move by small steps, close to bolero and jazz.", ["Try Smooth string theme with the chords Bolero with sevenths and Standard: Imaj7 – VI7 – ii7 – V7.", "Open Show chord shapes on guitar or piano to see them."], [["Load it", function () { learnStyle("Bolero pop with strings", "bolero", "jz1"); }]]),
+    LS("g-jj2", "Phrasing like speech", "The great interpreters of this style shape each line like a sentence: soft at the start, a swell in the middle, a breath at the end. The melody leaves room for that.", ["Sing one line three times: flat, then swelling in the middle, then dropping to almost a whisper at the end.", "Turn on the loudness bar (Menu, Switches) and watch it move."], []),
+    LS("g-jj3", "The orchestra answers", "Strings hold long notes under the verse and a sax or trumpet answers at the end of lines. The singer and the orchestra take turns.", ["Pick Sax answers for verses and Velvet strings for choruses.", "In the Builder, use Write your own melody in the verse and leave the last two beats of each bar empty."], [toB]),
+    LS("g-jj4", "A song that grows to a final note", "Many songs end on one long, strong note over the last chord. Plan the melody backwards: decide the final note first, then write the chorus so it climbs there.", ["Choose the Grand ending groove.", "Write the last bar of your chorus first, then the bars before it."], [["Load Grand ending", function () { learnStyle("Grand ending", "balada"); }]]),
+    { part: "Style guide: Ballads", about: "Romantic and dramatic ballads in general." },
+    LS("g-ba1", "Build slowly", "A ballad starts almost empty, often just piano or guitar, and adds something in each section until the last chorus is the biggest moment of the song.", ["Load a ballad and the ballad shape.", "Set the Intro and Verse 1 to chords only and add one part per section.", "Use the key change on the last chorus."], [["Load a ballad", function () { learnStyle("baladamex", "balada"); }]]),
     LS("g-ba2", "Long notes on the important words", "In a ballad the chorus melody holds its notes. Put the title on the longest, highest note so the singer can open up on it.", ["Pick the Big chorus line melody and listen to how long each note lasts.", "Write a chorus melody with one note that lasts half a bar or more, and put your title word there."], [toB]),
     LS("g-ba3", "Chords that pull", "Ballads use chords that lean toward the next one: a seventh before the four chord, or a major three chord lifting into the six. That pull is what feels romantic.", ["Try Inner line and Ballad with a lift in the Chords menu.", "Listen for the one chord that makes you expect the next."], [toJ]),
+    LS("g-ba4", "The bridge goes somewhere sad or hopeful", "After two choruses a ballad often turns: a bridge in the relative minor, or one that climbs to a brighter chord before the last chorus.", ["Add a Bridge before the last Chorus.", "Type minor chords for the bridge, for example vi – IV – ii – V, in the Or type your own chords box."], [toB]),
+    LS("g-ba5", "Breathe in the arrangement", "Leave silence: a bar with only piano before the last chorus, or a held chord with no drums. Ballads need air as much as notes.", ["Add a 4-bar Pre-chorus before the last Chorus and turn off Drums, Bass and Melody in it."], [toB]),
     { part: "Style guide: Dream pop", about: "Texture, space and long notes." },
     LS("g-dp1", "Texture over changes", "Dream pop often sits on two chords for a long time. The interest comes from layers: echoing guitar, a pad, a soft voice far back in the mix.", ["Load a dream pop groove and choose a two-chord progression.", "Use the Mix sliders: chords up, drums down."], [["Load a dream pop groove", function () { learnStyle("Slow shimmer", "pop"); }]]),
     LS("g-dp2", "Float the melody", "Melodies are slow and smooth, with long notes that start a little after the beat and few big jumps. The voice is another instrument in the wash.", ["Pick the Floating note or Chiming descent melody.", "Write your own with only three or four long notes per two bars."], [toJ]),
     LS("g-dp3", "Images, not stories", "Lyrics are impressions: light, weather, rooms, memories. A few repeated lines are enough; the mood does the rest.", ["Write six short image lines with no “because” in them.", "Use three for the verse and repeat one as the chorus."], [toB]),
-    { part: "Style guide: Lorde style", about: "Minimal beats, few chords, big contrasts." },
+    LS("g-dp4", "Major sevenths and the sad four", "Two harmonic colours do most of the work: major seventh chords (warm and blurry) and the four chord turning minor (bittersweet).", ["Try Dream sevenths and Fading light in the Chords menu.", "Hold one chord and sing the seventh of it, the note just below the root."], [["Load it", function () { learnStyle("Slow shimmer", "pop", "dr5"); }]]),
+    LS("g-dp5", "Slow tempo, fast echo", "The drums are often slow or half-time while guitar notes echo quickly, so the song feels both still and moving.", ["Load Dream pop with harp and watch the rhythm grid: slow kick and snare, fast notes.", "Try the same chords at 60 bpm and at 90 bpm."], [["Load it", function () { learnStyle("Dream pop with harp", "pop"); }]]),
+    { part: "Style guide: Indie pop and Alvvays style", about: "Jangly guitars and bright hooks." },
+    LS("g-in1", "Jangle: ringing guitar notes", "Indie pop leans on clean, chiming guitar picking, often a 12-string, with a busy bass line underneath. The guitar part is a melody of its own.", ["Load Jangle rush and listen to Who is playing.", "Write a fast picked line in My melody."], [["Load Jangle rush", function () { learnStyle("Jangle rush", "pop"); }]]),
+    LS("g-in2", "Sad words, bright music", "Many indie songs pair a sad or awkward lyric with an upbeat tempo and major chords. The contrast is the charm.", ["Write a verse about something going wrong.", "Put it over a fast major groove and see if it gets more interesting."], [toB]),
+    LS("g-in3", "Short and fast", "Songs are often under three minutes, with short intros and a chorus that arrives early.", ["Build intro 4, verse 8, chorus 8, verse 8, chorus 8 and check the time is under 2:45 at a fast tempo."], [["Build it", function () { learnForm([["intro", 4], ["verse", 8], ["chorus", 8], ["verse", 8], ["chorus", 8]]); }]]),
+    LS("g-in4", "A keyboard line on top", "A simple organ or synth melody doubling the chorus, or playing between lines, is a common Alvvays-style touch.", ["Pick the Whistling organ line melody over an Alvvays style groove."], [["Load it", function () { learnStyle("Dreamy mid-tempo", "pop"); }]]),
+    { part: "Style guide: Lorde style", about: "Minimal beats, few chords, big contrasts, and her real progressions." },
     LS("g-lo1", "Almost nothing, on purpose", "The early sound is a sparse beat, a deep bass and one held chord, leaving the whole middle of the song empty for the voice and stacked harmonies.", ["Load a Pure Heroine era groove.", "Mute the chords in the Verse so it is only drums, bass and voice.", "Bring them back in the Chorus."], [["Load a minimal groove", function () { learnStyle("lo-ph1", "pop"); }]]),
     LS("g-lo2", "Melody close to speech", "Verses often stay on two or three neighbouring notes with a talking rhythm, then the chorus opens up wider and higher. The rhythm of the words is the hook.", ["Pick the Two-note chant melody and listen.", "Write a verse melody on only two rows, then a chorus that uses five."], [toJ]),
-    LS("g-lo3", "Few chords, used well", "Many songs in this style use two to four chords for the whole song. Sections change by adding and removing layers, not by changing harmony.", ["Try the progressions under Fits this style for each era.", "Keep the same chords for verse and chorus and make the difference with the Drums, Bass, Chords and Melody boxes."], [toB]),
-    LS("g-lo4", "The pre-chorus build and the drop", "From the second album on, songs often strip down before the chorus and then hit with piano and a dance beat. Contrast is the whole trick.", ["Load a Melodrama era groove and the pop shape.", "Turn off Drums and Bass in the Pre-chorus."], [["Load a piano dance groove", function () { learnStyle("lo-me1", "pop"); }]]),
+    LS("g-lo3", "Few chords, used well", "Many of her songs use two to five chords. “Sober” lives on IV – vi – V and “Writer in the Dark” verse on just V – IV. Sections change by adding and removing layers, not by changing harmony.", ["Pick a Lorde groove and open the Chords menu. Her songs are listed first under From Lorde’s songs.", "Keep the same chords for verse and chorus and make the difference with the Drums, Bass, Chords and Melody boxes."], [["Load Sober chords", function () { learnStyle("lo-me1", "pop", "lr-so"); }]]),
+    LS("g-lo4", "The pre-chorus build and the drop", "From Melodrama on, songs often strip down before the chorus and then hit with piano and a dance beat. Contrast is the whole trick.", ["Load a Melodrama era groove and the pop shape.", "Turn off Drums and Bass in the Pre-chorus."], [["Load a piano dance groove", function () { learnStyle("lo-me1", "pop", "lr-gl2"); }]]),
+    LS("g-lo5", "Melodrama: piano and the long descent", "“Liability” walks through eight chords, I – iii – vi – V – IV – vi – ii – V, each one stepping somewhere new before coming home. It is a good model for a sad piano verse.", ["Load the bare piano groove with the Liability chords.", "Write a four-line verse over it, one line per two chords."], [["Load it", function () { learnStyle("lo-me2", "balada", "lr-li"); }]]),
+    LS("g-lo6", "Solar Power: the flat seven", "“Solar Power” uses only I – bVII – IV, the same chord family as “Green Light” and “Royals”. The bVII chord (a major chord one step below home) sounds sunny and loose instead of sad.", ["Load a Solar Power era groove with the Solar Power chords.", "Hum a melody and land on the note that belongs to the bVII chord when it arrives."], [["Load it", function () { learnStyle("lo-sp1", "pop", "lr-sp"); }]]),
+    LS("g-lo7", "Virgin: one loop, all the way through", "“What Was That” keeps the same IV – vi – I – V loop in the verse and the chorus. The song moves through energy, drums and melody instead of new chords.", ["Load a Virgin era groove with the What Was That chords.", "Build verse, pre-chorus, chorus with the same chords, and make the chorus bigger only with drums and a higher melody."], [["Load it", function () { learnStyle("lo-vi1", "pop", "lr-ww"); }]]),
+    LS("g-lo8", "Start on the four chord", "Several of her progressions start away from home: “What Was That” on IV, “Sober” on IV, “Favourite Daughter” on IVmaj7. Starting on IV makes the song feel like it is reaching for something.", ["Compare Pop: I – IV – vi – V with What Was That: IV – vi – I – V. They are almost the same chords in a different order.", "Write a chorus over the one that starts on IV."], [toJ]),
     { part: "Style guide: The Marías style", about: "Soft, jazzy and laid-back." },
-    LS("g-ma1", "Seventh chords", "The smooth sound comes from seventh chords: major sevenths and minor sevenths instead of plain triads, moving in gentle steps.", ["Load a groove from The Marías style group.", "Try Sunny sevenths, Lounge and Velvet cycle in the Chords menu.", "Open Show chord shapes to see them on guitar."], [["Load a lounge groove", function () { learnStyle("Velvet lounge", "pop"); }]]),
+    LS("g-ma1", "Seventh chords", "The smooth sound comes from seventh chords: major sevenths and minor sevenths instead of plain triads, moving in gentle steps.", ["Load a groove from The Marías style group.", "Try Sunny sevenths, Lounge and Velvet cycle in the Chords menu.", "Open Show chord shapes to see them on guitar or piano."], [["Load a lounge groove", function () { learnStyle("Velvet lounge", "pop", "ma2"); }]]),
     LS("g-ma2", "Sing softer, sit back", "The groove is steady and relaxed and the voice is quiet and close. Melodies start after the beat and leave gaps that a trumpet or guitar answers.", ["Pick the Lazy trumpet or Muted answers melody.", "Hum a line that starts on beat two instead of beat one."], [toJ]),
-    LS("g-ma3", "Two languages", "Lines can move between Spanish and English when the feeling changes, for example a verse in one and the chorus in the other.", ["Write the same chorus line in both languages.", "Keep whichever sings better on your melody, and use the other language for the verse."], [toB])
+    LS("g-ma3", "Two languages", "Lines can move between Spanish and English when the feeling changes, for example a verse in one and the chorus in the other.", ["Write the same chorus line in both languages.", "Keep whichever sings better on your melody, and use the other language for the verse."], [toB]),
+    LS("g-ma4", "Psychedelic soul pocket", "Drums are tight but unhurried, the bass is melodic and round, and guitar or keys have a little echo. The groove matters as much as the song.", ["Load Slow psychedelic soul and solo the bass with the Mix sliders.", "Then load Funky bass and Wurlitzer and compare the bass lines."], [["Load it", function () { learnStyle("Slow psychedelic soul", "pop"); }]]),
+    LS("g-ma5", "Bolero roots", "Under the dreamy sound there is often a Latin pulse: bossa nova or bolero rhythms with modern production.", ["Load Dreamy bossa sway and Slow dance in Spanish.", "Write a chorus over the bolero feel with Minor lounge chords."], [["Load it", function () { learnStyle("Slow dance in Spanish (bolero feel)", "bolero", "ma3"); }]]),
+    { part: "Style guide: Not for Radio style", about: "Slow, lush and melancholic." },
+    LS("g-nr1", "Slow, lush, melancholic", "Reviews of the album Melt describe it as slow-tempo, lush and melancholic, built on soft vocals and piano melodies, with some songs on minimal production and synth textures.", ["Load Winter piano and set the tempo slower with Tap the tempo.", "Write a melody with only long notes."], [["Load Winter piano", function () { learnStyle("Winter piano", "balada"); }]]),
+    LS("g-nr2", "Minor chords that drift", "Cold minor progressions that move between i, VI and iv keep the mood suspended. Avoid resolving strongly to the home chord too often.", ["Try Cold minor and Soft five in the Chords menu.", "End your chorus on a chord that is not the home chord."], [["Load it", function () { learnStyle("Slow snowfall", "balada", "nr1"); }]]),
+    LS("g-nr3", "Space between the words", "Soft, breathy singing needs room. Leave whole beats empty and let the piano or strings fill them.", ["In My melody, write only two notes per bar for the verse.", "Pick the Falling answer or Low string line melody for the instruments."], [toJ]),
+    LS("g-nr4", "Strings and harp instead of drums", "Many songs have no drum kit at all. Strings, harp and piano carry the time.", ["Load String swell ballad or Slow snowfall.", "In the Builder, turn Drums off for the whole song and listen to how the music still moves."], [["Load it", function () { learnStyle("String swell ballad", "balada"); }]]),
+    { part: "Style guide: Radiohead style", about: "Uneasy harmony, odd meters, building songs." },
+    LS("g-rh1", "Borrowed chords for unease", "A chord from the other mode, like a flat six in a major key or a major four in a minor key, makes a song feel uneasy or bittersweet.", ["Try Borrowed chord: I – bVI – IV – I and Uneasy: i – IV – i – VI.", "Sing a long note over the borrowed chord and feel it change colour."], [["Load it", function () { learnStyle("Arpeggio guitar ballad", "rock", "rh4"); }]]),
+    LS("g-rh2", "Five beats in a bar", "Some songs count in five (three plus two). It feels like it is always tripping forward.", ["Load Five-beat piano groove and count 1-2-3-1-2.", "Write a melody that starts on beat one and rests on beat four."], [["Load it", function () { learnStyle("Five-beat piano groove", "rock"); }]]),
+    LS("g-rh3", "Arpeggio patterns that never stop", "A guitar or piano plays a repeating broken-chord pattern from start to finish while everything else changes around it.", ["Pick the Guitar pattern melody and loop it over the whole song.", "Change only the drums and bass between sections."], [toJ]),
+    LS("g-rh4", "Quiet to loud", "Songs often build from a quiet verse to a loud, distorted climax. The build is the structure.", ["Build a song whose sections go chords-only, then add bass, then drums, then switch to Loud rock chorus for the last section."], [["Load Loud rock chorus", function () { learnStyle("Loud rock chorus", "rock"); }]]),
+    { part: "Style guide: R&B", about: "Smooth chords and vocal runs." },
+    LS("g-rb1", "Seventh and ninth chords", "R&B harmony is built on minor sevenths, major sevenths and ninths, often moving down by step.", ["Try Step down: IVmaj7 – iii7 – ii7 – Imaj7.", "See the chords with Show chord shapes on piano."], [["Load it", function () { learnStyle("slowjam", "rnb", "rb1"); }]]),
+    LS("g-rb2", "Runs on the last word", "Singers decorate the end of a line with a quick run of notes down the scale. Practice it slowly first.", ["Pick the Vocal-style run melody and loop it at Practice speed 60%.", "Sing along until you can match it at full speed."], [toB]),
+    LS("g-rb3", "Groove first, then melody", "The drums sit back and the bass is syncopated. A melody that starts off the beat locks in with that groove.", ["Load Neo-soul and watch the rhythm grid.", "Write a melody whose first note is on an “and”, not on a number."], [["Load Neo-soul", function () { learnStyle("neosoul", "rnb"); }]]),
+    { part: "Style guide: Jazz", about: "Standards, ii–V–I and swing." },
+    LS("g-jz1", "The ii – V – I", "The most common move in jazz: a minor seventh on two, a dominant seventh on five, home on a major seventh. Hear it until you recognise it anywhere.", ["Load Swing with Jazz: ii7 – V7 – Imaj7.", "Sing the root of each chord as it changes."], [["Load it", function () { learnStyle("swing", "aaba", "251"); }]]),
+    LS("g-jz2", "A A B A, 32 bars", "Many standards are four eight-bar parts: tune, tune again, a contrasting bridge, and the tune once more.", ["Load the jazz standard shape and follow the song map.", "Write one eight-bar A melody and reuse it three times."], [["Load the shape", function () { learnPreset("aaba"); }]]),
+    LS("g-jz3", "Swing the eighths", "In swing, pairs of eighth notes are played long-short. A melody written straight sounds stiff until it swings.", ["Load Swing and clap along to the ride cymbal.", "Hum a line in long-short pairs."], [["Load Swing", function () { learnStyle("swing"); }]]),
+    { part: "Style guide: Rock and metal", about: "Riffs, power chords and big choruses." },
+    LS("g-rk1", "Start from a riff", "Rock songs often grow from a short guitar riff that repeats under the verse. Write the riff first, then fit the vocal around it.", ["Pick the Guitar riff melody over a rock groove.", "Write your own one-bar riff in My melody using low notes."], [["Load Hard rock", function () { learnStyle("hardrock", "rock"); }]]),
+    LS("g-rk2", "Power chords and the flat seven", "Power chords (root and fifth) and progressions like I – bVII – IV give the open, loud rock sound.", ["Try Rock: I – bVII – IV – I and Rock: I – bIII – IV."], [["Load it", function () { learnStyle("hardrock", "rock", "1b74"); }]]),
+    LS("g-rk3", "Metal: minor, low and tight", "Metal riffs sit in minor keys, use the low strings, and lock exactly with the kick drum.", ["Load Double kick gallop with Heavy: i – VI – VII.", "Pick the Chugging riff melody and watch it line up with the kick in the rhythm grid."], [["Load it", function () { learnStyle("dkgallop", "rock", "mt2"); }]])
   ];
+
   function learnRender() {
     var host = $("learn-host"), done = prefs.learn || {}, total = 0, n = 0, cur = null, open = prefs.learnOpen || {}; host.innerHTML = "";
     LESSONS.forEach(function (L) {
@@ -4469,6 +4588,33 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   PG("rk1", "Rock: I – bIII – IV", ["I", "bIII", "IV", "I"], "maj", ["rock", "metal"]);
   PG("mt2", "Heavy: i – VI – VII", ["i", "bVI", "bVII", "i"], "min", ["metal", "rock"]);
   PG("jz1", "Standard: Imaj7 – VI7 – ii7 – V7", ["Imaj7", "VI7", "ii7", "V7"], "maj", ["jazz", "jj", "mar"]);
+  /* Chord progressions from Lorde's songs (chord order only; how long each chord lasts is simplified). Sources: Hooktheory TheoryTab analyses and published chord sheets. */
+  function LP(id, name, bars, mode, era) { PROGS.push({ id: id, name: name, bars: bars, mode: mode, fams: [era, "lsi"], song: true }); }
+  LP("lr-gl1", "“Green Light” verse: vi – I – IV", ["vi", "I", "IV"], "maj", "lme");
+  LP("lr-gl2", "“Green Light” chorus feel: I – bVII – IV", ["I", "bVII", "IV", "I"], "maj", "lme");
+  LP("lr-li", "“Liability”: I – iii – vi – V – IV – vi – ii – V", ["I", "iii", "vi", "V", "IV", "vi", "ii", "V"], "maj", "lme");
+  LP("lr-su1", "“Supercut” verse: I – IVsus2 – vi – IV", ["I", "IVsus2", "vi", "IV"], "maj", "lme");
+  LP("lr-su2", "“Supercut” chorus: vi – IV – vi – I – IV", ["vi", "IV", "vi", "I", "IV"], "maj", "lme");
+  LP("lr-pp1", "“Perfect Places” verse: I – iii – vi – V", ["I", "iii", "vi", "V"], "maj", "lme");
+  LP("lr-pp2", "“Perfect Places” chorus: IVadd9 – vi7 – iii", ["IVadd9", "vi7", "iii"], "maj", "lme");
+  LP("lr-hf", "“Hard Feelings” chorus: I – IV – vi – IV", ["I", "IV", "vi", "IV"], "maj", "lme");
+  LP("lr-so", "“Sober”: IV – vi – V", ["IV", "vi", "V"], "maj", "lme");
+  LP("lr-lo1", "“The Louvre” verse: I – iii – IV – vi – V", ["I", "iii", "IV", "vi", "V"], "maj", "lme");
+  LP("lr-lo2", "“The Louvre” chorus: IV – V – vi", ["IV", "V", "vi"], "maj", "lme");
+  LP("lr-wd1", "“Writer in the Dark” verse: V – IV", ["V", "IV"], "maj", "lme");
+  LP("lr-wd2", "“Writer in the Dark” chorus: I – ii – vi – ii", ["I", "ii", "vi", "ii"], "maj", "lme");
+  LP("lr-sp", "“Solar Power”: I – bVII – IV – I", ["I", "bVII", "IV", "I"], "maj", "lsp");
+  LP("lr-sn", "“Stoned at the Nail Salon” chorus: IV – I – V", ["IV", "I", "V"], "maj", "lsp");
+  LP("lr-mr", "“Mood Ring” chorus: i – III – VI – III", ["i", "bIII", "bVI", "bIII"], "min", "lsp");
+  LP("lr-sg", "“Secrets from a Girl” chorus: V – IV", ["V", "IV"], "maj", "lsp");
+  LP("lr-ma", "“The Man with the Axe” chorus: IV – I – iii – IV – iv", ["IV", "I", "iii", "IV", "iv"], "maj", "lsp");
+  LP("lr-ww", "“What Was That”: IV – vi – I – V", ["IV", "vi", "I", "V"], "maj", "lvi");
+  LP("lr-my", "“Man of the Year”: I – V – IV", ["I", "V", "IV"], "maj", "lvi");
+  LP("lr-ha", "“Hammer” chorus: I – bVII – vi7 – bVIIsus2", ["I", "bVII", "vi7", "bVIIsus2"], "maj", "lvi");
+  LP("lr-sh", "“Shapeshifter” chorus: I – V – vi7 – IVmaj7", ["I", "V", "vi7", "IVmaj7"], "maj", "lvi");
+  LP("lr-ca", "“Current Affairs” pre-chorus: IV – Vsus4 – vi", ["IV", "Vsus4", "vi"], "maj", "lvi");
+  LP("lr-fd", "“Favourite Daughter” chorus: IVmaj7 – I – V", ["IVmaj7", "I", "V"], "maj", "lvi");
+  LP("lr-da", "“David” chorus: V – vi – IVmaj7", ["V", "vi", "IVmaj7"], "maj", "lvi");
   var PROG_FAMS = { "6415": ["lme", "lph", "epop"], pop: ["lme", "indie", "alv", "bal"], minb: ["lph", "lvi", "nfr"], "m-pop": ["lvi", "epop", "lph"], onem: ["lph", "lvi", "rh"], dream2: ["dream", "mar", "lsp"], dream3: ["dream", "mar"], dream4: ["dream"], dream: ["dream"],
     "m-dream": ["dream", "nfr", "rh"], bol7: ["mar", "jj"], "2516": ["mar", "jazz", "rnb"], "m-sad": ["nfr", "bal", "cs"], "m-rom": ["nfr", "bal", "grup"], "1364": ["bal", "nfr", "lme"], "50s": ["bal", "grup", "buk", "tem"], bolero: ["bal", "jj", "grup", "buk", "tem", "jg"],
     "1-4-5": ["mex", "grup", "buk", "jg"], ranch: ["mex", "jg"], ranch7: ["mex", "jg"], ranch8: ["mex", "jg"], "1-5": ["mex", "tumb"], "m1-5": ["mex", "tumb"], "m1-4-5": ["mex", "tumb", "grup"], "m-tumb": ["tumb", "mex"], andal: ["tumb", "mex", "metal"], "m-bol": ["jj", "mar", "bal"],
@@ -4478,9 +4624,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function gvProgFill(modeV, want) {
     var ps = $("gv-prog"); ps.innerHTML = "";
     var fk = FAM_OF[GV.style.group], F = FAMS[fk], og1 = document.createElement("optgroup"), og2 = document.createElement("optgroup");
+    var og0 = document.createElement("optgroup"); og0.label = "From Lorde\u2019s songs";
     og1.label = "Fits this style" + (F ? " (" + F.name + ")" : ""); og2.label = "All the others";
-    PROGS.forEach(function (pg) { if (pg.mode !== modeV) return; var o = document.createElement("option"); o.value = pg.id; o.textContent = pg.name; (pg.fams && pg.fams.indexOf(fk) >= 0 ? og1 : og2).appendChild(o); });
-    if (og1.children.length) ps.appendChild(og1); ps.appendChild(og2);
+    PROGS.forEach(function (pg) { if (pg.mode !== modeV) return; var o = document.createElement("option"); o.value = pg.id; o.textContent = pg.name; var fits = pg.fams && pg.fams.indexOf(fk) >= 0; (pg.song && (fits || fk === "lph") ? og0 : fits ? og1 : og2).appendChild(o); });
+    if (og0.children.length) ps.appendChild(og0); if (og1.children.length) ps.appendChild(og1); ps.appendChild(og2);
     ps.value = want; if (ps.value !== want) ps.selectedIndex = 0;
   }
   function gvFill() {
