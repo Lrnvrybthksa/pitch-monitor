@@ -563,6 +563,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         <canvas id="cs-canvas" style="width:100%;height:190px;display:block"></canvas>
         <p class="small" id="cs-txt"></p>
         <button type="button" class="ghost" id="cs-hear">Hear this chord</button>
+        <div id="cs-prac" hidden style="display:flex;flex-direction:column;gap:6px"><button type="button" class="ghost" id="cs-pr-go">Practise these notes with the mic</button><p class="small" id="cs-pr-msg"></p></div>
         <p class="small">The colored dots are the root note. These shapes are worked out from each instrument's tuning, so a teacher or a method book may show a different fingering for the same chord.</p>
       </div>
     </div>
@@ -571,6 +572,14 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
 
   <section class="panel" id="panel-learn" hidden>
     <p>Short lessons on how songs are put together. Tap a section to open it, then tap a lesson. Each one ends with something to try. <b id="learn-prog"></b></p>
+    <div class="builder" id="idea-box" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+      <b style="font-size:17px">Song idea generator</b>
+      <p class="small">Get a random starting point: a groove, key, tempo, chords, song form, a title and something to write about. Tap Set it up to load it in Jam and the Builder.</p>
+      <div class="row"><label class="fld">From<select id="idea-from"><option value="any">All styles</option><option value="mex">Regional Mexican and ballads</option><option value="dream">Lorde, dream pop and The Marías</option><option value="retro">Dua Lipa and Olivia Newton-John</option></select></label>
+      <label class="fld">Title language<select id="idea-lang"><option value="both">English or Spanish</option><option value="en">English</option><option value="es">Spanish</option></select></label></div>
+      <div class="row"><button type="button" id="idea-go">New idea</button><button type="button" class="ghost" id="idea-set" disabled>Set it up</button></div>
+      <div id="idea-out" class="small" style="display:flex;flex-direction:column;gap:3px"></div>
+    </div>
     <div id="learn-host" style="display:flex;flex-direction:column;gap:12px"></div>
   </section>
   <section class="panel" id="panel-build" hidden>
@@ -3718,6 +3727,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     notes.forEach(function (w, i) {
       var f = saxFing(w), x0 = 4 + i * cw, cx = x0 + cw / 2, r = Math.min(9, cw / 5), y = 34;
       var isR = (w - wroot) % 12 === 0;
+      if (CSV.pr && CSV.pr.on) { g.strokeStyle = i === CSV.pr.i ? TH.cur : TH.grid; g.lineWidth = i === CSV.pr.i ? 3 : 1; g.strokeRect(x0 + 2, 1, cw - 4, H - 2); if (i < CSV.pr.i) { g.fillStyle = "#2fd27a"; g.font = "700 14px system-ui, sans-serif"; g.textAlign = "right"; g.textBaseline = "top"; g.fillText("✓", x0 + cw - 6, 3); } }
       g.textAlign = "center"; g.textBaseline = "middle"; g.fillStyle = isR ? TH.note : TH.text; g.font = "700 13px ui-monospace, monospace";
       g.fillText(names[((w % 12) + 12) % 12] + (Math.floor(w / 12) - 1), cx, 10);
       g.fillStyle = TH.muted; g.font = "9px ui-monospace, monospace"; g.fillText("sounds " + names[(((w - I.wx) % 12) + 12) % 12], cx, 23);
@@ -3734,6 +3744,30 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     $("cs-name").textContent = C.name + " for " + I.name.toLowerCase().replace(" fingering", "");
     $("cs-txt").textContent = "Written notes (what " + (I.id === "asax" ? "an " : "a ") + I.name.replace(" fingering", "").toLowerCase() + " player reads): " + txt.join(" ") + ". Top circle is the octave key, then the left hand’s three main keys, then the right hand’s. Filled means pressed. Extra keys are named underneath.";
     CSV.saxNotes = notes.map(function (w) { return w - I.wx; });
+  }
+  /* Sax practice: the mic listens while you play the chord's notes from the fingering chart, one at a time. */
+  CSV.pr = { on: false, i: 0, hold: 0, sig: "", rounds: 0, near: 0 };
+  function saxPrMsg() {
+    var P = CSV.pr, N = CSV.saxNotes, I = csInst(), names = flats ? FLAT : SHARP; if (!$("cs-pr-msg")) return;
+    if (!P.on || !N || !N.length) { $("cs-pr-msg").textContent = "Turn this on, then play each note of the chord, left to right. Hold each one until it ticks. Any octave counts."; return; }
+    var w = N[P.i] + I.wx, c = names[((N[P.i] % 12) + 12) % 12];
+    $("cs-pr-msg").textContent = "Play written " + names[((w % 12) + 12) % 12] + " (sounds " + c + "), note " + (P.i + 1) + " of " + N.length + (P.rounds ? ". Times through: " + P.rounds : "") + (running ? "" : ". Waiting for the mic…") + (P.near ? (P.near > 0 ? ". A little high" : ". A little low") : "");
+  }
+  function saxPrRedraw() { CSV.shown = ""; csDraw(); saxPrMsg(); }
+  function saxPrTick(sm, dt) {
+    var P = CSV.pr, N = CSV.saxNotes; if (!P.on || !N || !N.length || !csInst().sax) return;
+    var sig = N.join(","); if (sig !== P.sig) { P.sig = sig; P.i = 0; P.hold = 0; }
+    var d = (((sm - N[P.i]) % 12) + 12) % 12; if (d > 6) d -= 12;
+    var near = Math.abs(d) <= 0.45 ? (d > 0.25 ? 1 : d < -0.25 ? -1 : 0) : 0;
+    if (Math.abs(d) <= 0.45) { P.hold += dt; if (P.hold >= 300) { P.hold = 0; P.i++; if (P.i >= N.length) { P.i = 0; P.rounds++; } P.near = 0; saxPrRedraw(); return; } }
+    else P.hold = Math.max(0, P.hold - dt);
+    if (near !== P.near) { P.near = near; saxPrMsg(); }
+  }
+  function saxPrSet(on) {
+    var P = CSV.pr; P.on = on; P.i = 0; P.hold = 0; P.rounds = 0; P.near = 0; P.sig = (CSV.saxNotes || []).join(",");
+    if ($("cs-pr-go")) $("cs-pr-go").textContent = on ? "Stop practising" : "Practise these notes with the mic";
+    if (on && !running) startMic().then(function () { saxPrMsg(); });
+    saxPrRedraw();
   }
   function bassDraw(C, I) {
     var cv = $("cs-canvas"), dpr = window.devicePixelRatio || 1, W = cv.clientWidth || 320, H = 190, names = flats ? FLAT : SHARP, n = I.tun.length;
@@ -3794,6 +3828,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function csDraw() {
     if (!CSV.on) return;
     var I = csInst(), C = csChord(), tag = I.id + C.root + C.tones.join(".") + C.name + TH.id;
+    if ($("cs-prac")) { $("cs-prac").hidden = !I.sax; if (!I.sax && CSV.pr && CSV.pr.on) { CSV.pr.on = false; $("cs-pr-go").textContent = "Practise these notes with the mic"; } }
     if (tag === CSV.shown) return;
     CSV.shown = tag; CSV.chord = C;
     if (I.piano) { CSV.shapes = []; pianoDraw(C); return; }
@@ -3834,6 +3869,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   $("cs-follow").addEventListener("change", function (e) { CSV.follow = e.target.checked; csSave(); csDraw(); });
   $("cs-root").addEventListener("change", function (e) { CSV.root = +e.target.value; csDraw(); });
   $("cs-type").addEventListener("change", function (e) { CSV.type = +e.target.value; csDraw(); });
+  $("cs-pr-go").addEventListener("click", function () { saxPrSet(!CSV.pr.on); });
+  saxPrMsg();
   $("cs-hear").addEventListener("click", function () {
     var I = csInst(), v = CSV.shapes[0];
     if (I.piano && CSV.piano) { ensureContext().then(function () { return loadSamples("piano"); }).then(function () { var t = ac.currentTime + 0.05; CSV.piano[1].v.forEach(function (m, k) { synth(ac, busOf("chBus", 0.3), "piano", m, t + k * 0.03, 1.8); }); }); return; }
@@ -4536,7 +4573,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     sfRender(); sbDraw(); window.scrollTo(0, 0);
   }
   function learnPreset(id) { goTab("build"); if (GV.on || GV.ending) gvStop(); SF.form = id; $("sf-form").value = id; sfLoad(); sbDraw(); window.scrollTo(0, 0); }
-  function styleByName(nm) { return STYLES.filter(function (st) { return st.name === nm || st.id === nm; })[0]; }
+  function styleByName(nm) { var gp = nm.indexOf("|") > 0 ? nm.split("|") : null; return STYLES.filter(function (st) { return gp ? st.group === gp[0] && st.name === gp[1] : st.name === nm || st.id === nm; })[0]; }
   function learnStyle(nm, formId, progId) {
     var st = styleByName(nm); if (!st) { goTab("jam"); return; }
     goTab("jam"); if (GV.on || GV.ending) gvStop();
@@ -4706,6 +4743,78 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     LS("g-rk3", "Metal: minor, low and tight", "Metal riffs sit in minor keys, use the low strings, and lock exactly with the kick drum.", ["Load Double kick gallop with Heavy: i – VI – VII.", "Pick the Chugging riff melody and watch it line up with the kick in the rhythm grid."], [["Load it", function () { learnStyle("dkgallop", "rock", "mt2"); }]])
   ];
 
+  /* Style guides for Dua Lipa and Olivia Newton-John, plus real-song lessons for Juan Gabriel and The Marías. */
+  function lsInsertBefore(part, items) { var i = -1; LESSONS.forEach(function (L, k) { if (L.part === part && i < 0) i = k; }); if (i < 0) i = LESSONS.length; Array.prototype.splice.apply(LESSONS, [i, 0].concat(items)); }
+  function lsAppendTo(part, items) { var i = -1, j; LESSONS.forEach(function (L, k) { if (L.part === part) i = k; }); if (i < 0) return; for (j = i + 1; j < LESSONS.length && !LESSONS[j].part; j++); Array.prototype.splice.apply(LESSONS, [j, 0].concat(items)); }
+  lsAppendTo("Style guide: Juan Gabriel style", [
+    LS("g-jg5", "Real chords: “Amor eterno” and “Querida”", "“Amor eterno” moves I – VI7 – ii – V7: the VI7 is a major chord on the sixth step that pulls hard to the ii chord, which gives the slow ranchera its ache. “Querida” is bright and fast on I – iii – IV – V, then lifts to IV – bVII – V on “mira mi soledad”. The Chords menu lists his songs first on any Juan Gabriel groove.", ["Load the slow ranchera with the Amor eterno chords and hum over the VI7 chord.", "Load the Querida chords and notice the bVII chord, borrowed from outside the key, right before the turn back home."], [["Load Amor eterno chords", function () { learnStyle("Slow mariachi ranchera", "balada", "jg-ae1"); }], ["Load Querida chords", function () { learnStyle("Slow mariachi ranchera", "ranchera", "jg-qu1"); }]]),
+    LS("g-jg6", "A minor verse that opens into a chorus", "“Hasta que te conocí” starts in a minor key on iv – V7 – i, then the chorus opens with a major I7 chord and walks through iv7, VII7 and III before falling back. Starting the chorus on a surprising major chord is what makes it hit.", ["Load the Hasta que te conocí verse, then the chorus, and compare how each one feels.", "Write a verse line over the minor chords and a chorus line that starts on the major chord."], [["Load the verse", function () { learnStyle("Slow mariachi ranchera", "balada", "jg-hq1"); }], ["Load the chorus", function () { learnStyle("Slow mariachi ranchera", "balada", "jg-hq2"); }]])
+  ]);
+  lsAppendTo("Style guide: The Marías style", [
+    LS("g-ma6", "Real chords: “No One Noticed”, “Hush” and “Cariño”", "“No One Noticed” is a ii – V7 – Imaj7 – I7 loop, the jazz cycle played slowly. “Hush” circles a minor key on i – v – III – iv – v, and the “Cariño” chorus rocks between iv7 and IIImaj7. The Chords menu lists their songs first on any Marías groove.", ["Load No One Noticed chords and listen for the I7 at the end: it makes the loop want to start again.", "Load the Cariño chorus and write a two-line chorus in Spanish over it."], [["Load No One Noticed chords", function () { learnStyle("Velvet lounge", "pop", "ma-no"); }], ["Load Cariño chorus", function () { learnStyle("Velvet lounge", "pop", "ma-ca2"); }]])
+  ]);
+  lsInsertBefore("Style guide: Radiohead style", [
+    { part: "Style guide: Dua Lipa style", about: "Dark dance-pop, disco bass lines and minor-key choruses, with her real progressions." },
+    LS("g-dl1", "Minor keys you can dance to", "Many of her hits sit in a minor key over a bright four-on-the-floor beat. “Physical” loops i – VI – III – VII and “IDGAF” i – VII – III – VI: the same four chords in a different order. Minor chords give the attitude, the beat keeps it a party.", ["Load Nu-disco octave bass with the Physical chords.", "Switch to the IDGAF chords and hear how the order changes the mood."], [["Load Physical chords", function () { learnStyle(DL2 + "|Nu-disco octave bass", "pop", "dl-ph1"); }], ["Load IDGAF chords", function () { learnStyle(DL1 + "|Dark minor pop", "pop", "dl-id"); }]]),
+    LS("g-dl2", "The octave bass line is the engine", "Disco bass jumps between a low root and the same note an octave up on every eighth note. In “Don’t Start Now” the bass line is the hook as much as the vocal.", ["Load Nu-disco octave bass and use the Mix sliders to hear the bass alone.", "In the Bass line menu, compare the groove’s own line with Octave bounce."], [["Load it", function () { learnStyle(DL2 + "|Nu-disco octave bass", "pop", "dl-ds2"); }]]),
+    LS("g-dl3", "Start the chorus away from home", "The “Don’t Start Now” chorus begins on iv, not on the home chord: iv – i – VI – III. Starting away from home makes the hook feel like it is pushing forward.", ["Load Funky bass and handclaps with the Don’t Start Now chorus.", "Write a chorus whose first word lands on the iv chord."], [["Load it", function () { learnStyle(DL2 + "|Funky bass and handclaps", "pop", "dl-ds2"); }]]),
+    LS("g-dl4", "Seventh chords make it smooth", "“Levitating” uses minor seventh chords, i7 – v7 – iv7, and “New Rules” adds a VImaj7 and a VII7. Sevenths soften the edges and make the groove feel funky instead of hard.", ["Load Rollerskate disco with the Levitating chords.", "Open Show chord shapes and look at the four notes of each chord."], [["Load it", function () { learnStyle(DL2 + "|Rollerskate disco", "pop", "dl-lv"); }]]),
+    LS("g-dl5", "A list makes a hook", "The “New Rules” chorus counts its rules: one, two, three. A numbered list is a ready-made lyric shape: each item gets the same melody, and the listener knows what is coming.", ["Write a chorus that is a list of three short instructions.", "Sing every item on the same rhythm, and change only the last note of the third one."], [["Load New Rules chords", function () { learnStyle(DL1 + "|Dark minor pop", "pop", "dl-nr2"); }]]),
+    LS("g-dl6", "Strings, claps and the breakdown", "Future Nostalgia adds disco strings and handclaps on top of the beat, then strips back to almost nothing before the last chorus so it lands harder.", ["Load Strings and slap bass and the pop shape.", "In the Builder, add a 4-bar section before the last chorus with Drums and Bass turned off."], [["Load it", function () { learnStyle(DL2 + "|Strings and slap bass", "pop"); }]]),
+    LS("g-dl7", "Radical Optimism: a two-chord live groove", "“End of an Era” rocks between bVII7 and I7, two dominant seventh chords a step apart. It sounds sunny and loose, closer to a live band than to a club track.", ["Load Live-band disco-rock with the End of an Era chords.", "Sing a melody using only the notes of the home chord, then add one note from the bVII7."], [["Load it", function () { learnStyle(DL3 + "|Live-band disco-rock", "pop", "dl-ee"); }]]),
+    { part: "Style guide: Olivia Newton-John style", about: "Country-pop, movie-musical ballads and eighties synth-pop, with her real progressions." },
+    LS("g-on1", "Every chord leads to the next", "The “Hopelessly Devoted to You” verse walks I – iii7 – IV – ii7 – V7 – I. Each chord sets up the next one, so the verse feels like one long sentence that ends at home.", ["Load Movie-musical ballad with the Hopelessly Devoted verse chords.", "Write a verse line for each pair of chords and land the last word on the final I."], [["Load it", function () { learnStyle(G_ON + "|Movie-musical ballad", "balada", "on-hd2"); }]]),
+    LS("g-on2", "The fifties slow dance", "The Grease songs borrow the fifties slow-dance feel: six-eight time, triplet piano and a big held note at the end of each line.", ["Load Fifties slow-dance ballad (6/8) and count one-two-three, four-five-six.", "Write a melody with one long note at the end of every second bar."], [["Load it", function () { learnStyle(G_ON + "|Fifties slow-dance ballad (6/8)", "balada", "on-hd2"); }]]),
+    LS("g-on3", "Borrow a chord for the magic", "The “Magic” chorus goes I – i – IV – bIII – bVI. The home chord turns minor, then two chords borrowed from the minor key give a dreamy lift before coming back.", ["Load Seventies mid-tempo soft rock with the Magic chorus chords.", "Listen for the moment the home chord turns minor and hum a note that changes with it."], [["Load it", function () { learnStyle(G_ON + "|Seventies mid-tempo soft rock", "pop", "on-mg2"); }]]),
+    LS("g-on4", "Country-pop: simple chords, a walking bass", "Early hits like “Have You Never Been Mellow” use plain major chords, I – V – vi – V – IV – I – V7, with a bass that steps down between them. The melody and the voice do the work.", ["Load Seventies country-pop ballad with the Have You Never Been Mellow chords.", "Pick a bass line that walks into each chord in the Bass line menu."], [["Load it", function () { learnStyle(G_ON + "|Seventies country-pop ballad", "balada", "on-hm"); }]]),
+    LS("g-on5", "Eighties synth-pop: two chords and a title", "The “Physical” chorus swings between VI and VII7 in a minor key. With only two chords, the beat and the title phrase become the hook.", ["Load Eighties synth-pop workout with the Physical chorus chords.", "Write a title of two or three words and repeat it on the same rhythm four times."], [["Load it", function () { learnStyle(G_ON + "|Eighties synth-pop workout", "pop", "on-py"); }]]),
+    LS("g-on6", "A surprise major chord", "The “Xanadu” chorus uses I – II – iv – V – IV. The II is a major chord from outside the key, and the iv is a minor chord borrowed from the minor key. Two surprises in one line keep it fresh.", ["Load Roller-disco strings with the Xanadu chorus chords.", "Play the plain I – ii – IV – V version by typing it in the Builder and compare."], [["Load it", function () { learnStyle(G_ON + "|Roller-disco strings", "pop", "on-xa3"); }]]),
+    LS("g-on7", "Writing a duet", "Her movie duets trade lines in the verses, then both voices meet on the chorus. A duet tells the story from two sides.", ["Load Duet ballad and plan which lines each singer takes.", "Write the chorus so both singers can sing it together, and the verses so each answers the other."], [["Load it", function () { learnStyle(G_ON + "|Duet ballad", "balada"); }]])
+  ]);
+  /* ---------- song idea generator: a random starting point for a sketch ---------- */
+  var IDEA = null;
+  var IDEA_SETS = { mex: /Mexican|Grupera|Bukis|Temerarios|Juan Gabriel|Camilo|José José|[Bb]allad|[Bb]olero/, dream: /Lorde|Dream|Marías|Not for Radio|Alvvays|Indie|Radiohead/, retro: /Dua Lipa|Olivia/ };
+  var IDEA_W = {
+    en: { a: ["Golden", "Paper", "Midnight", "Slow", "Electric", "Quiet", "Borrowed", "Neon", "Last", "Silver", "Secret", "Summer", "Broken", "Velvet", "Wild"],
+      n: ["Heart", "Window", "Highway", "Promise", "Mirror", "Ocean", "Room", "Letter", "Moon", "Radio", "Garden", "Hours", "Lights", "Weather", "Sunday"],
+      th: ["a letter you never sent", "the last bus home", "dancing alone in the kitchen", "a promise made one summer", "the phone that doesn’t ring", "driving with the windows down", "an old photo you found", "the first warm night of the year", "starting over in a new town", "a friend who moved away", "waiting outside after the show", "the song your parents danced to", "being the only one who noticed", "a city at four in the morning", "forgiving someone too late"] },
+    es: { n: ["Corazón", "Luna", "Carretera", "Promesa", "Ventana", "Noche", "Carta", "Espejo", "Verano", "Recuerdo", "Camino", "Ciudad", "Silencio", "Mañana", "Guitarra"],
+      a: ["de papel", "de medianoche", "de neón", "de verano", "sin regreso", "de plata", "sin dueño", "de cristal", "en silencio", "de otro tiempo", "sin final", "de domingo"],
+      th: ["una carta que nunca mandaste", "el último camión a casa", "bailar solo en la cocina", "una promesa de verano", "el teléfono que no suena", "manejar con las ventanas abiertas", "una foto vieja", "la primera noche tibia del año", "empezar de nuevo en otro pueblo", "un amigo que se fue lejos", "la canción que bailaban tus papás", "ser el único que se dio cuenta", "la ciudad a las cuatro de la mañana", "perdonar demasiado tarde", "volver al barrio después de años"] },
+    rule: ["Put the title in the first line of the chorus.", "Use only two chords in the verse, even if the chorus has more.", "Start the verse melody low and the chorus melody at least four notes higher.", "Write the chorus first, then the verse.", "Every line of the verse must name something you can see.", "Leave one bar with no melody before the chorus.", "Make the bridge the quietest part of the song.", "Repeat the title three times in the chorus.", "Write the first verse in one language and the chorus in the other.", "Keep the verse lines short: five or six syllables each.", "End the song on a chord that is not the home chord.", "Let an instrument answer the voice at the end of every line."] };
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+  function ideaForms(g) {
+    if (/Regional Mexican$|corrido/i.test(g)) return ["corrido", "ranchera", "banda"];
+    if (/Mexican|Grupera|Bukis|Temerarios|Juan Gabriel/.test(g)) return ["ranchera", "banda", "cumbia", "balada"];
+    if (/[Bb]allad|Camilo|José José|Olivia|Not for Radio|[Bb]olero/.test(g)) return ["balada", "bolero", "pop"];
+    if (/Jazz/.test(g)) return ["aaba", "blues"]; if (/R&B/.test(g)) return ["rnb", "pop"]; if (/Rock|Metal|Radiohead/.test(g)) return ["rock", "pop"];
+    return ["pop", "balada"];
+  }
+  function ideaMake() {
+    var from = $("idea-from").value, re = IDEA_SETS[from], pool = STYLES.filter(function (s) { return re ? re.test(s.group) : !/Basics|Kick drum/.test(s.group); });
+    var S = pick(pool.length ? pool : STYLES), fk = FAM_OF[S.group];
+    var cand = PROGS.filter(function (pg) { return pg.groups ? pg.groups.indexOf(S.group) >= 0 : pg.fams && pg.fams.indexOf(fk) >= 0; });
+    var songs = cand.filter(function (pg) { return pg.song; });
+    var pg = songs.length && Math.random() < 0.5 ? pick(songs) : cand.length ? pick(cand) : PROGS.filter(function (x) { return x.id === S.prog; })[0] || PROGS[0];
+    var lang = $("idea-lang").value; if (lang === "both") lang = Math.random() < 0.5 ? "en" : "es";
+    var W = IDEA_W[lang], title = lang === "es" ? pick(W.n) + " " + pick(W.a) : pick(W.a) + " " + pick(W.n);
+    var form = pick(ideaForms(S.group)), fm = FORMS.filter(function (f) { return f.id === form; })[0];
+    IDEA = { style: S, prog: pg, key: Math.floor(Math.random() * 12), bpm: Math.max(40, Math.min(220, S.bpm + Math.round(Math.random() * 12 - 6))), form: form, formName: fm ? fm.name : form, title: title, theme: pick(W.th), rule: pick(IDEA_W.rule), lang: lang };
+    var out = $("idea-out"); out.innerHTML = "";
+    [["Title", "“" + IDEA.title + "”"], [lang === "es" ? "Tema" : "About", IDEA.theme], ["Groove", S.name + " (" + S.group + ")"], ["Key", KEY_MAJ[IDEA.key] + (pg.mode === "min" ? " minor" : " major")], ["Tempo", IDEA.bpm + " bpm"], ["Chords", pg.name], ["Song form", IDEA.formName], ["Rule for this song", IDEA.rule]].forEach(function (r) {
+      var p = document.createElement("div"), b = document.createElement("b"); b.textContent = r[0] + ": "; p.appendChild(b); p.appendChild(document.createTextNode(r[1])); out.appendChild(p);
+    });
+    $("idea-set").disabled = false;
+  }
+  function ideaSet() {
+    if (!IDEA) return; var I = IDEA;
+    learnStyle(I.style.id, null, I.prog.id);
+    $("gv-key").value = String(I.key); $("gv-bpm").value = I.bpm; gvApply("");
+    learnPreset(I.form);
+    if ($("sb-name")) { $("sb-name").value = I.title; $("sb-name").dispatchEvent(new Event("input")); }
+  }
+  $("idea-go").addEventListener("click", ideaMake);
+  $("idea-set").addEventListener("click", ideaSet);
   function learnRender() {
     var host = $("learn-host"), done = prefs.learn || {}, total = 0, n = 0, cur = null, open = prefs.learnOpen || {}; host.innerHTML = "";
     LESSONS.forEach(function (L) {
@@ -5117,6 +5226,42 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   LP("lr-is2", "“If She Could See Me Now” chorus (approx.): IV – I – V – II – IV – V", ["IV", "I", "V", "II", "IV", "V"], "maj", "lvi");
   LPd("lr-sh2", "“Shapeshifter” verse: vi – IV – I – V (2 bars each)", ["vi", "IV", "I", "V"], "maj", "lvi", [8, 8, 8, 8]);
   LP("lr-sh3", "“Shapeshifter” chorus (chord sheets): I – V – vi – IV", ["I", "V", "vi", "IV"], "maj", "lvi");
+  /* Real progressions from songs by other artists. Read from Hooktheory TheoryTabs and published chord sheets. "approx." marks single-source readings. */
+  function SP(id, name, bars, mode, artist, groups, fams, dur) { var p = { id: id, name: name, bars: bars, mode: mode, fams: fams, song: true, artist: artist, groups: groups }; if (dur) p.dur = dur; PROGS.push(p); }
+  var DLA = "Dua Lipa", ONA = "Olivia Newton-John", JGA = "Juan Gabriel", MAA = "The Marías", JG0 = "Juan Gabriel style";
+  SP("dl-nr1", "“New Rules” verse: i – VII – VI – iv7 – VII", ["i", "bVII", "bVI", "iv7", "bVII"], "min", DLA, [DL1], ["epop"]);
+  SP("dl-nr2", "“New Rules” pre-chorus and chorus: i – VImaj7 – VII7", ["i", "bVImaj7", "bVII7"], "min", DLA, [DL1], ["epop"]);
+  SP("dl-id", "“IDGAF” chorus: i – VII – III – VI", ["i", "bVII", "bIII", "bVI"], "min", DLA, [DL1], ["epop"]);
+  SP("dl-ds1", "“Don’t Start Now” pre-chorus: i – III – iv – VI", ["i", "bIII", "iv", "bVI"], "min", DLA, [DL2], ["epop"]);
+  SP("dl-ds2", "“Don’t Start Now” chorus: iv – i – VI – III", ["iv", "i", "bVI", "bIII"], "min", DLA, [DL2], ["epop"]);
+  SP("dl-lv", "“Levitating” chorus: i7 – v7 – iv7", ["i7", "v7", "iv7"], "min", DLA, [DL2], ["epop"]);
+  SP("dl-ph1", "“Physical” verse and chorus: i – VI – III – VII", ["i", "bVI", "bIII", "bVII"], "min", DLA, [DL2], ["epop"]);
+  SP("dl-ph2", "“Physical” pre-chorus: i – VImaj7 – III – VII", ["i", "bVImaj7", "bIII", "bVII"], "min", DLA, [DL2], ["epop"]);
+  SP("dl-ee", "“End of an Era”: bVII7 – I7", ["bVII7", "I7"], "maj", DLA, [DL3], ["epop"]);
+  SP("on-hd1", "“Hopelessly Devoted to You” intro: i – V", ["i", "V", "i", "V"], "min", ONA, [G_ON], ["bal"]);
+  SP("on-hd2", "“Hopelessly Devoted to You” verse: I – iii7 – IV – ii7 – V7 – I", ["I", "iii7", "IV", "ii7", "V7", "I"], "maj", ONA, [G_ON], ["bal"]);
+  SP("on-hd3", "“Hopelessly Devoted to You” chorus (approx.): I – Imaj7 – iiidim7 – VI7 – ii7 – V7", ["I", "Imaj7", "iiidim7", "VI7", "ii7", "V7"], "maj", ONA, [G_ON], ["bal"]);
+  SP("on-hm", "“Have You Never Been Mellow” verse: I – V – vi – V – IV – I – V7", ["I", "V", "vi", "V", "IV", "I", "V7"], "maj", ONA, [G_ON], ["bal"]);
+  SP("on-mg1", "“Magic” verse: I – im7♭5", ["I", "im7b5"], "maj", ONA, [G_ON], ["bal"]);
+  SP("on-mg2", "“Magic” chorus: I – i – IV – bIII – bVI", ["I", "i", "IV", "bIII", "bVI"], "maj", ONA, [G_ON], ["bal"]);
+  SP("on-xa1", "“Xanadu” verse: I – IV – iv – I", ["I", "IV", "iv", "I"], "maj", ONA, [G_ON], ["bal"]);
+  SP("on-xa2", "“Xanadu” pre-chorus: I – iii – IV – iv", ["I", "iii", "IV", "iv"], "maj", ONA, [G_ON], ["bal"]);
+  SP("on-xa3", "“Xanadu” chorus: I – II – iv – V – IV", ["I", "II", "iv", "V", "IV"], "maj", ONA, [G_ON], ["bal"]);
+  SP("on-py", "“Physical” chorus: VI – VII7", ["bVI", "bVII7"], "min", ONA, [G_ON], ["bal"]);
+  SP("on-tf", "“Twist of Fate” chorus: I – ii", ["I", "ii"], "maj", ONA, [G_ON], ["bal"]);
+  SP("jg-sm", "“Se me olvidó otra vez”: IV – I – V – I", ["IV", "I", "V", "I"], "maj", JGA, [JG0, JG2], ["jg"]);
+  SP("jg-mq", "“La más querida”: I – V7 – ii – V7 – I – vi – ii – iv", ["I", "V7", "ii", "V7", "I", "vi", "ii", "iv"], "maj", JGA, [JG0, JG5], ["jg"]);
+  SP("jg-ae1", "“Amor eterno” verse: I – VI7 – ii – V7", ["I", "VI7", "ii", "V7"], "maj", JGA, [JG0, JG5], ["jg"]);
+  SP("jg-ae2", "“Amor eterno” (“Cómo quisiera”): ii – IV – V7 – I", ["ii", "IV", "V7", "I"], "maj", JGA, [JG0, JG5], ["jg"]);
+  SP("jg-qu1", "“Querida” verse: I – iii – IV – V", ["I", "iii", "IV", "V"], "maj", JGA, [JG0, JG5], ["jg"], [4, 2, 2, 4]);
+  SP("jg-qu2", "“Querida” (“mira mi soledad”): IV – bVII – V", ["IV", "bVII", "V"], "maj", JGA, [JG0, JG5], ["jg"]);
+  SP("jg-hq1", "“Hasta que te conocí” verse: iv – V7 – i", ["iv", "V7", "i", "i"], "min", JGA, [JG0], ["jg"]);
+  SP("jg-hq2", "“Hasta que te conocí” chorus: I7 – iv7 – VII7 – III – i – iv – VI – V", ["I7", "iv7", "bVII7", "bIII", "i", "iv", "bVI", "V"], "min", JGA, [JG0], ["jg"]);
+  SP("ma-ca1", "“Cariño” verse (approx.): i – III – v – V – i – III – v", ["i", "bIII", "v", "V", "i", "bIII", "v"], "min", MAA, [G_MA], ["mar"]);
+  SP("ma-ca2", "“Cariño” chorus: iv7 – IIImaj7 – iv7 – v7", ["iv7", "bIIImaj7", "iv7", "v7"], "min", MAA, [G_MA], ["mar"]);
+  SP("ma-hu", "“Hush”: i – v – III – iv – v", ["i", "v", "bIII", "iv", "v"], "min", MAA, [G_MA], ["mar"]);
+  SP("ma-od", "“Only in My Dreams” verse (approx.): Imaj7 – VImaj7 – vi – I", ["Imaj7", "VImaj7", "vi", "I"], "maj", MAA, [G_MA], ["mar"]);
+  SP("ma-no", "“No One Noticed”: ii – V7 – Imaj7 – I7", ["ii", "V7", "Imaj7", "I7"], "maj", MAA, [G_MA], ["mar"]);
   var PROG_FAMS = { "6415": ["lme", "lph", "epop"], pop: ["lme", "indie", "alv", "bal"], minb: ["lph", "lvi", "nfr"], "m-pop": ["lvi", "epop", "lph"], onem: ["lph", "lvi", "rh"], dream2: ["dream", "mar", "lsp"], dream3: ["dream", "mar"], dream4: ["dream"], dream: ["dream"],
     "m-dream": ["dream", "nfr", "rh"], bol7: ["mar", "jj"], "2516": ["mar", "jazz", "rnb"], "m-sad": ["nfr", "bal", "cs"], "m-rom": ["nfr", "bal", "grup"], "1364": ["bal", "nfr", "lme"], "50s": ["bal", "grup", "buk", "tem"], bolero: ["bal", "jj", "grup", "buk", "tem", "jg"],
     "1-4-5": ["mex", "grup", "buk", "jg"], ranch: ["mex", "jg"], ranch7: ["mex", "jg"], ranch8: ["mex", "jg"], "1-5": ["mex", "tumb"], "m1-5": ["mex", "tumb"], "m1-4-5": ["mex", "tumb", "grup"], "m-tumb": ["tumb", "mex"], andal: ["tumb", "mex", "metal"], "m-bol": ["jj", "mar", "bal"],
@@ -5126,9 +5271,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function gvProgFill(modeV, want) {
     var ps = $("gv-prog"); ps.innerHTML = "";
     var fk = FAM_OF[GV.style.group], F = FAMS[fk], og1 = document.createElement("optgroup"), og2 = document.createElement("optgroup");
-    var og0 = document.createElement("optgroup"); og0.label = "From Lorde\u2019s songs";
+    var og0 = document.createElement("optgroup"), grp = GV.style.group, art = "";
     og1.label = "Fits this style" + (F ? " (" + F.name + ")" : ""); og2.label = "All the others";
-    PROGS.forEach(function (pg) { if (pg.mode !== modeV) return; var o = document.createElement("option"); o.value = pg.id; o.textContent = pg.name; var fits = pg.fams && pg.fams.indexOf(fk) >= 0; (pg.song && (fits || fk === "lph") ? og0 : fits ? og1 : og2).appendChild(o); });
+    PROGS.forEach(function (pg) { if (pg.mode !== modeV) return; var o = document.createElement("option"); o.value = pg.id; o.textContent = pg.name; var fits = pg.fams && pg.fams.indexOf(fk) >= 0, mine = pg.song && (pg.groups ? pg.groups.indexOf(grp) >= 0 : (fits || fk === "lph")); if (mine && !art) art = pg.artist || "Lorde"; (mine ? og0 : fits ? og1 : og2).appendChild(o); });
+    og0.label = "From " + art + (/s$/.test(art) ? "\u2019" : "\u2019s") + " songs";
     if (og0.children.length) ps.appendChild(og0); if (og1.children.length) ps.appendChild(og1); ps.appendChild(og2);
     ps.value = want; if (ps.value !== want) ps.selectedIndex = 0;
   }
@@ -5602,6 +5748,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       renderKeyChips();
     }
     curSm = sm; curGood = good;
+    if (CSV.pr && CSV.pr.on) saxPrTick(sm, dt);
     if (log.length < 60000) log.push({ t: now - logStart, m: sm, g: good, r: ref });
     showPitch(sm, cents, good, ref, keyOut);
     history.push({ t: now, midi: plot, good: good, plain: ungraded() });
