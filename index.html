@@ -453,6 +453,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     <div class="row">
       <label class="fld">Chords played by<select id="gv-cv"></select></label>
       <label class="fld">Bass played by<select id="gv-bv"></select></label>
+      <label class="fld">Bass line<select id="gv-bl"></select></label>
     </div>
     <div class="row">
       <label class="fld">Drum kit<select id="gv-kit">
@@ -2663,13 +2664,11 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (S.p && S.p.indexOf(st) >= 0) (S.pv === "shake" ? (S.steps === 16 && S.p.length === 12 ? function (tt, v) { if (!drumHit("guiro", tt, v)) dShake(tt, v); } : dShake) : S.pv === "rim" ? dRim : S.pv === "golpe" ? function (tt, v) { dNoise(tt, v * 0.6, 0.06, "lowpass", 420); } : dHat)(t, 0.9);
     }
     var b0 = 36 + ch.root; if (b0 > 44) b0 -= 12;
-    var VV = gvVoices(), SB = MU.b ? null : (bar % 2 && S.bAlt ? S.bAlt : S.b), SC = MU.c ? null : (bar % 2 && S.cAlt ? S.cAlt : S.c);
+    var VV = gvVoices(), SB = MU.b ? null : bassPat(S, bar % 2), SC = MU.c ? null : (bar % 2 && S.cAlt ? S.cAlt : S.c);
     if (GV.wet) GV.wet.gain.value = S.fx ? 0.4 : 0;
     if (SB) for (i = 0; i < SB.length; i++) if (SB[i][0] === st) {
-      var dg = SB[i][1], nb = 36 + nxt.root, m = b0;
-      if (nb > 44) nb -= 12;
-      if (dg === "r5") dg = bar % 2 ? "5" : "r";
-      if (dg === "5") m = b0 + 7 > 47 ? b0 - 5 : b0 + 7; else if (dg === "3") m = b0 + ch.tones[1]; else if (dg === "6") m = b0 + 9; else if (dg === "a") m = nb - 1;
+      var nb = 36 + nxt.root; if (nb > 44) nb -= 12;
+      var m = bassNote(SB[i][1], b0, ch, nb, bar % 2);
       var nextB = S.steps; for (var j = 0; j < SB.length; j++) if (SB[j][0] > st) { nextB = SB[j][0]; break; }
       gBass(t, m, Math.min((nextB - st) * sd * 0.92, 1.2), VV.bv);
     }
@@ -3500,7 +3499,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     { id: "quinto", name: "Bajo quinto", tun: [45, 50, 55, 60, 65], snd: "guitar12", bass: true, drop: -12 },
     { id: "vihuela", name: "Vihuela", tun: [57, 62, 67, 59, 64], snd: "nylon", bass: false },
     { id: "requinto", name: "Requinto", tun: [45, 50, 55, 60, 64, 69], snd: "nylon", bass: true },
-    { id: "piano", name: "Piano keyboard", piano: true, snd: "piano" }
+    { id: "piano", name: "Piano keyboard", piano: true, snd: "piano" },
+    { id: "bass4", name: "Bass guitar (4 strings)", tun: [28, 33, 38, 43], snd: "bass", bassv: true },
+    { id: "bass5", name: "Bass guitar (5 strings)", tun: [23, 28, 33, 38, 43], snd: "bass", bassv: true },
+    { id: "tolo", name: "Tololoche (upright bass)", tun: [28, 33, 38, 43], snd: "contrabass", bassv: true }
   ];
   var CS_TYPES = [["", "major", [0, 4, 7]], ["m", "minor", [0, 3, 7]], ["7", "7", [0, 4, 7, 10]], ["maj7", "maj7", [0, 4, 7, 11]], ["m7", "m7", [0, 3, 7, 10]],
     ["6", "6", [0, 4, 7, 9]], ["m6", "m6", [0, 3, 7, 9]], ["9", "9", [0, 4, 7, 10, 14]], ["add9", "add9", [0, 4, 7, 14]], ["sus2", "sus2", [0, 2, 7]], ["sus4", "sus4", [0, 5, 7]],
@@ -3569,6 +3571,36 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     }
     return [{ label: "Root position", v: rp }, { label: best.inv === 0 ? "Near middle C" : (best.inv === 1 ? "First inversion" : best.inv === 2 ? "Second inversion" : "Third inversion") + ", near middle C", v: best.v }];
   }
+  /* Bass view for chord shapes: where the chord's notes sit on the neck, in one hand position, with the root marked. */
+  function bassDraw(C, I) {
+    var cv = $("cs-canvas"), dpr = window.devicePixelRatio || 1, W = cv.clientWidth || 320, H = 190, names = flats ? FLAT : SHARP, n = I.tun.length;
+    cv.width = W * dpr; cv.height = H * dpr; var g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+    var low = I.tun[0], rf = ((C.root - low) % 12 + 12) % 12, ls = 0;
+    if (rf > 7 && n > 1) { ls = 1; rf = ((C.root - I.tun[1]) % 12 + 12) % 12; }
+    var f0 = Math.max(0, rf - 1), f1 = f0 + 4, pcs = C.tones.map(function (x) { return (C.root + x) % 12; });
+    var L = 34, T = 22, fw = (W - L - 12) / (f1 - f0 + 1), sh = (H - T - 40) / (n - 1), lab = ["R", "", "", "3", "3", "4", "", "5", "", "6", "7", "7"];
+    g.font = "11px ui-monospace, monospace"; g.textAlign = "center"; g.textBaseline = "middle";
+    for (var f = f0; f <= f1; f++) { g.fillStyle = TH.muted; g.fillText(f === 0 ? "open" : String(f), L + (f - f0 + 0.5) * fw, 10); }
+    for (var s = 0; s < n; s++) {
+      var y = T + (n - 1 - s) * sh;
+      g.strokeStyle = TH.muted; g.lineWidth = 1 + (n - 1 - s) * 0.4; g.beginPath(); g.moveTo(L, y); g.lineTo(W - 12, y); g.stroke();
+      g.fillStyle = TH.muted; g.textAlign = "right"; g.fillText(names[(I.tun[s] + xp) % 12], L - 8, y); g.textAlign = "center";
+    }
+    for (f = f0; f <= f1 + 1; f++) { g.strokeStyle = f === 0 ? TH.text : TH.grid; g.lineWidth = f === 0 ? 3 : 1; g.beginPath(); g.moveTo(L + (f - f0) * fw, T - 6); g.lineTo(L + (f - f0) * fw, T + (n - 1) * sh + 6); g.stroke(); }
+    var found = [];
+    for (s = 0; s < n; s++) for (f = f0; f <= f1; f++) {
+      var pc = (I.tun[s] + f) % 12, k = pcs.indexOf(pc); if (k < 0) continue;
+      var iv = ((pc - C.root) % 12 + 12) % 12, x = L + (f - f0 + 0.5) * fw, yy = T + (n - 1 - s) * sh, isR = iv === 0, main = s === ls && f === rf;
+      g.fillStyle = isR ? TH.note : "#2fd27a"; g.globalAlpha = main || !isR ? 1 : 0.75;
+      g.beginPath(); g.arc(x, yy, main ? 11 : 9, 0, 7); g.fill(); g.globalAlpha = 1;
+      g.fillStyle = "#111"; g.font = "700 10px ui-monospace, monospace"; g.fillText(lab[iv] || "", x, yy + 0.5); g.font = "11px ui-monospace, monospace";
+      found.push({ s: s, f: f, iv: iv });
+    }
+    var pat = [["R", 0], ["5", 7], ["8", 12]].map(function (q) { return names[(C.root + q[1] + xp) % 12]; });
+    $("cs-name").textContent = C.name + " on " + I.name.toLowerCase();
+    $("cs-txt").textContent = "Root on the " + names[(I.tun[ls] + xp) % 12] + " string, fret " + rf + ". Chord notes: " + C.tones.map(function (x) { return names[(C.root + x + xp) % 12]; }).join(" ") + ". A bass player mostly plays root, fifth and octave (" + pat.join(", ") + "); the 3 and 7 are for walking lines and passing notes.";
+    CSV.bassNotes = [I.tun[ls] + rf, I.tun[ls] + rf + 7, I.tun[ls] + rf + 12, I.tun[ls] + rf + C.tones[1]];
+  }
   function pianoDraw(C) {
     var cv = $("cs-canvas"), dpr = window.devicePixelRatio || 1, W = cv.clientWidth || 320, H = 190, names = flats ? FLAT : SHARP;
     cv.width = W * dpr; cv.height = H * dpr; var g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
@@ -3602,6 +3634,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (tag === CSV.shown) return;
     CSV.shown = tag; CSV.chord = C;
     if (I.piano) { CSV.shapes = []; pianoDraw(C); return; }
+    if (I.bassv) { CSV.shapes = []; bassDraw(C, I); return; }
     CSV.shapes = csSolve(I.tun, C.root, C.tones, I.bass);
     var cv = $("cs-canvas"), dpr = window.devicePixelRatio || 1, W = cv.clientWidth || 320, H = 190;
     cv.width = W * dpr; cv.height = H * dpr; var g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
@@ -3639,6 +3672,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   $("cs-hear").addEventListener("click", function () {
     var I = csInst(), v = CSV.shapes[0];
     if (I.piano && CSV.piano) { ensureContext().then(function () { return loadSamples("piano"); }).then(function () { var t = ac.currentTime + 0.05; CSV.piano[1].v.forEach(function (m, k) { synth(ac, busOf("chBus", 0.3), "piano", m, t + k * 0.03, 1.8); }); }); return; }
+    if (I.bassv && CSV.bassNotes) { ensureContext().then(function () { return loadSamples(I.snd); }).then(function () { var t = ac.currentTime + 0.05; CSV.bassNotes.forEach(function (m, k) { synth(ac, busOf("chBus", 0.3), I.snd, m, t + k * 0.4, 0.45); }); }); return; }
     if (!v) return;
     ensureContext().then(function () { return loadSamples(I.snd); }).then(function () {
       var t = ac.currentTime + 0.05, k = 0;
@@ -3669,12 +3703,11 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   /* Bass notes and chord hits of one bar, worked out the same way the groove plays them. */
   function sbBar(P, PN, odd) {
-    var S = GV.style, MU = P.mute || {}, ch = sbChord(P), nxt = PN ? sbChord(PN) : ch, SBs = MU.b ? null : (odd && S.bAlt ? S.bAlt : S.b), SC = MU.c ? null : (odd && S.cAlt ? S.cAlt : S.c), bass = [], hits = [], i, j;
+    var S = GV.style, MU = P.mute || {}, ch = sbChord(P), nxt = PN ? sbChord(PN) : ch, SBs = MU.b ? null : bassPat(S, odd), SC = MU.c ? null : (odd && S.cAlt ? S.cAlt : S.c), bass = [], hits = [], i, j;
     var b0 = 36 + ch.root; if (b0 > 44) b0 -= 12;
     if (SBs) for (i = 0; i < SBs.length; i++) {
-      var dg = SBs[i][1], nb = 36 + nxt.root, m = b0; if (nb > 44) nb -= 12;
-      if (dg === "r5") dg = odd ? "5" : "r";
-      if (dg === "5") m = b0 + 7 > 47 ? b0 - 5 : b0 + 7; else if (dg === "3") m = b0 + ch.tones[1]; else if (dg === "6") m = b0 + 9; else if (dg === "a") m = nb - 1;
+      var nb = 36 + nxt.root; if (nb > 44) nb -= 12;
+      var m = bassNote(SBs[i][1], b0, ch, nb, odd);
       var nx = S.steps; for (j = 0; j < SBs.length; j++) if (SBs[j][0] > SBs[i][0]) { nx = SBs[j][0]; break; }
       bass.push({ st: SBs[i][0], len: nx - SBs[i][0], m: m });
     }
@@ -3907,7 +3940,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   $("sb-save").addEventListener("click", function () {
     var name = $("sb-name").value.trim() || "My song", all = songsGet();
-    all[name] = { gv: { style: GV.style.id, prog: GV.prog.id, scale: GV.prog.mode, key: GV.key, bpm: GV.bpm, mel: GV.mel, by: GV.by, cv: GV.cvo, bv: GV.bvo }, form: SF.form, shift: SF.shift,
+    all[name] = { gv: { style: GV.style.id, prog: GV.prog.id, scale: GV.prog.mode, key: GV.key, bpm: GV.bpm, mel: GV.mel, by: GV.by, cv: GV.cvo, bv: GV.bvo, bl: GV.bline || "auto" }, form: SF.form, shift: SF.shift,
       secs: SF.secs.map(function (x) { return { type: x.type, bars: x.bars, prog: x.prog || null, lyr: x.lyr || "", chords: x.chords || null, own: x.own || null, mute: x.mute || null }; }) };
     store.set("pm.songs", all); songsFill(name); $("sb-name").value = name; $("sb-save-msg").textContent = "Saved “" + name + "” on this device.";
   });
@@ -3916,7 +3949,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (GV.shelf !== "all") { GV.shelf = "all"; $("gv-shelf").value = "all"; prefs.shelf = "all"; savePrefs(); gvFill(); }
     $("gv-style").value = sg.gv.style; gvApply("style");
     $("gv-scale").value = sg.gv.scale; gvProgFill(sg.gv.scale, sg.gv.prog); $("gv-prog").value = sg.gv.prog; $("gv-key").value = sg.gv.key; $("gv-bpm").value = sg.gv.bpm;
-    $("gv-mel").value = sg.gv.mel; $("gv-by").value = sg.gv.by; $("gv-cv").value = sg.gv.cv || "auto"; $("gv-bv").value = sg.gv.bv || "auto";
+    $("gv-mel").value = sg.gv.mel; $("gv-by").value = sg.gv.by; $("gv-cv").value = sg.gv.cv || "auto"; $("gv-bv").value = sg.gv.bv || "auto"; GV.bline = sg.gv.bl || "auto";
     gvApply("");
     SF.form = sg.form || "auto"; $("sf-form").value = SF.form; SF.secs = sg.secs.map(function (x) { return { type: x.type, bars: x.bars, prog: x.prog, lyr: x.lyr, chords: x.chords || null, own: x.own || null, mute: x.mute || null }; }); SF.shift = sg.shift || 0; $("sf-key").value = String(SF.shift); SF.sel = 0;
     $("sb-name").value = name; sfRender(); sbDraw(); $("sb-save-msg").textContent = "Loaded “" + name + "”.";
@@ -4044,7 +4077,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (dr.length && !(S.k || S.s || S.s2 || S.h)) parts.push("Percussion: " + dr.join(", "));
     else if (dr.length) parts.push("Drums: " + (GV.kitNow === "e" ? "electronic kit" : GV.kitNow === "ac" ? "acoustic kit" : "synth kit") + " (" + dr.join(", ") + ")");
     else parts.push("No drums");
-    if (S.b) parts.push("Bass: " + voiceName(VV.bv, BASS_VOICES));
+    if (S.b || (GV.bline && GV.bline !== "auto")) parts.push("Bass: " + voiceName(VV.bv, BASS_VOICES) + (GV.bline && GV.bline !== "auto" ? ", playing \u201C" + ((BLINES.filter(function (b) { return b[0] === GV.bline; })[0] || [0, 0, ""])[2]).toLowerCase() + "\u201D" : ""));
     if (S.c) parts.push("Chords: " + voiceName(VV.cv, CH_VOICES) + (S.arp ? ", one note at a time" : ""));
     if (S.c2) parts.push("Behind it: " + voiceName(S.cv2, CH_VOICES));
     var mel = GV.mel !== "none" ? GV.mel : (SF.on ? S.mel : null);
@@ -4533,6 +4566,87 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     $("learn-prog").textContent = n + " of " + total + " done";
   }
   learnRender();
+  /* ---------- bass lines: choose a different bass part for any groove ----------
+     Each note is [position in the bar from 0 to 1, what to play]. r root, 5 fifth above, 5d fifth below, 3 third, 6 sixth, 7 the chord's seventh,
+     8 octave up, a approach from a half step below the next chord, ab approach from above, an the next chord's root early. */
+  var BLINES = [
+    ["g-whole", "general", "Root on one", [[0, "r"]]],
+    ["g-r5", "general", "Root and fifth", [[0, "r"], [0.5, "5"]]],
+    ["g-alt", "general", "Root, then fifth the next bar", [[0, "r5"]]],
+    ["g-walk", "general", "Walking quarter notes", [[0, "r"], [0.25, "3"], [0.5, "5"], [0.75, "a"]]],
+    ["g-oct", "general", "Octave bounce", [[0, "r"], [0.25, "8"], [0.5, "r"], [0.75, "8"]]],
+    ["g-8th", "general", "Driving eighths", [[0, "r"], [0.125, "r"], [0.25, "r"], [0.375, "r"], [0.5, "r"], [0.625, "r"], [0.75, "r"], [0.875, "r"]]],
+    ["lo-sub", "lorde", "Long sub note", [[0, "r"]]],
+    ["lo-sync", "lorde", "Syncopated sub", [[0, "r"], [0.375, "r"], [0.625, "r"]]],
+    ["lo-kick", "lorde", "Locked to the kick", [[0, "r"], [0.1875, "r"], [0.5, "r"], [0.6875, "r"]]],
+    ["lo-off", "lorde", "Off-beat stabs", [[0.125, "r"], [0.375, "r"], [0.625, "r"], [0.875, "r"]]],
+    ["lo-drop", "lorde", "Drop to the low fifth", [[0, "r"], [0.5, "5d"], [0.75, "r"]]],
+    ["lo-push", "lorde", "Push into the next chord", [[0, "r"], [0.625, "r"], [0.875, "an"]]],
+    ["dp-climb", "dream", "Melodic climb", [[0, "r"], [0.25, "3"], [0.5, "5"], [0.75, "8"]]],
+    ["dp-high", "dream", "High melodic line", [[0, "8"], [0.25, "7"], [0.5, "5"], [0.75, "3"]]],
+    ["dp-r58", "dream", "Root, fifth, octave", [[0, "r"], [0.375, "5"], [0.75, "8"]]],
+    ["dp-pulse", "dream", "Steady eighth pulse", [[0, "r"], [0.125, "r"], [0.25, "r"], [0.375, "r"], [0.5, "r"], [0.625, "r"], [0.75, "r"], [0.875, "r"]]],
+    ["dp-slide", "dream", "Slow slide to the next chord", [[0, "r"], [0.75, "a"]]],
+    ["ba-r5", "ballad", "Root and fifth", [[0, "r"], [0.5, "5"]]],
+    ["ba-walkup", "ballad", "Walk up into the next chord", [[0, "r"], [0.5, "5"], [0.75, "a"]]],
+    ["ba-bolero", "ballad", "Bolero bass", [[0, "r"], [0.375, "r"], [0.5, "5"]]],
+    ["ba-third", "ballad", "Passing through the third", [[0, "r"], [0.5, "3"], [0.75, "5"]]],
+    ["ba-soft", "ballad", "Soft whole notes", [[0, "r"]]],
+    ["ba-desc", "ballad", "Falling from above", [[0, "r"], [0.5, "5"], [0.75, "ab"]]],
+    ["gr-romance", "grupera", "Romantic walk", [[0, "r"], [0.25, "3"], [0.5, "5"], [0.75, "6"]]],
+    ["gr-pickup", "grupera", "Root and fifth with a pickup", [[0, "r"], [0.5, "5"], [0.875, "a"]]],
+    ["gr-bounce", "grupera", "Mid-tempo bounce", [[0, "r"], [0.375, "r"], [0.5, "5"], [0.875, "5"]]],
+    ["gr-cumbia", "grupera", "Cumbia bass", [[0, "r"], [0.375, "5"], [0.5, "5"], [0.75, "r"]]],
+    ["gr-octave", "grupera", "Keyboard-bass octaves", [[0, "r"], [0.375, "8"], [0.5, "r"], [0.875, "8"]]],
+    ["mx-oompah", "mex", "Oom-pah: root then fifth", [[0, "r"], [0.5, "5d"]]],
+    ["mx-walk", "mex", "Tuba run into the next chord", [[0, "r"], [0.5, "3"], [0.75, "5"], [0.875, "a"]]],
+    ["mx-down", "mex", "Corrido walk-down", [[0, "r"], [0.25, "5d"], [0.5, "r"], [0.75, "a"]]],
+    ["mx-guitarron", "mex", "Guitarrón: root, fifth, approach", [[0, "r"], [0.5, "5"], [0.875, "ab"]]],
+    ["mx-slap", "mex", "Tololoche slaps", [[0, "r"], [0.25, "5d"], [0.5, "r"], [0.75, "5d"]]]
+  ];
+  var BL_GROUP = { general: "General", lorde: "Lorde and electronic", dream: "Dream pop and indie", ballad: "Ballads", grupera: "Grupera", mex: "Regional Mexican" };
+  var BL_FAM = { lph: "lorde", lme: "lorde", lsp: "lorde", lvi: "lorde", lsi: "lorde", epop: "lorde", dream: "dream", indie: "dream", alv: "dream", mar: "dream", nfr: "dream",
+    bal: "ballad", cs: "ballad", jj: "ballad", jg: "ballad", rnb: "ballad", grup: "grupera", buk: "grupera", tem: "grupera", mex: "mex", tumb: "mex" };
+  var blCache = {};
+  /* The bass pattern actually used for this style and bar. */
+  function bassPat(S, odd) {
+    if (GV.bline && GV.bline !== "auto") {
+      var key = GV.bline + ":" + S.steps, hit = blCache[key];
+      if (!hit) {
+        var L = BLINES.filter(function (x) { return x[0] === GV.bline; })[0], seen = {};
+        hit = blCache[key] = L ? L[3].map(function (e) { return [Math.min(S.steps - 1, Math.round(e[0] * S.steps)), e[1]]; }).filter(function (e) { if (seen[e[0]]) return false; seen[e[0]] = 1; return true; }) : null;
+      }
+      if (hit) return hit;
+    }
+    return odd && S.bAlt ? S.bAlt : S.b;
+  }
+  function bassNote(dg, b0, ch, nb, odd) {
+    if (dg === "r5") dg = odd ? "5" : "r";
+    if (dg === "5") return b0 + 7 > 47 ? b0 - 5 : b0 + 7;
+    if (dg === "5d") return b0 - 5 < 28 ? b0 + 7 : b0 - 5;
+    if (dg === "3") return b0 + ch.tones[1];
+    if (dg === "6") return b0 + 9;
+    if (dg === "7") return b0 + (ch.tones[3] != null && ch.tones[3] < 12 ? ch.tones[3] : 10);
+    if (dg === "8") return b0 + 12;
+    if (dg === "a") return nb - 1;
+    if (dg === "ab") return nb + 1;
+    if (dg === "an") return nb;
+    return b0;
+  }
+  function blFill() {
+    if (!BLINES || !BL_FAM) return;
+    var sel = $("gv-bl"), fk = BL_FAM[FAM_OF[GV.style.group]], keep = GV.bline || "auto";
+    sel.innerHTML = ""; var o = document.createElement("option"); o.value = "auto"; o.textContent = "The groove’s own bass line"; sel.appendChild(o);
+    var order = (fk ? [fk] : []).concat(["general"]).concat(Object.keys(BL_GROUP).filter(function (g) { return g !== fk && g !== "general"; }));
+    order.forEach(function (g) {
+      var og = document.createElement("optgroup"); og.label = g === fk ? "Made for this style (" + BL_GROUP[g] + ")" : BL_GROUP[g];
+      BLINES.forEach(function (b) { if (b[1] !== g) return; var q = document.createElement("option"); q.value = b[0]; q.textContent = b[2]; og.appendChild(q); });
+      sel.appendChild(og);
+    });
+    sel.value = keep; if (sel.value !== keep) sel.value = "auto";
+  }
+  $("gv-bl").addEventListener("change", function (e) { GV.bline = e.target.value; gvGridIdle(); sbDraw(); gvWho(); });
+  blFill();
   function gvGridIdle() { if (mode === "jam" && !GV.on) gridDraw("gv-grid", gvPlan(0), gvPlan(1), 0, -1); }
   /* ---------- chord progressions tagged by style family (common progressions in the general feel of each style, not taken from songs) ---------- */
   function PG(id, name, bars, mode, fams) { PROGS.push({ id: id, name: name, bars: bars, mode: mode, fams: fams }); }
@@ -4668,13 +4782,13 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       var dp = PROGS.filter(function (pg) { return pg.id === S.prog; })[0] || PROGS[0];
       $("gv-scale").value = dp.mode; gvProgFill(dp.mode, dp.id); $("gv-bpm").value = S.bpm;
       gvMelFill(S); $("gv-mel").value = famMel(S); if (S.by) $("gv-by").value = S.by;
-      $("gv-cv").value = "auto"; $("gv-bv").value = "auto";
+      $("gv-cv").value = "auto"; $("gv-bv").value = "auto"; GV.bline = "auto";
     }
     if (from === "scale") gvProgFill($("gv-scale").value, S.prog);
     GV.style = S; GV.prog = PROGS.filter(function (pg) { return pg.id === $("gv-prog").value; })[0] || PROGS[0];
     if (from === "style") $("gv-kit").value = "auto";
     GV.kit = $("gv-kit").value; GV.kitNow = GV.kit === "auto" ? (S.kit === "e" ? "e" : "ac") : GV.kit;
-    GV.key = +$("gv-key").value; GV.bpm = +$("gv-bpm").value; GV.mel = $("gv-mel").value; GV.by = $("gv-by").value; GV.cvo = $("gv-cv").value; GV.bvo = $("gv-bv").value;
+    GV.key = +$("gv-key").value; GV.bpm = +$("gv-bpm").value; GV.mel = $("gv-mel").value; GV.by = $("gv-by").value; GV.cvo = $("gv-cv").value; GV.bvo = $("gv-bv").value; if (typeof blFill === "function") blFill();
     $("gv-bpm-lbl").textContent = "Tempo " + GV.bpm + " bpm"; $("gv-tip").textContent = S.tip;
     var dots = $("gv-beats"); dots.innerHTML = ""; for (var i = 0; i < S.beats; i++) dots.appendChild(document.createElement("i"));
     if ((from === "style" || from === "scale") && GV.on && !GV.song) { GV.step = 0; GV.bar = 0; GV.arp = 0; }
