@@ -437,6 +437,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <label class="fld">Chords<select id="gv-prog"></select></label>
     </div>
     <button type="button" class="big" id="gv-play">Play groove</button>
+    <button type="button" class="ghost" id="pa-open2">Play-along view (big chords, next chord, shapes)</button>
     <div class="row">
       <button type="button" class="ghost" id="gv-fill">Play a fill</button>
       <button type="button" class="ghost" id="gv-end">Finish with an ending</button>
@@ -585,7 +586,13 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   <section class="panel" id="panel-build" hidden>
     <p class="small" id="sb-info"></p>
     <p class="small" id="sb-who"></p>
+    <div class="builder" style="display:flex;flex-direction:column;gap:6px">
+      <b>Play along with a real song</b>
+      <div class="row"><label class="fld" style="flex:3 1 200px">Song<select id="sm-song"></select></label><button type="button" class="ghost" id="sm-load" style="flex:1 1 100px">Load it</button></div>
+      <p class="small" id="sm-note">Loads the song's chords section by section into the Builder, with a matching groove. Then press Play the song and open the play-along view.</p>
+    </div>
     <button type="button" class="big" id="sb-play">Play the song</button>
+    <button type="button" class="ghost" id="pa-open">Play-along view (big chords, next chord, shapes)</button>
     <label class="check"><input type="checkbox" id="sb-loop"> Repeat the current section until I tap another one</label>
     <div class="row">
       <label class="check" style="flex:1 1 150px"><input type="checkbox" id="sb-count"> Count in first</label>
@@ -681,6 +688,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     </div>
     <b>Chord chart</b>
     <button type="button" class="ghost" id="sb-chart-btn">Make a chord chart of this song</button>
+    <div class="row"><label class="fld" style="flex:1 1 140px">Shapes for<select id="sh-inst"><option value="guitar">Guitar</option><option value="piano">Piano</option><option value="none">No shapes</option></select></label><button type="button" class="ghost" id="sh-btn" style="flex:2 1 200px">Make a chord sheet with shapes</button></div>
     <img id="sb-chart-img" alt="Chord chart of the song" hidden style="width:100%;border-radius:10px">
     <div class="row" id="sb-chart-row" hidden>
       <a class="ghost" id="sb-chart-dl" style="display:flex;align-items:center;justify-content:center;text-decoration:none;min-height:46px">Save the picture</a>
@@ -815,6 +823,15 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   </div>
 </main>
 
+<div id="pa" hidden style="position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--panel);border-top:1px solid var(--line);padding:10px 14px 14px;box-shadow:0 -8px 24px rgba(0,0,0,.4)">
+  <div style="display:flex;align-items:center;gap:8px"><span id="pa-sec" class="small" style="flex:1"></span><select id="pa-inst" style="flex:0 0 auto;width:auto"><option value="guitar">Guitar</option><option value="piano">Piano</option><option value="none">Names only</option></select><button type="button" class="ghost" id="pa-x" style="flex:0 0 44px;min-height:40px" aria-label="Close">✕</button></div>
+  <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+    <div style="flex:1;min-width:0"><div id="pa-ch" style="font:700 48px var(--display);line-height:1.1">–</div><div id="pa-nx" style="font-size:17px;margin:4px 0 8px"></div><div id="pa-dots"></div></div>
+    <canvas id="pa-c1" style="width:96px;height:110px"></canvas>
+    <div style="display:flex;flex-direction:column;align-items:center;opacity:.6"><span class="small">next</span><canvas id="pa-c2" style="width:72px;height:84px"></canvas></div>
+  </div>
+  <p class="small" id="pa-rh" style="font-family:var(--mono);margin:8px 0 0"></p>
+</div>
 <script>
 (function () {
   var SHARP = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
@@ -2737,7 +2754,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function gvStop() {
     if (!GV.on && !GV.ending) return;
     if (GV.song && typeof plogSave === "function") plogSave();
-    GV.on = false; GV.ending = false; clearInterval(GV.timer); clearTimeout(GV.endTimer); GV.marks = []; GV.shown = ""; GV.endBar = null; GV.fillBar = null; GV.ck = null; GV.song = false;
+    GV.on = false; GV.ending = false; clearInterval(GV.timer); clearTimeout(GV.endTimer); GV.marks = []; GV.shown = ""; GV.endBar = null; GV.fillBar = null; GV.ck = null; GV.song = false; if (typeof PA !== "undefined" && PA.on) setTimeout(paIdle, 0);
     $("gv-play").textContent = SF.on ? "Play the song" : "Play groove"; $("gv-play").classList.remove("stop"); gvChips(-1);
     SF.cur = -1; SB.now = null; sbScoreShow(); $("sb-play").textContent = "Play the song"; $("sb-play").classList.remove("stop"); sfRender(); $("sf-now").textContent = "Ready"; GV.nowCh = null; csDraw(); sbDraw(); gvGridIdle();
   }
@@ -2793,6 +2810,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     }
     var beat = Math.floor(last.st / (GV.style.steps / GV.style.beats)), dots = $("gv-beats").children;
     for (var i = 0; i < dots.length; i++) dots[i].className = i === beat ? "on" : "";
+    if (typeof PA !== "undefined" && PA.on) paUpdate(last, beat);
   }
   /* Melody section for a groove: a simple line that follows the chords, played by violins and/or brass in thirds. */
   var MELS = [
@@ -4815,6 +4833,195 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   $("idea-go").addEventListener("click", ideaMake);
   $("idea-set").addEventListener("click", ideaSet);
+  /* ---------- real song chord maps: whole songs laid out section by section, to play along with ----------
+     Chords and section order come from published chord sheets (ChordsWorld for Not for Radio; Ultimate Guitar / ukulele-tabs for The Marías).
+     Chord lengths and tempos are guesses to fix by ear. Slash basses are left out. */
+  var NFR = "Not for Radio";
+  var SONGMAPS = [
+    { id: "ma-idky", title: "I Don’t Know You", artist: "The Marías", from: "Superclean, Vol. I (2017)", key: 0, mode: "maj", capo: 0, bpm: 118, style: G_MA + "|Velvet lounge", src: "Ultimate Guitar and ukulele-tabs chord sheets",
+      secs: [["intro", "Fmaj7:8"], ["chorus", "Fmaj7:8 G7:8 Am:8 Em:8 Fmaj7:8 G7:8 Am:8 Gm:4 C7:4"], ["verse", "Fmaj7:8 G7:8 Am:8 Em:16 Fmaj7:8 G7:8 Am:4 Gm:4 C7:8"], ["chorus", "Fmaj7:8 G7:8 Am:8 Em:8 Fmaj7:8 G7:8 Am:4 Abm:4 Gm:4 C7:4"], ["verse", "Fmaj7:8 G7:8 Am:8 Em:16 Fmaj7:8 G7:8 Am:4 Abm:2 Gm:2 C7:8"], ["chorus", "Fmaj7:8 G7:8 Am:8 Em:8 Fmaj7:8 G7:8 Am:4 Abm:4 Gm:4 C7:4"], ["outro", "Fmaj7:8 G7:8 Am:8 Em:8 Fmaj7:8 G7:8 C:4 Am:4 Abm:4 Gm:4 C7:4 Fmaj7:4"]] },
+    { id: "nr-pu", title: "Puddles", artist: NFR, from: "Melt (2025)", key: 4, mode: "min", capo: 2, bpm: 72, style: G_NR + "|Frozen lake", src: "ChordsWorld (easy version)",
+      secs: [["intro", "Cmaj7 B G E"], ["verse", "Cmaj7 B G E", 2], ["chorus", "Cmaj7 B G E", 2], ["verse", "Cmaj7 B G E", 2], ["chorus", "Cmaj7 B G E", 2], ["inter", "G E", 2], ["bridge", "Cmaj7 B G E", 2], ["chorus", "Cmaj7 B G E", 2], ["inter", "G E", 2], ["outro", "Cmaj7 B G E Cmaj7 B G G"]] },
+    { id: "nr-mt", title: "My Turn", artist: NFR, from: "Melt (2025)", key: 9, mode: "min", capo: 3, bpm: 76, style: G_NR + "|Stripped acoustic", src: "ChordsWorld",
+      secs: [["intro", "Am:2 Dm:2 G:2 C:2 E7:4 Am:4 F:2 E7:2 Dm:2 C:2"], ["verse", "Am:2 Dm:2 G:2 F:2 C:4 E7:4 Am:4 F:2 E7:2 Am:2 Dm:2 G:2 C:2 E7:4 Am:4 F:2 E7:2"], ["chorus", "Am:2 G:2 F:2 Em:2 Dm:2 C:2 E7:2 Am:2 G:2 E:2 F:2 Dm:2 F:2 D#:2 E:4 Am:4"], ["verse", "Am:2 Dm:2 G:2 C:2 E7:4 Am:4 F:4 E:4 Am:2 Dm:2 G:2 C:2 F:2 E:2 Am:4 F:4 E:2 Em:2 Dm:4 C:4"], ["chorus", "Am:2 G:2 F:2 Em:2 Dm:2 C:2 E7:2 Am:2 G:2 E:2 F:2 Dm:2 F:2 D#:2 E:4 Am:4"], ["outro", "C G Em Bm C G Em D Am:2 Dm:2 G:2 C:2 E7:2 Am:2 F:2 E7:2"]] },
+    { id: "nr-mo", title: "Moment", artist: NFR, from: "Melt (2025)", key: 5, mode: "maj", capo: 0, bpm: 80, style: G_NR + "|Minimal synth ballad", src: "ChordsWorld (section order guessed)",
+      secs: [["intro", "Fmaj7 Cmaj7 Em7 Dm7"], ["verse", "Fmaj7 Cmaj7 Em7 Dm7", 2], ["chorus", "Am Bb F D", 2], ["verse", "Fmaj7 Cmaj7 Em7 Dm7", 2], ["chorus", "Am Bb F D", 2], ["outro", "C Bb F D Am Am Am Am"]] },
+    { id: "nr-bt", title: "Back to You", artist: NFR, from: "Melt (2025)", key: 7, mode: "maj", capo: 1, bpm: 84, style: G_NR + "|Winter piano", src: "ChordsWorld and GuitarTabsExplorer",
+      secs: [["verse", "Cmaj7 Gmaj7 Em Am G Bm B7 B7"], ["pre", "G Cmaj7"], ["chorus", "Gmaj7 Cmaj7 Gmaj7 Em", 2], ["verse", "Cmaj7 Gmaj7 Em Am G Bm B7 B7"], ["pre", "G Cmaj7"], ["chorus", "Gmaj7 Cmaj7 Gmaj7 Em", 2], ["bridge", "Cmaj7 Gmaj7 Em Am G Bm B7 B7"], ["outro", "Cmaj7 Gmaj7 Em Em"]] },
+    { id: "nr-sw", title: "Swan", artist: NFR, from: "Melt (2025)", key: 11, mode: "min", capo: 1, bpm: 70, style: G_NR + "|String swell ballad", src: "ChordsWorld",
+      secs: [["intro", "Bm:4 A:4 Gmaj7:4 Em:2 D:2", 2], ["verse", "Bm:4 A:4 Gmaj7:4 Em:2 D:2", 4], ["verse", "Bm:4 A:4 Gmaj7:4 Em:2 D:2", 4], ["chorus", "Gmaj7:2 F#m:2 Em:2 D:2 D#dim:2 Am:2 Gmaj7:2 F#:2 Em:2 D:2 C:2 Bm:2 A:2 Gmaj7:2 Em:2 Em:2"], ["verse", "Bm:4 A:4 Gmaj7:4 Em:2 D:2", 2], ["chorus", "Gmaj7:2 F#m:2 Em:2 D:2 D#dim:2 Am:2 Gmaj7:2 Em:2 D:2 D#dim:2 Am:4"], ["outro", "Gmaj7:2 F#:2 Em:2 D:2 D#dim:2 Am:2 Gmaj7:2 F#:2 Em:2 D:2 C:2 Bm:2"], ["outro", "Bm:4 A:4 Gmaj7:4 Em:2 D:2", 6]] },
+    { id: "nr-no", title: "Not the Only One", artist: NFR, from: "Melt (2025)", key: 0, mode: "maj", capo: 0, bpm: 78, style: G_NR + "|Slow heartbeat", src: "ChordsWorld (G/B played as G)",
+      secs: [["intro", "Dm F C G Em"], ["verse", "Dm F C G Em", 2], ["chorus", "Dm F C G Em", 2], ["verse", "Em Dm G Am G", 2], ["verse", "Dm E C F G", 2], ["bridge", "Dm F C G Em", 2], ["chorus", "F Dm C Am G Em", 2]] },
+    { id: "nr-ma", title: "Magnet", artist: NFR, from: "Melt (2025)", key: 2, mode: "min", capo: 0, bpm: 74, style: G_NR + "|Stripped acoustic", src: "ChordsWorld (slash basses left out)",
+      secs: [["intro", "Dm Am Gm D Am Gm"], ["verse", "Dm Am Gm D Am Gm D", 2], ["chorus", "Bb Gm A7 Dm", 2], ["inter", "Dm Am Gm D Am Gm"], ["verse", "Dm Am Gm D Am Gm D", 2], ["chorus", "Bb Gm A7 Dm", 2], ["outro", "Dm Am Gm D Am Gm"]] },
+    { id: "nr-vu", title: "Vueltas", artist: NFR, from: "Melt (2025)", key: 9, mode: "min", capo: 2, bpm: 70, style: G_NR + "|Stripped acoustic", src: "ChordsWorld",
+      secs: [["intro", "A G F#m F Dm E"], ["verse", "Am Dm G C F Bdim E E", 2], ["chorus", "Am Dm G C F Bdim E E", 2], ["inter", "A G F#m F Bdim E"], ["verse", "Dm G C F Bdim E", 2], ["chorus", "Am Dm G C F Bdim E E", 2], ["outro", "A G F#m F Bdim E", 2]] },
+    { id: "nr-ma2", title: "Water On Your Nose", artist: NFR, from: "Melt (2025)", key: 5, mode: "maj", capo: 0, bpm: 96, style: G_NR + "|Frozen lake", src: "ChordsWorld",
+      secs: [["intro", "F D C A"], ["verse", "F D C A", 2], ["chorus", "F D C A", 2], ["inter", "F D C A"], ["verse", "F D C A", 2], ["chorus", "F D C A", 2], ["inter", "F D C A"], ["bridge", "F D C A", 2], ["outro", "F D C A F D C A F D F A F D F A F D C A F D F D"]] },
+    { id: "nr-sl", title: "Slip", artist: NFR, from: "Melt (2025)", key: 7, mode: "maj", capo: 0, bpm: 88, style: G_NR + "|Minimal synth ballad", src: "ChordsWorld",
+      secs: [["intro", "G Dm F C"], ["verse", "G Dm F C", 2], ["chorus", "G Dm F C", 2], ["verse", "G Dm F C", 2], ["chorus", "G Dm F C", 2], ["outro", "G Dm F C", 3]] },
+    { id: "nr-ac", title: "Ache", artist: NFR, from: "single (2026)", key: 2, mode: "maj", capo: 0, bpm: 80, style: G_NR + "|Frozen lake", src: "ChordsWorld (section order guessed)",
+      secs: [["intro", "D A C G"], ["verse", "D A C G", 2], ["chorus", "D Dmaj7 Am G E E E E"], ["verse", "D A C G", 2], ["chorus", "D Dmaj7 Am G E E E E"], ["bridge", "D Dmaj7 Am G E C"], ["chorus", "D Dmaj7 Am G E E E E"], ["outro", "D Am C G", 2]] },
+    { id: "nr-ki", title: "Kitten", artist: NFR, from: "single (2026)", key: 4, mode: "min", capo: 2, bpm: 74, style: G_NR + "|Slow snowfall", src: "ChordsWorld",
+      secs: [["verse", "Em Am Em D", 2], ["chorus", "Em Ebdim7 Em Ebdim7"], ["inter", "Em Ebdim7 Em Ebdim7 Am Am Am Am"], ["inter", "Em Am Em Am"], ["verse", "Em Am Em D", 2], ["chorus", "Em Ebdim7 Em Ebdim7"], ["bridge", "Em Ebdim7", 2], ["outro", "Em Ebdim7", 2]] }
+  ];
+  SF.meta = null;
+  (function () {
+    var sel = $("sm-song"), groups = {};
+    SONGMAPS.forEach(function (M) {
+      if (!groups[M.artist]) { groups[M.artist] = document.createElement("optgroup"); groups[M.artist].label = M.artist; sel.appendChild(groups[M.artist]); }
+      var o = document.createElement("option"); o.value = M.id; o.textContent = M.title + "  (" + M.from + ")"; groups[M.artist].appendChild(o);
+    });
+  })();
+  function smLoad(id) {
+    var M = SONGMAPS.filter(function (x) { return x.id === id; })[0]; if (!M) return;
+    learnStyle(M.style, null, null);
+    $("gv-key").value = String(M.key); $("gv-scale").value = M.mode; gvProgFill(M.mode, ""); $("gv-bpm").value = M.bpm; gvApply("");
+    goTab("build"); if (GV.on || GV.ending) gvStop();
+    SF.secs = M.secs.map(function (s) {
+      var r = parseChords(s[1]), reps = s[2] || 1, beats = GV.style.beats;
+      var per = r.durs ? Math.ceil(r.durs.reduce(function (a, b) { return a + b; }, 0) / beats) : r.chords.length;
+      return { type: s[0], bars: per * reps, chords: r.chords, cdur: r.durs };
+    });
+    SF.shift = 0; $("sf-key").value = "0"; SF.sel = 0; SF.same = false; SF.meta = M;
+    $("sb-name").value = M.title; $("sb-name").dispatchEvent(new Event("input"));
+    sfRender(); sbDraw();
+    $("sm-note").textContent = "Loaded “" + M.title + "” by " + M.artist + ". Chords from " + M.src + "." + (M.capo ? " Capo " + M.capo + ": play these shapes with a capo on fret " + M.capo + " to match the record (the app plays them without the capo)." : "") + " Chord lengths, the tempo and some section lengths are guesses. Fix them by ear: tap a section and type lengths like Am:2 in the chord box.";
+    window.scrollTo(0, 0);
+  }
+  $("sm-load").addEventListener("click", function () { smLoad($("sm-song").value); });
+  function smMeta() { return SF.meta && $("sb-name").value === SF.meta.title ? SF.meta : null; }
+
+  /* ---------- small chord pictures, shared by the play-along view and the chord sheet ---------- */
+  function miniGuitar(g, x, y, w, h, ch, C) {
+    var I = CS_INST[0], sh = csSolve(I.tun, ch.root, ch.tones, true), v = sh && sh[0], n = 6;
+    g.textAlign = "center"; g.textBaseline = "middle";
+    if (!v) { g.fillStyle = C.mut; g.font = "12px system-ui, sans-serif"; g.fillText("no easy shape", x + w / 2, y + h / 2); return; }
+    var first = v.hi <= 4 ? 1 : v.lo, L = x + w * 0.2, R = x + w - w * 0.08, T = y + h * 0.16, B = y + h - 4, gap = (R - L) / (n - 1), fh = (B - T) / 4, r = Math.min(gap, fh) * 0.34;
+    g.strokeStyle = C.mut; g.lineWidth = 1;
+    for (var s = 0; s < n; s++) { g.beginPath(); g.moveTo(L + s * gap, T); g.lineTo(L + s * gap, B); g.stroke(); }
+    for (var f = 0; f <= 4; f++) { g.lineWidth = f === 0 && first === 1 ? 3 : 1; g.strokeStyle = f === 0 && first === 1 ? C.ink : C.mut; g.beginPath(); g.moveTo(L, T + f * fh); g.lineTo(R, T + f * fh); g.stroke(); }
+    g.font = Math.round(r * 2.1) + "px system-ui, sans-serif";
+    if (first > 1) { g.fillStyle = C.ink; g.textAlign = "right"; g.fillText(first + "fr", L - 4, T + fh / 2); g.textAlign = "center"; }
+    for (s = 0; s < n; s++) {
+      var fr = v.f[s], xx = L + s * gap;
+      g.fillStyle = C.ink;
+      if (fr < 0) g.fillText("×", xx, T - r * 1.4);
+      else if (fr === 0) { g.beginPath(); g.arc(xx, T - r * 1.4, r * 0.7, 0, 7); g.strokeStyle = C.ink; g.lineWidth = 1.2; g.stroke(); }
+      else { g.fillStyle = C.dot; g.beginPath(); g.arc(xx, T + (fr - first + 0.5) * fh, r, 0, 7); g.fill(); }
+    }
+  }
+  function miniPiano(g, x, y, w, h, ch, C) {
+    var on = {}, wk = [0, 2, 4, 5, 7, 9, 11], kw = w / 14, i;
+    ch.tones.forEach(function (t) { on[(ch.root + t) % 24] = 1; });
+    for (i = 0; i < 14; i++) { var m = wk[i % 7] + 12 * Math.floor(i / 7); g.fillStyle = on[m] ? C.dot : "#f4f4f4"; g.fillRect(x + i * kw + 0.5, y, kw - 1, h); g.strokeStyle = "#555"; g.lineWidth = 1; g.strokeRect(x + i * kw + 0.5, y, kw - 1, h); }
+    for (i = 0; i < 14; i++) {
+      var pc = wk[i % 7]; if (pc === 4 || pc === 11) continue;
+      var mb = pc + 1 + 12 * Math.floor(i / 7); g.fillStyle = on[mb] ? C.dot : "#111"; g.fillRect(x + (i + 1) * kw - kw * 0.3, y, kw * 0.6, h * 0.6);
+      if (on[mb]) { g.strokeStyle = "#111"; g.strokeRect(x + (i + 1) * kw - kw * 0.3, y, kw * 0.6, h * 0.6); }
+    }
+  }
+  function miniChord(g, x, y, w, h, ch, inst, C) { if (inst === "piano") miniPiano(g, x, y + h * 0.25, w, h * 0.6, ch, C); else if (inst === "guitar") miniGuitar(g, x, y, w, h, ch, C); }
+
+  /* ---------- play-along view: big current chord, next chord, beat count and shapes ---------- */
+  var PA = { on: false, inst: prefs.pa || "guitar", tag: "" };
+  $("pa-inst").value = PA.inst;
+  function paCanvas(id) { var cv = $(id), dpr = window.devicePixelRatio || 1, W = cv.clientWidth || 100, H = cv.clientHeight || 100; cv.width = W * dpr; cv.height = H * dpr; var g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); return { g: g, W: W, H: H }; }
+  function paCol() { return { ink: TH.text, mut: TH.muted, dot: TH.note }; }
+  function paShape(id, ch) { $(id).style.width = PA.inst === "piano" ? (id === "pa-c1" ? "150px" : "96px") : (id === "pa-c1" ? "96px" : "72px"); var c = paCanvas(id); $(id).hidden = PA.inst === "none"; if (ch && PA.inst !== "none") miniChord(c.g, 2, 2, c.W - 4, c.H - 4, ch, PA.inst, paCol()); }
+  function paRhythm(bar) {
+    var S = GV.style, pat = chordPat(S, bar % 2), slots = S.beats * 2, hit = [], i;
+    if (!pat || !pat.c || !pat.c.length) return "The chords are held under the groove: play each chord once and let it ring.";
+    for (i = 0; i < slots; i++) hit[i] = false;
+    pat.c.forEach(function (e) { var k = Math.round(e[0] * slots / S.steps); if (k < slots) hit[k] = true; });
+    var txt = hit.map(function (h, i) { return (i % 2 ? "&" : String(i / 2 + 1)) + (PA.inst === "piano" ? (h ? "●" : "·") : (h ? (i % 2 ? "↑" : "↓") : "·")); }).join(" ");
+    return (PA.inst === "piano" ? "Play on: " : "Strum: ") + txt + (pat.arp ? "  (or pick the notes one by one)" : "");
+  }
+  function paNext(bar, st) {
+    var S = GV.style, per = S.steps / S.beats, P0 = gvPlan(bar), cn = chordName(chordInfo(P0, st).ch, P0.key), b = bar, beat = Math.floor(st / per);
+    for (var k = 1; k <= 48; k++) {
+      beat++; if (beat >= S.beats) { beat = 0; b++; }
+      if (gvDone(b)) return { end: true, k: k };
+      var P = gvPlan(b), ch = chordInfo(P, beat * per).ch, nm = chordName(ch, P.key);
+      if (nm !== cn) return { ch: ch, nm: nm, k: k };
+    }
+    return null;
+  }
+  function paDots(n, on) { var h = $("pa-dots"); if (h.children.length !== n) { h.innerHTML = ""; for (var i = 0; i < n; i++) { var d = document.createElement("span"); h.appendChild(d); } } for (var j = 0; j < n; j++) { var s = h.children[j].style; s.display = "inline-block"; s.width = s.height = "14px"; s.borderRadius = "50%"; s.marginRight = "6px"; s.background = j === on ? "var(--good)" : "var(--line)"; } }
+  function paIdle() {
+    $("pa-sec").textContent = "Press play. The chords show here as they come.";
+    var song = mode === "build" && SF.secs.length, P = song ? gvBuildPlan()[0] : null, first = song ? chordInfo(P, 0).ch : chordOf(GV.prog.bars[0], GV.key), key = song ? P.key : GV.key;
+    $("pa-ch").textContent = chordName(first, key); $("pa-nx").textContent = "First chord"; paDots(GV.style.beats, -1); paShape("pa-c1", first); paShape("pa-c2", null); $("pa-c2").hidden = true;
+    $("pa-rh").textContent = paRhythm(0); PA.tag = "";
+  }
+  function paUpdate(last, beat) {
+    var P = last.P, tag = last.bar + ":" + beat + ":" + PA.inst; if (tag === PA.tag) return; PA.tag = tag;
+    var S = GV.style, per = S.steps / S.beats, ch = chordInfo(P, beat * per).ch, nm = chordName(ch, P.key), nx = paNext(last.bar, beat * per), M = smMeta();
+    $("pa-sec").textContent = (GV.song && P.si < SF.secs.length ? P.name + " · bar " + (P.bi + 1) + " of " + P.n : "Groove · bar " + (last.bar + 1)) + (M && M.capo ? " · capo " + M.capo : "");
+    $("pa-ch").textContent = nm;
+    if (!nx) $("pa-nx").textContent = "Same chord for a while";
+    else if (nx.end) $("pa-nx").textContent = "Ending in " + nx.k + (nx.k > 1 ? " beats" : " beat");
+    else $("pa-nx").textContent = "Next: " + nx.nm + " in " + nx.k + (nx.k > 1 ? " beats" : " beat");
+    paDots(S.beats, beat);
+    paShape("pa-c1", ch); paShape("pa-c2", nx && nx.ch ? nx.ch : null); if (!(nx && nx.ch)) $("pa-c2").hidden = true;
+    $("pa-rh").textContent = paRhythm(last.bar);
+  }
+  function paOpen(on) { PA.on = on; $("pa").hidden = !on; document.body.style.paddingBottom = on ? "300px" : ""; if (on && !GV.on) paIdle(); }
+  $("pa-open").addEventListener("click", function () { paOpen(!PA.on); });
+  $("pa-open2").addEventListener("click", function () { paOpen(!PA.on); });
+  $("pa-x").addEventListener("click", function () { paOpen(false); });
+  $("pa-inst").addEventListener("change", function (e) { PA.inst = e.target.value; prefs.pa = PA.inst; savePrefs(); PA.tag = ""; if (!GV.on) paIdle(); });
+
+  /* ---------- chord sheet with shapes: every chord in every bar, plus a shape for each chord ---------- */
+  function barChords(P) {
+    var S = GV.style, per = S.steps / S.beats, out = [];
+    for (var b = 0; b < S.beats; b++) { var ch = chordInfo(P, b * per).ch, nm = chordName(ch, P.key); if (!out.length || out[out.length - 1].nm !== nm) out.push({ nm: nm, ch: ch }); }
+    return out;
+  }
+  function sheetCanvas(inst) {
+    var plan = gvBuildPlan(), names = sfNames(), W = 1100, pad = 50, cw = (W - pad * 2) / 4, rows = [], y = 170, uniq = {}, order = [], M = smMeta();
+    var title = $("sb-name").value.trim() || "My song", keyNames = FLAT_KEYS[GV.prog.mode === "min" ? "minor" : "major"].indexOf((GV.key + xp) % 12) >= 0 ? FLAT : SHARP;
+    SF.secs.forEach(function (x, si) {
+      var bars = plan.filter(function (p) { return p.si === si; }), lines = x.lyr ? x.lyr.split("\n").filter(function (l) { return l.trim(); }) : [];
+      var cells = bars.map(function (p) { var bc = barChords(p); bc.forEach(function (c) { if (!uniq[c.nm]) { uniq[c.nm] = c.ch; order.push(c.nm); } }); return bc; });
+      rows.push({ y: y, x: x, name: names[si], cells: cells, lines: lines });
+      y += 44 + Math.ceil(bars.length / 4) * 62 + lines.length * 30 + 26;
+    });
+    var shapeTop = y + 30, per = 6, sw = (W - pad * 2) / per, shH = inst === "none" ? 0 : 190, H = shapeTop + (inst === "none" ? 20 : 50 + Math.ceil(order.length / per) * shH) + 60;
+    var cv = document.createElement("canvas"), g = cv.getContext("2d"); cv.width = W; cv.height = H;
+    g.fillStyle = "#ffffff"; g.fillRect(0, 0, W, H); g.textBaseline = "alphabetic"; g.textAlign = "left";
+    g.fillStyle = "#111"; g.font = "700 44px system-ui, -apple-system, 'Segoe UI', sans-serif"; g.fillText(title, pad, 70);
+    g.fillStyle = "#444"; g.font = "22px system-ui, -apple-system, 'Segoe UI', sans-serif";
+    g.fillText((M ? M.artist + "  ·  " : "") + "Key of " + keyNames[(GV.key + xp) % 12] + (GV.prog.mode === "min" ? " minor" : " major") + "  ·  " + Math.round(GV.bpm) + " bpm  ·  " + GV.style.beats + " beats per bar", pad, 108);
+    if (M && M.capo) { g.fillStyle = "#b03030"; g.font = "700 22px system-ui, sans-serif"; g.fillText("Capo " + M.capo + " to play along with the record", pad, 140); }
+    rows.forEach(function (r) {
+      g.textAlign = "left"; g.fillStyle = SEC_COL[r.x.type]; g.fillRect(pad, r.y, 10, 30);
+      g.fillStyle = "#111"; g.font = "700 26px system-ui, -apple-system, 'Segoe UI', sans-serif"; g.fillText(r.name + "  ·  " + r.cells.length + " bars", pad + 20, r.y + 24);
+      var prev = "";
+      r.cells.forEach(function (bc, bi) {
+        var x = pad + (bi % 4) * cw, yy = r.y + 44 + Math.floor(bi / 4) * 62, txt = bc.map(function (c) { return c.nm; }).join("  "), same = bc.length === 1 && bc[0].nm === prev;
+        g.strokeStyle = "#222"; g.lineWidth = 2; g.strokeRect(x, yy, cw, 52);
+        var fs = bc.length === 1 ? 28 : bc.length === 2 ? 22 : 17;
+        g.fillStyle = same ? "#999" : "#111"; g.font = (same ? "" : "700 ") + fs + "px ui-monospace, Menlo, Consolas, monospace"; g.fillText(same ? "％" : txt, x + 12, yy + 34, cw - 20);
+        prev = bc[bc.length - 1].nm;
+      });
+      var ly = r.y + 44 + Math.ceil(r.cells.length / 4) * 62 + 24;
+      g.fillStyle = "#222"; g.font = "italic 22px Georgia, 'Times New Roman', serif";
+      r.lines.forEach(function (l, k) { g.fillText(l, pad + 6, ly + k * 30); });
+    });
+    if (inst !== "none") {
+      g.fillStyle = "#111"; g.font = "700 26px system-ui, sans-serif"; g.textAlign = "left"; g.fillText("Chord shapes (" + (inst === "piano" ? "piano" : "guitar") + ")", pad, shapeTop + 10);
+      order.forEach(function (nm, i) {
+        var x = pad + (i % per) * sw, yy = shapeTop + 40 + Math.floor(i / per) * shH;
+        g.fillStyle = "#111"; g.font = "700 22px ui-monospace, Menlo, monospace"; g.textAlign = "center"; g.textBaseline = "alphabetic"; g.fillText(nm, x + sw / 2, yy + 20);
+        miniChord(g, x + 14, yy + 34, sw - 28, shH - 50, uniq[nm], inst, { ink: "#111", mut: "#777", dot: "#1f6feb" });
+      });
+    }
+    g.textAlign = "left"; g.textBaseline = "alphabetic"; g.fillStyle = "#888"; g.font = "16px system-ui, sans-serif";
+    g.fillText("％ means repeat the chord before  ·  two names in a box share the bar" + (M ? "  ·  chords: " + M.src : ""), pad, H - 24, W - pad * 2);
+    return cv;
+  }
+  $("sh-btn").addEventListener("click", function () { var nm = $("sb-name").value.trim() || "My song"; chartShow(sheetCanvas($("sh-inst").value), nm + " sheet"); });
   function learnRender() {
     var host = $("learn-host"), done = prefs.learn || {}, total = 0, n = 0, cur = null, open = prefs.learnOpen || {}; host.innerHTML = "";
     LESSONS.forEach(function (L) {
