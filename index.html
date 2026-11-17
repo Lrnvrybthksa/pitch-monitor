@@ -420,6 +420,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   </section>
 
   <section class="panel" id="panel-jam" hidden>
+    <label class="fld">Shelf (which grooves to browse)<select id="gv-shelf"></select></label>
     <div class="row">
       <label class="fld">Groove<select id="gv-style"></select></label>
       <label class="fld">Chords<select id="gv-prog"></select></label>
@@ -2773,7 +2774,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     ["s:epfm", "Electric piano (DX style)"], ["s:rhodes", "Electric piano (Rhodes style)"], ["s:wurli", "Electric piano (Wurlitzer style)"], ["s:harp", "Harp"], ["s:organ", "Organ"], ["s:accordion", "Accordion"],
     ["strings", "String section (violins and cello)"], ["pad", "Synth pad"], ["charchetas", "Charchetas (horns)"], ["brass", "Synth brass"], ["power", "Distorted power chords"]];
   var BASS_VOICES = [["auto", "Style default"], ["s:bass", "Electric bass"], ["s:contrabass", "Acoustic bass (tololoche)"], ["guitarron", "Guitarrón"], ["s:tuba", "Tuba"], ["s:subbass", "Deep synth bass"], ["pluck", "Synth bass"]];
-  GV.cvo = "auto"; GV.bvo = "auto";
+  GV.cvo = "auto"; GV.bvo = "auto"; GV.shelf = prefs.shelf || "all";
   function voiceSets(v) {
     if (!v) return [];
     if (v === "strings") return ["violin", "cello"];
@@ -2866,7 +2867,98 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     { id: "lo-vi2", group: "Lorde-style eras", name: "Virgin era: raw drums and bass", bpm: 96, beats: 4, steps: 16, kit: "e", k: [0, 3, 8, 11], s: [4, 12], b: [[0, "r"], [3, "r"], [8, "r"], [11, "r"]], c: [[0, 8], [8, 8]], cv: "s:wurli", bv: "s:subbass", prog: "m-v", tip: "A stripped beat where the kick and bass hit together, with a gritty keyboard holding the chords." },
     { id: "lo-vi3", group: "Lorde-style eras", name: "Virgin era: slow glow", bpm: 80, beats: 4, steps: 16, kit: "e", fx: true, k: [0, 10], s: [8], b: [[0, "r"], [10, "r"]], c: each(EV16, 2), arp: true, cv: "s:rhodes", c2: [[0, 16]], cv2: "pad", bv: "s:subbass", prog: "m-dream", mel: "sustain", by: "lead", tip: "Slow half-time beat, soft electric piano notes, a pad and a synth line on top." }
   ].forEach(function (s) { STYLES.push(s); });
-  var GROUP_ORDER = ["Regional Mexican", "Modern regional Mexican", "Grupera", "Ballads", "R&B", "Dream and indie pop", "Electro-pop", "Lorde-style eras", "Jazz", "Rock", "Metal", "Basics", "Kick drum"];
+  /* ---------- the dream shelf: more Lorde-style eras, dream pop, The Marias style, Not for Radio style ----------
+     All of these are original grooves written in the general feel of an artist or era. None is a transcription of a song. */
+  var LO_PH = "Lorde style: Pure Heroine era", LO_ME = "Lorde style: Melodrama era", LO_SP = "Lorde style: Solar Power era", LO_VI = "Lorde style: Virgin era", G_DP = "Dream and indie pop", G_MA = "The Marías style", G_NR = "Not for Radio style";
+  STYLES.forEach(function (s) { var m = /^lo-(ph|me|sp|vi)/.exec(s.id); if (m) { s.group = { ph: LO_PH, me: LO_ME, sp: LO_SP, vi: LO_VI }[m[1]]; s.name = s.name.replace(/^[A-Za-z ]+ era: /, ""); s.name = s.name.charAt(0).toUpperCase() + s.name.slice(1); } });
+  var K4 = [0, 4, 8, 12], BK = [4, 12], OFFH = [2, 6, 10, 14], PAD16 = [[0, 16]], HALF = [[0, 8], [8, 8]], CHOPS = [[2, 2], [6, 2], [10, 2], [14, 2]];
+  var B1 = [[0, "r"]], B2 = [[0, "r"], [10, "r"]], B8 = each(EV16, "r"), BSYNC = [[0, "r"], [3, "r"], [6, "r"], [8, "r"], [11, "r"], [14, "r"]], BR5 = [[0, "r"], [8, "5"]], BWALK = [[0, "r"], [4, "3"], [8, "5"], [12, "a"]];
+  var ARP8 = each(EV16, 2), ARP16 = each(ALL16, 1), A8 = each(ALL8, 1), A6 = each(ALL6, 1), A12 = each(ALL12, 1), gN = 0;
+  var G_NOTE = {}; G_NOTE[LO_PH] = " In the feel of her 2013 album, not a copy of a song."; G_NOTE[LO_ME] = " In the feel of her 2017 album, not a copy of a song."; G_NOTE[LO_SP] = " In the feel of her 2021 album, not a copy of a song."; G_NOTE[LO_VI] = " In the feel of her 2025 album, not a copy of a song.";
+  G_NOTE[G_MA] = " In the feel of the band, not a copy of a song."; G_NOTE[G_NR] = " In the feel of the album Melt, not a copy of a song."; G_NOTE[G_DP] = "";
+  function G(group, name, bpm, o, tip) {
+    o.id = "g" + (++gN); o.group = group; o.name = name; o.bpm = bpm; o.beats = o.beats || 4; o.steps = o.steps || 16; o.tip = tip + G_NOTE[group];
+    if (o.c && o.c2 == null && false) o.c2 = null;
+    STYLES.push(o);
+  }
+  var E = "e", SUB = "s:subbass", EB = "s:bass", UB = "s:contrabass";
+  /* Pure Heroine era */
+  G(LO_PH, "Handclaps and hum", 94, { kit: E, k: [0, 8], s: BK, b: [[0, "r"], [8, "r"]], c: HALF, cv: "pad", bv: SUB, prog: "m-v" }, "Kick, claps, a held chord and nothing else.");
+  G(LO_PH, "Tick-tock hats", 80, { kit: E, k: [0, 10], s: [8], h: ALL16, b: B1, c: PAD16, cv: "pad", bv: SUB, prog: "m-epic" }, "Fast quiet hi-hats over a very slow half-time beat.");
+  G(LO_PH, "Suburban night drive", 100, { kit: E, k: [0, 6, 8, 14], s: BK, h: EV16, b: BSYNC, c: ARP8, arp: true, cv: "s:epfm", bv: SUB, prog: "m-pop" }, "A bouncing kick with glassy notes and a busy sub bass.");
+  G(LO_PH, "Empty room", 66, { kit: E, k: [0], s2: [8], b: B1, c: HALF, cv: "pad", bv: SUB, prog: "minb", mel: "sustain", by: "lead" }, "One kick, one click, a pad and a lonely synth line.");
+  G(LO_PH, "Stomp", 88, { kit: E, k: [0, 3, 8, 11], s: BK, b: [[0, "r"], [3, "r"], [8, "r"], [11, "r"]], c: PAD16, cv: "s:organ", bv: SUB, prog: "m-v" }, "A stomping double kick with the bass locked to it and an organ drone.");
+  G(LO_PH, "Glass bells", 76, { kit: E, fx: true, k: [0, 10], s2: BK, b: B2, c: ARP16, arp: true, cv: "s:epfm", bv: SUB, prog: "m-dream" }, "Echoing bell-like notes over snaps and sub bass.");
+  G(LO_PH, "Choir pad anthem", 96, { kit: E, k: [0, 8, 10], s: BK, h: OFFH, b: B8, c: HALF, cv: "pad", c2: PAD16, cv2: "strings", bv: SUB, prog: "m-epic" }, "The big-chorus version: pulsing bass, wide pads and strings.");
+  G(LO_PH, "Whisper beat", 72, { kit: E, k: [0], s2: BK, h: [0, 8], b: B1, c: HALF, cv: "s:rhodes", bv: SUB, prog: "minb" }, "Very quiet: clicks, a soft electric piano and one bass note per bar.");
+  G(LO_PH, "Slow clap", 85, { kit: E, k: [0, 6], s: BK, h: [2, 10, 14], b: [[0, "r"], [6, "r"]], c2: PAD16, cv2: "pad", bv: SUB, prog: "onem" }, "One chord the whole time. The beat and the bass do all the work.");
+  /* Melodrama era */
+  G(LO_ME, "House piano", 120, { kit: E, k: K4, s: BK, h: OFFH, b: B8, c: CHOPS, cv: "s:piano", bv: SUB, prog: "4156" }, "Club beat with piano chords on the off-beats.");
+  G(LO_ME, "Midnight strings", 96, { kit: E, k: [0, 8], s: BK, b: BR5, c: ARP8, arp: true, cv: "s:piano", c2: PAD16, cv2: "strings", bv: SUB, prog: "m-sad" }, "Rolling piano notes with strings swelling behind.");
+  G(LO_ME, "Heartbreak waltz", 100, { beats: 3, steps: 6, b: B1, c: A6, arp: true, cv: "s:piano", c2: [[0, 6]], cv2: "strings", bv: EB, prog: "m-rom" }, "A piano waltz with strings and no drums.");
+  G(LO_ME, "Brass hits", 108, { kit: E, k: [0, 6, 8], s: BK, h: EV16, b: BSYNC, c: [[0, 2], [6, 2], [11, 2]], cv: "brass", bv: SUB, prog: "m-epic" }, "Punchy synth-brass stabs over a syncopated beat.");
+  G(LO_ME, "Slow motion piano", 60, { steps: 8, b: B1, c: [[0, 4], [4, 4]], cv: "s:piano", c2: [[0, 8]], cv2: "strings", bv: EB, prog: "royal" }, "Two slow piano chords a bar and soft strings. For the saddest song on the record.");
+  G(LO_ME, "Afterparty", 126, { kit: E, fx: true, k: K4, s: BK, h: ALL16, b: B8, c: ARP16, arp: true, cv: "s:epfm", c2: PAD16, cv2: "pad", bv: SUB, prog: "m-pop" }, "Fast, bright and restless, with racing synth notes.");
+  G(LO_ME, "Drum break and piano", 92, { k: [0, 3, 6, 10], s: BK, h: EV16, b: BSYNC, c: HALF, cv: "s:piano", bv: EB, prog: "pop" }, "A live-sounding drum break under big piano chords.");
+  G(LO_ME, "Falsetto float", 84, { kit: E, fx: true, k: [0, 10], s: [8], b: B2, c: ARP8, arp: true, cv: "s:rhodes", c2: PAD16, cv2: "strings", bv: SUB, prog: "dream3" }, "Half-time and weightless: electric piano, strings and space.");
+  G(LO_ME, "Rolling piano ballad (6/8)", 58, { steps: 12, b: [[0, "r"], [6, "5"]], c: A12, arp: true, cv: "s:piano", bv: EB, prog: "1364" }, "Just a rolling piano in a slow six-feel.");
+  /* Solar Power era */
+  G(LO_SP, "Campfire strum", 96, { steps: 8, p: ALL8, pv: "shake", b: [[0, "r"], [4, "5"]], c: [[0, 2], [2, 1], [3, 1], [5, 1], [6, 1], [7, 1]], cv: "s:guitar", bv: UB, prog: "1545" }, "A strummed acoustic guitar, a shaker and upright bass.");
+  G(LO_SP, "Ocean breeze (6/8)", 62, { steps: 12, p: [0, 3, 6, 9], pv: "shake", b: [[0, "r"], [6, "5"]], c: A12, arp: true, cv: "s:nylon", bv: UB, prog: "dream3", mel: "sustain", by: "flute" }, "Swaying nylon guitar with a flute on top.");
+  G(LO_SP, "Seventies soft rock", 104, { k: [0, 8, 10], s: BK, h: EV16, b: [[0, "r"], [6, "r"], [8, "5"], [14, "a"]], c: CHOPS, cv: "s:elec", bv: EB, prog: "1b74" }, "Easy drums, a walking bass and clean guitar chops.");
+  G(LO_SP, "Two guitars at dawn", 80, { steps: 8, b: B1, c: A8, arp: true, cv: "s:guitar12", bv: UB, prog: "dream2", mel: "answer", by: "elec" }, "A 12-string picking pattern with a second guitar answering. No drums.");
+  G(LO_SP, "Hand drums", 92, { k: [0, 8], s2: [3, 6, 11, 14], p: EV16, pv: "shake", b: BR5, c: HALF, cv: "s:nylon", bv: UB, prog: "1465" }, "Bongo-like taps and a shaker instead of a drum kit.");
+  G(LO_SP, "Sunset harmonies", 72, { b: B1, c: ARP8, arp: true, cv: "s:guitar", c2: PAD16, cv2: "pad", bv: EB, prog: "14m", mel: "sustain", by: "strings" }, "No drums. Picked guitar, a soft pad and strings in harmony.");
+  G(LO_SP, "Barefoot shuffle", 84, { steps: 12, k: [0, 6], s2: [3, 9], p: ALL12, pv: "shake", b: [[0, "r"], [6, "5"]], c: [[0, 2], [2, 1], [3, 2], [5, 1], [6, 2], [8, 1], [9, 2], [11, 1]], cv: "s:guitar", bv: UB, prog: "pop" }, "A lazy shuffle with strummed guitar.");
+  G(LO_SP, "Psychedelic sun", 90, { fx: true, k: [0, 8], s: BK, h: EV16, b: B8, c: ARP8, arp: true, cv: "s:elec", c2: PAD16, cv2: "pad", bv: EB, prog: "dream4" }, "Echoing guitar and a steady beat, warm and a little hazy.");
+  G(LO_SP, "Quiet garden", 66, { steps: 8, b: B1, c: A8, arp: true, cv: "s:harp", bv: UB, prog: "royal", mel: "step", by: "flute" }, "Harp, flute and upright bass. Nothing else.");
+  /* Virgin era */
+  G(LO_VI, "Strobe", 124, { kit: E, k: K4, s: BK, h: ALL16, b: B8, c: PAD16, cv: "pad", bv: SUB, prog: "m-pop", mel: "sustain", by: "lead" }, "A straight club beat, pulsing bass and a synth lead.");
+  G(LO_VI, "Bare kick and bass", 100, { kit: E, k: K4, b: [[0, "r"], [6, "r"], [8, "r"], [14, "r"]], c2: PAD16, cv2: "pad", bv: SUB, prog: "onem" }, "Only a kick, a sub bass and one held chord.");
+  G(LO_VI, "Broken beat", 110, { kit: E, k: [0, 3, 6, 10, 13], s: BK, h: OFFH, b: [[0, "r"], [3, "r"], [6, "r"], [10, "r"], [13, "r"]], c: [[0, 1], [3, 1], [6, 1]], cv: "s:wurli", bv: SUB, prog: "m-v" }, "A stuttering kick pattern with gritty keyboard stabs.");
+  G(LO_VI, "Glassy arps", 104, { kit: E, fx: true, k: [0, 8], s: BK, b: B2, c: ARP16, arp: true, cv: "s:epfm", c2: PAD16, cv2: "pad", bv: SUB, prog: "m-dream" }, "Fast glassy notes with echo over a simple beat.");
+  G(LO_VI, "Buzzing bass pulse", 92, { kit: E, k: K4, s: [12], b: B8, c: HALF, cv: "pad", bv: "pluck", prog: "m-epic" }, "A buzzy synth bass on every eighth note with one snare per bar.");
+  G(LO_VI, "Slow rave ballad", 70, { kit: E, fx: true, k: [0], s: [8], b: B1, c: ARP8, arp: true, cv: "s:rhodes", c2: PAD16, cv2: "pad", bv: SUB, prog: "m-sad", mel: "sustain", by: "lead" }, "Club sounds slowed right down into a ballad.");
+  G(LO_VI, "Two-step", 130, { kit: E, k: [0, 10], s: BK, h: [2, 6, 8, 14], b: [[0, "r"], [10, "r"], [13, "r"]], c: CHOPS, cv: "s:epfm", bv: SUB, prog: "m-pop" }, "A skipping garage-style beat with short chord stabs.");
+  G(LO_VI, "Body music", 112, { kit: E, k: K4, s2: BK, h: OFFH, b: BSYNC, c: [[2, 2], [10, 2]], cv: "s:organ", bv: SUB, prog: "m-v" }, "Driving kick, off-beat hats and organ stabs.");
+  G(LO_VI, "Dawn after", 86, { kit: E, k: [0, 10], s2: [8], b: B1, c: HALF, cv: "s:piano", c2: PAD16, cv2: "pad", bv: SUB, prog: "minb" }, "Piano chords over a tired, half-time beat.");
+  /* more dream pop */
+  G(G_DP, "Shimmer and tambourine", 100, { fx: true, k: [0, 8], s: BK, p: EV16, pv: "shake", b: B8, c: ARP8, arp: true, cv: "s:guitar12", c2: PAD16, cv2: "pad", bv: EB, prog: "dream3" }, "Bright 12-string notes, a shaker and a soft pad.");
+  G(G_DP, "Slowcore", 60, { fx: true, k: [0], s: [8], h: BK, b: B1, c: HALF, cv: "s:elec", bv: EB, prog: "dream2" }, "Very slow and bare: two guitar chords a bar and lots of echo.");
+  G(G_DP, "Melodic bass lead", 112, { fx: true, k: [0, 8], s: BK, h: EV16, b: [[0, "r"], [2, "r"], [4, "3"], [6, "5"], [8, "r"], [10, "5"], [12, "3"], [14, "a"]], c: ARP8, arp: true, cv: "s:elec", c2: PAD16, cv2: "pad", bv: EB, prog: "1364" }, "The bass plays a tune of its own under chiming guitar.");
+  G(G_DP, "Ethereal waltz", 90, { beats: 3, steps: 6, fx: true, k: [0], s2: [2, 4], b: B1, c: A6, arp: true, cv: "s:elec", c2: [[0, 6]], cv2: "pad", bv: EB, prog: "dream" }, "A floating one-two-three with echoing guitar.");
+  G(G_DP, "Bedroom pop", 84, { kit: E, k: [0, 7, 10], s: BK, h: EV16, b: BSYNC, c: HALF, cv: "s:wurli", bv: EB, prog: "2516" }, "A drum machine, a wobbly keyboard and jazzy chords.");
+  G(G_DP, "Fast shoegaze", 138, { steps: 8, fx: true, k: [0, 4], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: [[0, 8]], cv: "power", c2: [[0, 8]], cv2: "pad", bv: EB, prog: "1b74" }, "Loud blurred guitars over a fast straight beat.");
+  G(G_DP, "Dream pop with harp", 80, { fx: true, k: [0, 10], s: [8], b: B2, c: ARP16, arp: true, cv: "s:harp", c2: PAD16, cv2: "pad", bv: EB, prog: "dream" }, "Echoing harp runs over a half-time beat.");
+  G(G_DP, "Night drive", 100, { kit: E, k: K4, s: BK, h: OFFH, b: B8, c: ARP8, arp: true, cv: "s:epfm", c2: PAD16, cv2: "pad", bv: SUB, prog: "m-pop", mel: "sustain", by: "lead" }, "Steady synth bass and a lead line, like driving at night.");
+  G(G_DP, "Hazy summer", 92, { fx: true, k: [0, 6, 8], s2: BK, p: EV16, pv: "shake", b: BR5, c: CHOPS, cv: "s:elec", c2: PAD16, cv2: "pad", bv: EB, prog: "dream4" }, "Guitar chops with echo, a shaker and a relaxed beat.");
+  G(G_DP, "Twin guitars", 120, { steps: 8, fx: true, k: [0, 3, 4], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: A8, arp: true, cv: "s:guitar12", bv: EB, prog: "1465", mel: "arp", by: "elec" }, "Two guitar lines weaving around each other at a driving tempo.");
+  /* The Marias style */
+  G(G_MA, "Velvet lounge", 92, { k: [0, 7, 10], s: BK, h: EV16, b: [[0, "r"], [7, "r"], [10, "5"], [14, "a"]], c: HALF, cv: "s:rhodes", bv: EB, prog: "dream3", mel: "sustain", by: "mutedtp" }, "Laid-back drums, electric piano and a muted trumpet.");
+  G(G_MA, "Slow psychedelic soul", 72, { fx: true, k: [0, 10], s: BK, h: EV16, b: B2, c: ARP8, arp: true, cv: "s:elec", c2: PAD16, cv2: "pad", bv: EB, prog: "dream2" }, "A slow pocket with echoing guitar notes and a warm pad.");
+  G(G_MA, "Dreamy bossa sway", 104, { k: [0, 6, 8, 14], s2: [0, 3, 6, 10, 13], h: EV16, b: [[0, "r"], [6, "5"], [8, "5"], [14, "r"]], c: [[0, 3], [3, 3], [6, 2], [10, 3], [13, 3]], cv: "s:nylon", bv: UB, prog: "bol7", mel: "sustain", by: "flute" }, "A soft bossa nova pulse with nylon guitar and flute.");
+  G(G_MA, "Funky bass and Wurlitzer", 108, { k: [0, 6, 10], s: BK, h: ALL16, b: BSYNC, c: [[2, 1], [6, 1], [10, 2], [14, 1]], cv: "s:wurli", bv: EB, prog: "2516" }, "A tight funky bass line with short keyboard stabs.");
+  G(G_MA, "Disco shimmer", 116, { k: K4, s: BK, h: OFFH, b: [[0, "r"], [2, "r"], [4, "5"], [6, "r"], [8, "r"], [10, "r"], [12, "5"], [14, "r"]], c: CHOPS, cv: "s:elec", c2: PAD16, cv2: "strings", bv: EB, prog: "m-pop" }, "Four-on-the-floor with guitar chops and strings.");
+  G(G_MA, "Late-night trumpet ballad", 66, { k: [0], s2: [8], h: K4, b: B1, c: HALF, cv: "s:rhodes", bv: UB, prog: "1625", mel: "adorno", by: "mutedtp" }, "A very slow ballad with brushed-sounding drums and muted trumpet.");
+  G(G_MA, "Underwater pulse", 100, { kit: E, fx: true, k: K4, s: BK, b: B8, c: ARP16, arp: true, cv: "s:epfm", c2: PAD16, cv2: "pad", bv: SUB, prog: "m-dream" }, "A steady electronic pulse with watery, echoing notes.");
+  G(G_MA, "Slow dance in Spanish (bolero feel)", 84, { steps: 8, k: [0, 4], s2: [2, 6], p: ALL8, pv: "shake", b: [[0, "r"], [3, "5"], [4, "r"], [6, "5"]], c: A8, arp: true, cv: "s:nylon", bv: UB, prog: "m-bol", mel: "sustain", by: "strings" }, "A bolero-like sway with nylon guitar and strings.");
+  G(G_MA, "Hazy guitar groove", 88, { fx: true, k: [0, 8, 10], s: BK, h: EV16, b: [[0, "r"], [8, "r"], [11, "5"]], c: [[0, 3], [3, 3], [6, 2], [8, 3], [11, 3], [14, 2]], cv: "s:elec", bv: EB, prog: "dream4" }, "Syncopated clean guitar chords with echo.");
+  G(G_MA, "Soft organ and walking bass", 78, { k: [0], s2: BK, h: EV16, b: BWALK, c: PAD16, cv: "s:organ", bv: UB, prog: "bol7", mel: "answer", by: "altosax" }, "A quiet organ, a walking upright bass and a sax answering.");
+  /* Not for Radio style */
+  G(G_NR, "Winter piano", 62, { steps: 8, b: B1, c: [[0, 2], [2, 2], [4, 2], [6, 2]], cv: "s:piano", c2: [[0, 8]], cv2: "strings", bv: UB, prog: "m-sad" }, "Slow piano chords and strings. No drums.");
+  G(G_NR, "Slow snowfall", 58, { steps: 8, b: B1, c: A8, arp: true, cv: "s:harp", c2: [[0, 8]], cv2: "strings", bv: UB, prog: "m-dream", mel: "sustain", by: "cello" }, "Harp, strings and a cello line.");
+  G(G_NR, "Minimal synth ballad", 70, { kit: E, fx: true, k: [0], s: [8], b: B1, c: ARP8, arp: true, cv: "s:rhodes", c2: PAD16, cv2: "pad", bv: SUB, prog: "m-pop" }, "One kick and one snare per bar under soft keys and a pad.");
+  G(G_NR, "Psychedelic waltz", 84, { beats: 3, steps: 6, fx: true, k: [0], s2: [2, 4], b: B1, c: A6, arp: true, cv: "s:elec", c2: [[0, 6]], cv2: "pad", bv: EB, prog: "m-rom" }, "A slow, swirling waltz with echoing guitar.");
+  G(G_NR, "Gothic organ hymn", 60, { steps: 8, b: B1, c: [[0, 8]], cv: "s:organ", c2: [[0, 8]], cv2: "strings", bv: UB, prog: "m-epic", mel: "sustain", by: "flute" }, "Held organ and strings like a hymn, with a flute above.");
+  G(G_NR, "Stripped acoustic", 74, { steps: 8, p: [2, 6], pv: "shake", b: B1, c: A8, arp: true, cv: "s:nylon", bv: UB, prog: "m-v" }, "Just picked nylon guitar, a bass note and a faint shaker.");
+  G(G_NR, "Slow heartbeat", 64, { kit: E, k: [0, 3], s2: [8], b: B2, c: HALF, cv: "s:piano", c2: PAD16, cv2: "pad", bv: SUB, prog: "m-sad" }, "A heartbeat kick under sparse piano.");
+  G(G_NR, "Frozen lake", 68, { fx: true, k: [0, 10], s: [8], h: BK, b: B1, c: ARP8, arp: true, cv: "s:elec", c2: PAD16, cv2: "strings", bv: EB, prog: "m-dream" }, "Echoing guitar and strings over a slow half-time beat.");
+  G(G_NR, "String swell ballad", 56, { steps: 8, b: B1, c: A8, arp: true, cv: "s:piano", c2: [[0, 8]], cv2: "strings", bv: UB, prog: "dram", mel: "adorno", by: "cello" }, "Rolling piano, long strings and a cello melody.");
+  G(G_NR, "Dark lullaby (6/8)", 54, { steps: 12, kit: E, k: [0], s2: [6], b: [[0, "r"], [6, "5"]], c: A12, arp: true, cv: "s:rhodes", c2: [[0, 12]], cv2: "pad", bv: SUB, prog: "m-rom" }, "A rocking six-feel with soft electric piano.");
+  var SHELVES = [["all", "All grooves", null], ["mex", "Regional Mexican and grupera", ["Regional Mexican", "Modern regional Mexican", "Grupera"]], ["bal", "Ballads and R&B", ["Ballads", "R&B"]],
+    ["dream", "Lorde, dream pop, The Marías, Not for Radio", [LO_PH, LO_ME, LO_SP, LO_VI, G_DP, G_MA, G_NR, "Electro-pop"]], ["band", "Jazz, rock, metal and basics", ["Jazz", "Rock", "Metal", "Basics", "Kick drum"]]];
+
+  var GROUP_ORDER = ["Regional Mexican", "Modern regional Mexican", "Grupera", "Ballads", "R&B", "Lorde style: Pure Heroine era", "Lorde style: Melodrama era", "Lorde style: Solar Power era", "Lorde style: Virgin era", "Dream and indie pop", "The Mar\u00EDas style", "Not for Radio style", "Electro-pop", "Jazz", "Rock", "Metal", "Basics", "Kick drum"];
   /* ---------- song form builder ---------- */
   var SEC_NAMES = { intro: "Intro", verse: "Verse", pre: "Pre-chorus", chorus: "Chorus", inter: "Interlude", bridge: "Bridge", solo: "Solo", outro: "Outro" };
   var FORMS = [
@@ -2887,7 +2979,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     banda: "banda", bandavals: "banda", bandarom: "banda", cumbia: "cumbia", grupcumbia: "cumbia", bandacumbia: "cumbia", tecnocumbia: "cumbia",
     sierreno: "sierreno", tumbado: "sierreno", tumbado44: "sierreno", electro: "sierreno", bolero: "bolero", swing: "aaba", jballad: "aaba", bossa: "aaba", blues: "blues", shufflerock: "blues",
     slowjam: "rnb", neosoul: "rnb", rnb90: "rnb" };
-  var FORM_GROUP = { "Ballads": "balada", "Grupera": "balada", "Dream and indie pop": "pop", "Electro-pop": "pop", "Lorde-style eras": "pop", "Rock": "rock", "Metal": "rock", "Kick drum": "rock", "Basics": "rock" };
+  var FORM_GROUP = { "Ballads": "balada", "Grupera": "balada", "Dream and indie pop": "pop", "Electro-pop": "pop", "Lorde style: Pure Heroine era": "pop", "Lorde style: Melodrama era": "pop", "Lorde style: Solar Power era": "pop", "Lorde style: Virgin era": "pop", "The Mar\u00EDas style": "pop", "Not for Radio style": "balada", "Rock": "rock", "Metal": "rock", "Kick drum": "rock", "Basics": "rock" };
   var SF = { on: !!(prefs.sf && prefs.sf.on), form: "auto", secs: [], shift: 0, same: false, cur: -1 };
   function sfFormId() { return SF.form !== "auto" ? SF.form : FORM_OF[GV.style.id] || FORM_GROUP[GV.style.group] || "pop"; }
   function sfLoad() {
@@ -3351,6 +3443,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   $("sb-load").addEventListener("click", function () {
     var name = $("sb-songs").value, sg = songsGet()[name]; if (!sg) return;
     gvStop();
+    if (GV.shelf !== "all") { GV.shelf = "all"; $("gv-shelf").value = "all"; prefs.shelf = "all"; savePrefs(); gvFill(); }
     $("gv-style").value = sg.gv.style; gvApply("style");
     $("gv-scale").value = sg.gv.scale; gvProgFill(sg.gv.scale, sg.gv.prog); $("gv-prog").value = sg.gv.prog; $("gv-key").value = sg.gv.key; $("gv-bpm").value = sg.gv.bpm;
     $("gv-mel").value = sg.gv.mel; $("gv-by").value = sg.gv.by; $("gv-cv").value = sg.gv.cv || "auto"; $("gv-bv").value = sg.gv.bv || "auto";
@@ -3413,6 +3506,13 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   $("sb-print").addEventListener("click", function () { document.body.classList.add("printing"); setTimeout(function () { window.print(); }, 60); });
   window.addEventListener("afterprint", function () { document.body.classList.remove("printing"); });
   $("gv-kit").addEventListener("change", function () { gvApply(""); });
+  SHELVES.forEach(function (x) { var o = document.createElement("option"); o.value = x[0]; o.textContent = x[1]; $("gv-shelf").appendChild(o); });
+  $("gv-shelf").value = GV.shelf;
+  $("gv-shelf").addEventListener("change", function (e) {
+    GV.shelf = e.target.value; prefs.shelf = GV.shelf; savePrefs();
+    var before = GV.style.id; gvFill();
+    if (GV.style.id !== before) { $("gv-style").value = GV.style.id; gvApply("style"); }
+  });
   function mixShow() { Object.keys(MIX).forEach(function (k) { $("mix-" + k).value = MIX[k]; $("mix-" + k + "-v").textContent = MIX[k] + "%"; if (GV["tk_" + k]) GV["tk_" + k].gain.value = MIX[k] / 100; }); }
   Object.keys(MIX).forEach(function (k) {
     $("mix-" + k).addEventListener("input", function (e) { MIX[k] = +e.target.value; mixShow(); prefs.mix = MIX; savePrefs(); });
@@ -3451,7 +3551,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function gvFill() {
     var ss = $("gv-style"), ks = $("gv-key"), ms = $("gv-mel"), bs = $("gv-by"), groups = [];
     ss.innerHTML = ""; ks.innerHTML = ""; ms.innerHTML = ""; bs.innerHTML = "";
-    groups = GROUP_ORDER;
+    var shelf = SHELVES.filter(function (x) { return x[0] === GV.shelf; })[0] || SHELVES[0];
+    groups = GROUP_ORDER.filter(function (g) { return !shelf[2] || shelf[2].indexOf(g) >= 0; });
+    if (groups.indexOf(GV.style.group) < 0) GV.style = STYLES.filter(function (s) { return s.group === groups[0]; })[0] || GV.style;
     groups.forEach(function (g) {
       var og = document.createElement("optgroup"); og.label = g;
       STYLES.forEach(function (s) { if (s.group !== g) return; var o = document.createElement("option"); o.value = s.id; o.textContent = s.name; og.appendChild(o); });
@@ -4056,7 +4158,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     out.textContent = (best.s === 0 ? "It already fits your range as it is." : "Move it " + describeShift(best.s) + ".") + keyTxt + " The melody would then run from " + noteLabel(lo0 + best.s) + " to " + noteLabel(hi0 + best.s) + ", inside your range of " + noteLabel(savedRange.low) + " to " + noteLabel(savedRange.high) + "." + (best.s ? " In the Song tab, Transpose can shift a charted audio file by the same amount." : "");
   });
   function describeShift(n) { return n === 0 ? "nowhere" : (n > 0 ? "up " : "down ") + Math.abs(n) + (Math.abs(n) === 1 ? " half step" : " half steps"); }
-  gvFill(); $("gv-bpm").value = GV.bpm; gvApply(""); rhFill(); rhApply(true);
+  var st0 = GV.style.id; gvFill(); $("gv-bpm").value = GV.bpm; gvApply(GV.style.id !== st0 ? "style" : ""); rhFill(); rhApply(true);
   document.querySelectorAll("main > details").forEach(function (d) { $("drawer-slot").appendChild(d); });
   function drawerOpen(on) { $("drawer").hidden = !on; if (on) { renderProgress(); $("drawer").scrollTop = 0; } }
   $("menu-btn").addEventListener("click", function () { drawerOpen(true); });
