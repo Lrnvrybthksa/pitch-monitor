@@ -426,6 +426,12 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <button type="button" class="ghost" id="gv-rand">Surprise me</button>
     </div>
     <div class="row">
+      <button type="button" class="ghost" id="gv-like">More like this</button>
+      <button type="button" class="ghost" id="gv-tap">Tap the tempo</button>
+    </div>
+    <label class="fld">Search grooves (try: slow, dance, waltz, no drums, piano, 90)<input type="text" id="gv-q" autocomplete="off" autocapitalize="off" placeholder="Search"></label>
+    <p class="small" id="gv-q-msg"></p>
+    <div class="row">
       <label class="fld">Groove<select id="gv-style"></select></label>
       <label class="fld">Chords<select id="gv-prog"></select></label>
     </div>
@@ -475,6 +481,12 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         <p class="small">Tap a section to play from there. Every section ends with a fill and the song finishes with an ending. Verses use the chords you picked; choruses and bridges move to related chords.</p>
         <b>Selected: <span id="sf-selname"></span></b>
         <label class="fld">Chords for this section<select id="sf-prog"></select></label>
+        <div class="row" style="gap:6px">
+          <label class="check" style="flex:1 1 70px"><input type="checkbox" id="sf-m-d" checked> Drums</label>
+          <label class="check" style="flex:1 1 70px"><input type="checkbox" id="sf-m-b" checked> Bass</label>
+          <label class="check" style="flex:1 1 70px"><input type="checkbox" id="sf-m-c" checked> Chords</label>
+          <label class="check" style="flex:1 1 70px"><input type="checkbox" id="sf-m-m" checked> Melody</label>
+        </div>
         <label class="fld">Or type your own chords, one per bar (like C Am F G7)<input type="text" id="sf-chords" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="C Am F G7"></label>
         <p class="small" id="sf-chords-msg"></p>
         <label class="fld">Lyrics or notes for this section (one line per row)<textarea id="sf-lyr" rows="3" style="width:100%;font:inherit;padding:10px;border-radius:12px;border:2px solid var(--line);background:var(--field);color:var(--text);resize:vertical"></textarea></label>
@@ -516,7 +528,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         <button type="button" class="ghost" id="jm-clear">Clear this bar</button>
         <button type="button" class="ghost" id="jm-remove">Erase my melody</button>
       </div>
-      <button type="button" class="ghost" id="jm-sing">Sing or play this bar in</button>
+      <div class="row">
+        <button type="button" class="ghost" id="jm-sing">Sing or play this bar in</button>
+        <button type="button" class="ghost" id="jm-singall">Sing in all the bars from here</button>
+      </div>
       <p class="small" id="jm-sing-msg">With Start listening on, you get a count-in and then one bar to sing or play.</p>
     </div>
     <div class="builder" id="cs-box">
@@ -563,7 +578,14 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     <b>Melody as sheet music</b>
     <canvas id="sb-staff" style="width:100%;height:150px;display:block"></canvas>
     <p class="small" id="sb-staff-note"></p>
+    <label class="fld">Harmony guide to sing against<select id="sb-harm"><option value="0">Off (sing the melody)</option><option value="2">A third above the melody</option><option value="-2">A third below the melody</option><option value="5">A sixth above</option><option value="-5">A sixth below</option></select></label>
     <p class="small" id="sb-score"></p>
+    <div class="row">
+      <button type="button" class="ghost" id="sb-weak">Loop my weakest section</button>
+      <button type="button" class="ghost" id="sb-recsong">Record me over the whole song</button>
+    </div>
+    <p class="small" id="sb-recsong-msg">Recording plays the song once with a count-in and stops by itself. The take includes the backing, so you can download it as a sketch.</p>
+    <p class="small" id="sb-log"></p>
     <div class="builder">
       <b>Write your own melody: <span id="me-sec"></span></b>
       <p class="small" id="me-state"></p>
@@ -582,7 +604,11 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         <button type="button" class="ghost" id="me-clear">Clear this bar</button>
         <button type="button" class="ghost" id="me-remove">Back to the preset melody</button>
       </div>
-      <button type="button" class="ghost" id="me-sing">Sing or play this bar in</button>
+      <div class="row">
+        <button type="button" class="ghost" id="me-sing">Sing or play this bar in</button>
+        <button type="button" class="ghost" id="me-singall">Sing in all the bars from here</button>
+      </div>
+      <button type="button" class="ghost" id="me-fromjam">Use my melody from the Jam tab here</button>
       <p class="small" id="me-sing-msg">With Start listening on, you get a count-in and then one bar to sing or play. The notes land on the grid.</p>
     </div>
     <div class="builder">
@@ -612,6 +638,17 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     </div>
     <a id="sb-export-dl" hidden style="display:block;text-align:center;padding:8px"></a>
     <p class="small" id="sb-save-msg">Songs are saved on this device only.</p>
+    <b>Setlist</b>
+    <div id="sl-list"></div>
+    <p class="small" id="sl-msg"></p>
+    <div class="row">
+      <button type="button" class="ghost" id="sl-add">Add the selected song</button>
+      <button type="button" class="ghost" id="sl-pop">Remove the last one</button>
+    </div>
+    <div class="row">
+      <button type="button" class="ghost" id="sl-play">Play the setlist</button>
+      <button type="button" class="ghost" id="sl-charts">Chord charts for the whole setlist</button>
+    </div>
     <b>Chord chart</b>
     <button type="button" class="ghost" id="sb-chart-btn">Make a chord chart of this song</button>
     <img id="sb-chart-img" alt="Chord chart of the song" hidden style="width:100%;border-radius:10px">
@@ -2490,7 +2527,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   if (prefs.mix) Object.keys(MIX).forEach(function (k) { if (prefs.mix[k] != null) MIX[k] = prefs.mix[k]; });
   function trk(name) { var id = "tk_" + name; if (!GV[id]) { GV[id] = ac.createGain(); GV[id].gain.value = MIX[name] / 100; GV[id].connect(gvBus()); } return GV[id]; }
   /* Recorded acoustic drum kit (Virtuosity Drums, CC0). Falls back to the synth drums until it has loaded. */
-  var DRUMS = null, drumsLoading = null, DR_LVL = { kick: 1.05, snare: 0.8, hat: 0.4, ohat: 0.4, rim: 0.7, shaker: 0.5, crash: 0.55, htom: 0.85, ltom: 0.9 };
+  var DRUMS = null, drumsLoading = null, DR_LVL = { ride: 0.4, conga: 0.75, guiro: 0.45, kick: 1.05, snare: 0.8, hat: 0.4, ohat: 0.4, rim: 0.7, shaker: 0.5, crash: 0.55, htom: 0.85, ltom: 0.9 };
   function loadDrums() {
     if (DRUMS || !window.fetch) return Promise.resolve();
     if (!drumsLoading) drumsLoading = fetch("samples/drums.json").then(function (r) { if (!r.ok) throw new Error("missing"); return r.json(); }).then(function (obj) {
@@ -2611,14 +2648,16 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     var S = GV.style, P = gvPlan(bar), bars = P.bars, ch = chordOf(bars[P.bi % bars.length], P.key), PN = gvPlan(bar + 1), nxt = chordOf(PN.bars[PN.bi % PN.bars.length], PN.key), sd = gvStepDur(), i;
     GV.ck = P.key;
     if (st === 0) GV.marks.push({ t: t, ch: ch, key: P.key });
-    var ek = GV.kitNow === "e";
+    var ek = GV.kitNow === "e", MU = P.mute || {};
+    if (!MU.d) {
     if (S.k && S.k.indexOf(st) >= 0) { if (ek) dTone(t, 0.95, 105, 40, 0.5); else dKick(t, 0.9); }
     if (S.s && S.s.indexOf(st) >= 0) { if (ek) { dNoise(t, 0.5, 0.03, "bandpass", 1500, 1.2); dNoise(t + 0.012, 0.45, 0.03, "bandpass", 1500, 1.2); dNoise(t + 0.024, 0.55, 0.14, "bandpass", 1400, 0.9); } else dSnare(t, 0.8); }
-    if (S.s2 && S.s2.indexOf(st) >= 0) dRim(t, 0.7);
-    if (S.h && S.h.indexOf(st) >= 0) { if (ek) dNoise(t, (S.h.length > 8 ? 0.6 : 0.9) * 0.22, 0.025, "highpass", 9000); else dHat(t, S.h.length > 8 ? 0.6 : 0.9); }
-    if (S.p && S.p.indexOf(st) >= 0) (S.pv === "shake" ? dShake : S.pv === "rim" ? dRim : S.pv === "golpe" ? function (tt, v) { dNoise(tt, v * 0.6, 0.06, "lowpass", 420); } : dHat)(t, 0.9);
+    if (S.s2 && S.s2.indexOf(st) >= 0) { if (!(S.p && S.pv === "shake" && drumHit("conga", t, 0.8))) dRim(t, 0.7); }
+    if (S.h && S.h.indexOf(st) >= 0) { if (ek) dNoise(t, (S.h.length > 8 ? 0.6 : 0.9) * 0.22, 0.025, "highpass", 9000); else if (!(S.group === "Jazz" && drumHit("ride", t, S.h.length > 8 ? 0.6 : 0.9))) dHat(t, S.h.length > 8 ? 0.6 : 0.9); }
+    if (S.p && S.p.indexOf(st) >= 0) (S.pv === "shake" ? (S.steps === 16 && S.p.length === 12 ? function (tt, v) { if (!drumHit("guiro", tt, v)) dShake(tt, v); } : dShake) : S.pv === "rim" ? dRim : S.pv === "golpe" ? function (tt, v) { dNoise(tt, v * 0.6, 0.06, "lowpass", 420); } : dHat)(t, 0.9);
+    }
     var b0 = 36 + ch.root; if (b0 > 44) b0 -= 12;
-    var VV = gvVoices(), SB = bar % 2 && S.bAlt ? S.bAlt : S.b, SC = bar % 2 && S.cAlt ? S.cAlt : S.c;
+    var VV = gvVoices(), SB = MU.b ? null : (bar % 2 && S.bAlt ? S.bAlt : S.b), SC = MU.c ? null : (bar % 2 && S.cAlt ? S.cAlt : S.c);
     if (GV.wet) GV.wet.gain.value = S.fx ? 0.4 : 0;
     if (SB) for (i = 0; i < SB.length; i++) if (SB[i][0] === st) {
       var dg = SB[i][1], nb = 36 + nxt.root, m = b0;
@@ -2635,10 +2674,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       if (S.arp) { var up = notes.concat([notes[0] + 12]); gChord(t, [up[GV.arp++ % up.length]], Math.max(dur, 0.5), VV.cv); }
       else gChord(t, notes, dur, VV.cv, S.mute);
     }
-    if (S.c2) for (i = 0; i < S.c2.length; i++) if (S.c2[i][0] === st) gChord(t, notes, S.c2[i][1] * sd, S.cv2);
-    if (st === 0 && P.own) gvOwnPlay(P, t);
-    if (st === 0 && P.mel) gvMelody(P.bi, t, ch, P.mel);
-    if (P.fill && st >= S.steps / 2 && (S.k || S.s || S.s2 || S.p)) {
+    if (S.c2 && !MU.c) for (i = 0; i < S.c2.length; i++) if (S.c2[i][0] === st) gChord(t, notes, S.c2[i][1] * sd, S.cv2);
+    if (st === 0 && P.own && !MU.m) gvOwnPlay(P, t);
+    if (st === 0 && P.mel && !MU.m) gvMelody(P.bi, t, ch, P.mel);
+    if (P.fill && !MU.d && st >= S.steps / 2 && (S.k || S.s || S.s2 || S.p)) {
       var fr = (st - S.steps / 2) / (S.steps / 2);
       if (!ek && S.cv === "power" && acKit()) drumHit(fr < 0.5 ? "htom" : "ltom", t, 0.7 + 0.3 * fr);
       else if (ek || S.cv === "power") dTone(t, 0.55 + 0.3 * fr, 250 - 110 * fr, 120 - 50 * fr, 0.2);
@@ -2653,7 +2692,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     while (GV.t < ac.currentTime + 0.16) {
       if (GV.step === 0 && gvDone(GV.bar)) {
         gvFinal(GV.t); GV.on = false; GV.ending = true; clearInterval(GV.timer);
-        GV.endTimer = setTimeout(gvStop, Math.max(600, (GV.t - ac.currentTime) * 1000 + 2200)); return;
+        GV.endTimer = setTimeout(function () { gvStop(); songEnded(); }, Math.max(600, (GV.t - ac.currentTime) * 1000 + 2200)); return;
       }
       if (GV.step === 0 && GV.song) {
         var psi = GV.plan[Math.min(GV.bar, GV.plan.length - 1)].si;
@@ -2667,6 +2706,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   function gvStop() {
     if (!GV.on && !GV.ending) return;
+    if (GV.song && typeof plogSave === "function") plogSave();
     GV.on = false; GV.ending = false; clearInterval(GV.timer); clearTimeout(GV.endTimer); GV.marks = []; GV.shown = ""; GV.endBar = null; GV.fillBar = null; GV.ck = null; GV.song = false;
     $("gv-play").textContent = SF.on ? "Play the song" : "Play groove"; $("gv-play").classList.remove("stop"); gvChips(-1);
     SF.cur = -1; SB.now = null; sbScoreShow(); $("sb-play").textContent = "Play the song"; $("sb-play").classList.remove("stop"); sfRender(); $("sf-now").textContent = "Ready"; GV.nowCh = null; csDraw(); sbDraw(); gvGridIdle();
@@ -2700,7 +2740,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       SB.trail.push({ pos: SB.now.bar + (SB.now.st + clamp((now - SB.now.t) / gvStepDur(), 0, 1)) / GV.style.steps, m: curSm });
       var sP = SB.now.P, sPos = SB.now.st + clamp((now - SB.now.t) / gvStepDur(), 0, 1);
       if (sP && sP.si < SF.secs.length) {
-        if (SB.melBar !== SB.now.bar) { SB.melBar = SB.now.bar; SB.melNow = sbMel(sP); sbScoreShow(); }
+        if (SB.melBar !== SB.now.bar) { SB.melBar = SB.now.bar; SB.melNow = sbTarget(sP); sbScoreShow(); }
         var act = SB.melNow.filter(function (n) { return sPos >= n.st && sPos < n.st + n.len; })[0];
         if (act) {
           var dd = ((curSm - act.m) % 12 + 12) % 12; if (dd > 6) dd = 12 - dd;
@@ -2871,6 +2911,17 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   MS("ep-arp", "Arp lead", [runOf([0, 4, 7, 4, 0, 4, 7, 9, 0, 4, 7, 4, 0, 4, 9, 7], 1)]);
   FAM_OF["Modern regional Mexican"] = "tumb"; FAM_OF["Los Bukis style"] = "buk"; FAM_OF["Los Temerarios style"] = "tem"; FAM_OF["Juan Gabriel style"] = "jg"; FAM_OF["Camilo Sesto style"] = "cs"; FAM_OF["José José style"] = "jj";
   FAM_OF["Lorde style: singles, covers and collabs"] = "lsi"; FAM_OF["Alvvays style"] = "alv"; FAM_OF["Metal"] = "metal"; FAM_OF["Electro-pop"] = "epop"; FAM_OF["Dream pop"] = "dream"; FAM_OF["Indie pop"] = "indie";
+  /* Six more shapes per family, made by varying its four written ones. */
+  Object.keys(FAMS).forEach(function (k) {
+    var F = FAMS[k]; function get(id) { return MELS.filter(function (x) { return x.id === id; })[0]; }
+    var H = get(F.hook), Fi = get(F.fill), Lo = get(F.long), So = get(F.solo);
+    function rev(b) { return b.map(function (bar) { return bar.map(function (e) { return [Math.max(0, 1 - e[0] - e[1] / 0.95), e[1], e[2]]; }).sort(function (a, c) { return a[0] - c[0]; }); }); }
+    function up(b, n) { return b.map(function (bar) { return bar.map(function (e) { return [e[0], e[1], e[2] + n]; }); }); }
+    function inv(b) { return b.map(function (bar) { return bar.map(function (e) { return [e[0], e[1], Math.max(0, 9 - e[2])]; }); }); }
+    var fills = Fi.bars.filter(function (bar) { return bar.length; }), mix = [0, 1, 2, 3].map(function (i) { return i % 2 === 0 ? H.bars[(i / 2) % H.bars.length] : fills[((i - 1) / 2) % fills.length]; });
+    F.extra = [[k + "-v1", H.name + " with " + Fi.name.toLowerCase(), mix], [k + "-v2", H.name + ", a third higher", up(H.bars, 2)], [k + "-v3", H.name + ", backwards", rev(H.bars)],
+      [k + "-v4", Fi.name + ", upside down", inv(Fi.bars)], [k + "-v5", Lo.name + ", harmony above", up(Lo.bars, 2)], [k + "-v6", So.name + ", backwards", rev(So.bars)]].map(function (v) { MELS.push({ id: v[0], name: v[1], fam: true, bars: v[2] }); return v[0]; });
+  });
   var GEN_ROLE = { sustain: "long", step: "hook", answer: "fill", arp: "solo", adorno: "hook", fanfare: "hook" };
   function famOf(S) { return FAMS[FAM_OF[(S || GV.style).group]] || null; }
   /* The melody a style starts with: its own default, swapped for the matching shape of its family. */
@@ -2881,14 +2932,14 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     var mine = document.createElement("option"); mine.value = "mine"; mine.textContent = "My own melody (write it below)"; ms.appendChild(mine);
     if (F) {
       var og = document.createElement("optgroup"); og.label = "Made for this style (" + F.name + ")";
-      ["hook", "fill", "long", "solo"].forEach(function (r) { var x = MELS.filter(function (q) { return q.id === F[r]; })[0], q = document.createElement("option"); q.value = x.id; q.textContent = x.name; og.appendChild(q); });
+      [F.hook, F.fill, F.long, F.solo].concat(F.extra || []).forEach(function (id) { var x = MELS.filter(function (q) { return q.id === id; })[0], q = document.createElement("option"); q.value = x.id; q.textContent = x.name; og.appendChild(q); });
       ms.appendChild(og);
     }
     var og2 = document.createElement("optgroup"); og2.label = "General shapes";
     MELS.forEach(function (x) { if (x.fam || x.id === "none") return; var q = document.createElement("option"); q.value = x.id; q.textContent = x.name; og2.appendChild(q); });
     ms.appendChild(og2);
     var og3 = document.createElement("optgroup"); og3.label = "From other styles";
-    MELS.forEach(function (x) { if (!x.fam || (F && [F.hook, F.fill, F.long, F.solo].indexOf(x.id) >= 0)) return; var q = document.createElement("option"); q.value = x.id; q.textContent = x.name; og3.appendChild(q); });
+    MELS.forEach(function (x) { if (!x.fam || (F && [F.hook, F.fill, F.long, F.solo].concat(F.extra || []).indexOf(x.id) >= 0)) return; var q = document.createElement("option"); q.value = x.id; q.textContent = x.name; og3.appendChild(q); });
     ms.appendChild(og3);
     ms.value = keep; if (ms.value !== keep) ms.value = "none";
   }
@@ -3395,7 +3446,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     SF.secs.forEach(function (x, si) {
       if (SF.shift && si === lastCh) key = (GV.key + SF.shift) % 12;
       var pb = secProg(x.type, x), mel = secMel(x.type);
-      for (var bi = 0; bi < x.bars; bi++) plan.push({ si: si, bi: bi, n: x.bars, bars: pb, key: key, mel: x.own ? null : mel, own: x.own ? (x.own[bi] || []) : null, fill: bi === x.bars - 1, crash: bi === 0 && (x.type === "chorus" || x.type === "solo"), name: names[si] });
+      for (var bi = 0; bi < x.bars; bi++) plan.push({ si: si, bi: bi, n: x.bars, bars: pb, key: key, mel: x.own ? null : mel, own: x.own ? (x.own[bi] || []) : null, mute: x.mute || null, fill: bi === x.bars - 1, crash: bi === 0 && (x.type === "chorus" || x.type === "solo"), name: names[si] });
     });
     plan.push({ si: SF.secs.length, bi: 0, n: 1, bars: ["V7"], key: key, mel: null, fill: true, name: "Ending" });
     return plan;
@@ -3549,12 +3600,13 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   var SEC_COL = { intro: "#7aa2f7", verse: "#2fd27a", pre: "#e0af68", chorus: "#f7768e", inter: "#bb9af7", bridge: "#ff9e64", solo: "#7dcfff", outro: "#9aa5ce", end: "#c0caf5" };
   var SEC_ABBR = { intro: "In", verse: "V", pre: "Pre", chorus: "C", inter: "Int", bridge: "Br", solo: "Solo", outro: "Out" };
   var SB = { now: null, hit: [], trail: [], score: {}, melBar: -1, melNow: [] };
-  var SBV = { lines: !prefs.sbv || prefs.sbv.lines !== false, names: !prefs.sbv || prefs.sbv.names !== false, tall: !!(prefs.sbv && prefs.sbv.tall) };
+  var SBV = { harm: 0, lines: !prefs.sbv || prefs.sbv.lines !== false, names: !prefs.sbv || prefs.sbv.names !== false, tall: !!(prefs.sbv && prefs.sbv.tall) };
   function sbPlan() { return GV.on && GV.song && GV.plan ? GV.plan : gvBuildPlan(); }
   function sbFirst(plan, si) { for (var i = 0; i < plan.length; i++) if (plan[i].si === si) return i; return 0; }
   function sbChord(P) { return chordOf(P.bars[P.bi % P.bars.length], P.key); }
   /* The lead melody notes of one bar: [{ st, len (steps), m }] */
   function sbMel(P) {
+    if (P.mute && P.mute.m) return [];
     if (P.own) return ownNotes(P.own, P.key);
     var M = P.mel && MELS.filter(function (x) { return x.id === P.mel; })[0], v = (MEL_VOICES[GV.by] || [])[0], S = GV.style, out = [], used = {};
     if (!M || !M.bars || !v) return out;
@@ -3568,7 +3620,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   /* Bass notes and chord hits of one bar, worked out the same way the groove plays them. */
   function sbBar(P, PN, odd) {
-    var S = GV.style, ch = sbChord(P), nxt = PN ? sbChord(PN) : ch, SBs = odd && S.bAlt ? S.bAlt : S.b, SC = odd && S.cAlt ? S.cAlt : S.c, bass = [], hits = [], i, j;
+    var S = GV.style, MU = P.mute || {}, ch = sbChord(P), nxt = PN ? sbChord(PN) : ch, SBs = MU.b ? null : (odd && S.bAlt ? S.bAlt : S.b), SC = MU.c ? null : (odd && S.cAlt ? S.cAlt : S.c), bass = [], hits = [], i, j;
     var b0 = 36 + ch.root; if (b0 > 44) b0 -= 12;
     if (SBs) for (i = 0; i < SBs.length; i++) {
       var dg = SBs[i][1], nb = 36 + nxt.root, m = b0; if (nb > 44) nb -= 12;
@@ -3622,8 +3674,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function sbDrawRoll(plan, cur) {
     var RH = SBV.tall ? 420 : 230; $("sb-roll").style.height = RH + "px";
     var c = sbCanvas("sb-roll", RH), g = c.g, S = GV.style, win = sbWindow(plan, cur, 8), L = 30, RM = SBV.lines ? 26 : 4, T = 20, bw = (c.W - L - RM) / win.length, sw2 = bw / S.steps, names = flats ? FLAT : SHARP;
-    var data = win.map(function (pi) { var P = plan[pi]; return { P: P, pi: pi, b: sbBar(P, plan[pi + 1], pi % 2), mel: sbMel(P) }; }), lo = 99, hi = 0;
-    data.forEach(function (d) { d.b.bass.forEach(function (n) { lo = Math.min(lo, n.m); }); hi = Math.max(hi, d.b.notes[d.b.notes.length - 1]); lo = Math.min(lo, d.b.notes[0]); d.mel.forEach(function (n) { hi = Math.max(hi, n.m); lo = Math.min(lo, n.m); }); });
+    var data = win.map(function (pi) { var P = plan[pi]; return { P: P, pi: pi, b: sbBar(P, plan[pi + 1], pi % 2), mel: sbMel(P), har: SBV.harm ? sbTarget(P) : [] }; }), lo = 99, hi = 0;
+    data.forEach(function (d) { d.b.bass.forEach(function (n) { lo = Math.min(lo, n.m); }); hi = Math.max(hi, d.b.notes[d.b.notes.length - 1]); lo = Math.min(lo, d.b.notes[0]); d.mel.concat(d.har).forEach(function (n) { hi = Math.max(hi, n.m); lo = Math.min(lo, n.m); }); });
     if (lo > hi) { lo = 48; hi = 72; } lo -= 1; hi += 1;
     var rh = (c.H - T - 6) / (hi - lo + 1); function y(m) { return T + (hi - m) * rh; }
     for (var m = lo; m <= hi; m++) {
@@ -3651,6 +3703,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       d.b.hits.forEach(function (h) { d.b.notes.forEach(function (n) { g.fillRect(x0 + h.st * sw2 + 1, y(n) + 1, Math.max(2, h.len * sw2 - 2), Math.max(2, rh - 2)); }); });
       g.globalAlpha = 0.6; g.fillStyle = SEC_COL.intro;
       d.b.bass.forEach(function (n) { g.fillRect(x0 + n.st * sw2 + 1, y(n.m) + 1, Math.max(2, n.len * sw2 - 2), Math.max(2, rh - 2)); });
+      g.globalAlpha = 0.95; g.fillStyle = SEC_COL.bridge;
+      d.har.forEach(function (n) { g.fillRect(x0 + n.st * sw2 + 1, y(n.m), Math.max(3, Math.min(n.len, S.steps - n.st) * sw2 - 2), Math.max(3, rh)); });
       g.globalAlpha = 1; g.fillStyle = TH.note;
       d.mel.forEach(function (n) {
         var mw = Math.max(3, Math.min(n.len, S.steps - n.st) * sw2 - 2);
@@ -3714,7 +3768,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function sbDrawGrid(plan, cur) { gridDraw("sb-grid", plan[cur.pi], plan[cur.pi + 1], cur.pi % 2, cur.st); }
   function gridDraw(id, P, PN, odd, st) {
     var S = GV.style, cur = { st: st }, d = sbBar(P, PN, odd), mel = sbMel(P), rows = [], i;
-    SB_ROWS.forEach(function (r) { if (S[r[0]] && S[r[0]].length) rows.push({ name: r[0] === "p" && S.pv === "shake" ? "Shaker" : r[0] === "p" && S.pv === "golpe" ? "Golpe" : r[1], on: S[r[0]], col: TH.text }); });
+    SB_ROWS.forEach(function (r) { if (S[r[0]] && S[r[0]].length && !(P.mute && P.mute.d)) rows.push({ name: r[0] === "p" && S.pv === "shake" ? "Shaker" : r[0] === "p" && S.pv === "golpe" ? "Golpe" : r[1], on: S[r[0]], col: TH.text }); });
     if (P.fill && rows.length) { var f = []; for (i = S.steps / 2; i < S.steps; i++) f.push(i); rows.push({ name: "Fill", on: f, col: SEC_COL.chorus }); }
     if (d.bass.length) rows.push({ name: "Bass", on: d.bass.map(function (n) { return n.st; }), col: SEC_COL.intro });
     if (d.hits.length) rows.push({ name: "Chords", on: d.hits.map(function (n) { return n.st; }), col: SEC_COL.pre });
@@ -3783,6 +3837,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     PROGS.forEach(function (pg) { if (pg.mode !== GV.prog.mode) return; var q = document.createElement("option"); q.value = pg.id; q.textContent = pg.name; sel.appendChild(q); });
     sel.value = x.prog || ""; if (document.activeElement !== $("sf-lyr")) $("sf-lyr").value = x.lyr || "";
     if (document.activeElement !== $("sf-chords")) $("sf-chords").value = x.chords ? x.chords.map(function (c) { return chordName(chordOf(c, GV.key), GV.key).replace("\u266D5", "b5"); }).join(" ") : "";
+    ["d", "b", "c", "m"].forEach(function (k) { $("sf-m-" + k).checked = !(x.mute && x.mute[k]); });
     if (typeof meDraw === "function") meDraw();
   }
   $("sf-prog").addEventListener("change", function (e) { var x = sfSelSec(); if (!x) return; x.prog = e.target.value || null; if (GV.on && GV.song) gvStop(); sbDraw(); });
@@ -3804,7 +3859,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   $("sb-save").addEventListener("click", function () {
     var name = $("sb-name").value.trim() || "My song", all = songsGet();
     all[name] = { gv: { style: GV.style.id, prog: GV.prog.id, scale: GV.prog.mode, key: GV.key, bpm: GV.bpm, mel: GV.mel, by: GV.by, cv: GV.cvo, bv: GV.bvo }, form: SF.form, shift: SF.shift,
-      secs: SF.secs.map(function (x) { return { type: x.type, bars: x.bars, prog: x.prog || null, lyr: x.lyr || "", chords: x.chords || null, own: x.own || null }; }) };
+      secs: SF.secs.map(function (x) { return { type: x.type, bars: x.bars, prog: x.prog || null, lyr: x.lyr || "", chords: x.chords || null, own: x.own || null, mute: x.mute || null }; }) };
     store.set("pm.songs", all); songsFill(name); $("sb-name").value = name; $("sb-save-msg").textContent = "Saved “" + name + "” on this device.";
   });
   function songApply(name, sg) {
@@ -3814,7 +3869,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     $("gv-scale").value = sg.gv.scale; gvProgFill(sg.gv.scale, sg.gv.prog); $("gv-prog").value = sg.gv.prog; $("gv-key").value = sg.gv.key; $("gv-bpm").value = sg.gv.bpm;
     $("gv-mel").value = sg.gv.mel; $("gv-by").value = sg.gv.by; $("gv-cv").value = sg.gv.cv || "auto"; $("gv-bv").value = sg.gv.bv || "auto";
     gvApply("");
-    SF.form = sg.form || "auto"; $("sf-form").value = SF.form; SF.secs = sg.secs.map(function (x) { return { type: x.type, bars: x.bars, prog: x.prog, lyr: x.lyr, chords: x.chords || null, own: x.own || null }; }); SF.shift = sg.shift || 0; $("sf-key").value = String(SF.shift); SF.sel = 0;
+    SF.form = sg.form || "auto"; $("sf-form").value = SF.form; SF.secs = sg.secs.map(function (x) { return { type: x.type, bars: x.bars, prog: x.prog, lyr: x.lyr, chords: x.chords || null, own: x.own || null, mute: x.mute || null }; }); SF.shift = sg.shift || 0; $("sf-key").value = String(SF.shift); SF.sel = 0;
     $("sb-name").value = name; sfRender(); sbDraw(); $("sb-save-msg").textContent = "Loaded “" + name + "”.";
     $("sb-info").textContent = GV.style.name + " · " + GV.prog.name + " · " + Math.round(GV.bpm) + " bpm";
   }
@@ -3851,9 +3906,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   $("sb-speed").addEventListener("change", function (e) { GV.rate = +e.target.value; sfRender(); });
   /* printable chord chart */
   var chartUrl = null;
-  function sbChart() {
+  function sbChartCanvas(title0) {
     var plan = gvBuildPlan(), names = sfNames(), W = 1100, pad = 50, cw = (W - pad * 2) / 4, rows = [], y = 150, i;
-    var title = $("sb-name").value.trim() || "My song", keyNames = FLAT_KEYS[GV.prog.mode === "min" ? "minor" : "major"].indexOf((GV.key + xp) % 12) >= 0 ? FLAT : SHARP;
+    var title = title0 || $("sb-name").value.trim() || "My song", keyNames = FLAT_KEYS[GV.prog.mode === "min" ? "minor" : "major"].indexOf((GV.key + xp) % 12) >= 0 ? FLAT : SHARP;
     SF.secs.forEach(function (x, si) {
       var bars = plan.filter(function (p) { return p.si === si; }), lines = x.lyr ? x.lyr.split("\n").filter(function (l) { return l.trim(); }) : [];
       rows.push({ y: y, x: x, name: names[si], bars: bars, lines: lines });
@@ -3883,6 +3938,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     g.fillStyle = "#111"; g.font = "700 24px system-ui, -apple-system, 'Segoe UI', sans-serif";
     g.fillText("Ending:  " + chordName(sbChord(last), endKey) + "  →  " + chordName(chordOf(GV.prog.mode === "min" ? "i" : "I", endKey), endKey), pad, y + 20);
     g.fillStyle = "#888"; g.font = "16px system-ui, sans-serif"; g.fillText("Made with Ricardo’s Pitchy App  ·  ％ means repeat the chord before", pad, y + 60);
+    return cv;
+  }
+  function chartShow(cv, title) {
     cv.toBlob(function (blob) {
       if (!blob) return;
       if (chartUrl) { try { URL.revokeObjectURL(chartUrl); } catch (e) {} }
@@ -3892,6 +3950,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       $("sb-chart-row").hidden = false;
     }, "image/png");
   }
+  function sbChart() { chartShow(sbChartCanvas(), $("sb-name").value.trim() || "My song"); }
   $("sb-chart-btn").addEventListener("click", sbChart);
   $("sb-print").addEventListener("click", function () { document.body.classList.add("printing"); setTimeout(function () { window.print(); }, 60); });
   window.addEventListener("afterprint", function () { document.body.classList.remove("printing"); });
@@ -4020,34 +4079,41 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       ensureContext().then(gvLoadMel).then(function () { gvOwnPlay({ own: own[st.bar], key: GV.key }, ac.currentTime + 0.05); });
     });
     /* Sing or play one bar into the grid: a count-in, then one bar of listening. */
-    $(pre + "-sing").addEventListener("click", function () {
+    function singIn(nb) {
       var T = target(), msg = $(pre + "-sing-msg"); if (!T) return;
+      nb = Math.max(1, Math.min(nb, T.bars - st.bar, 8));
       if (!running) { msg.textContent = "Tap Start listening first, then tap this again."; return; }
       if (GV.on || GV.ending) gvStop();
-      var S = GV.style, sd = gvStepDur(), bd = sd * S.steps / S.beats, t0 = ac.currentTime + 0.15, tRec = t0 + S.beats * bd, tEnd = tRec + S.steps * sd, frames = [], i;
+      var S = GV.style, sd = gvStepDur(), bd = sd * S.steps / S.beats, t0 = ac.currentTime + 0.15, tRec = t0 + S.beats * bd, tEnd = tRec + nb * S.steps * sd, frames = [], i;
       GV.kitNow = GV.kitNow || "syn";
-      for (i = 0; i < S.beats * 2; i++) dRim(t0 + i * bd, i < S.beats ? (i === 0 ? 1 : 0.7) : 0.3);
+      for (i = 0; i < S.beats * (1 + nb); i++) dRim(t0 + i * bd, i < S.beats ? (i === 0 ? 1 : 0.7) : (i % S.beats === 0 ? 0.45 : 0.25));
       msg.textContent = "Count in…";
       var iv = setInterval(function () {
         var now = ac.currentTime;
         if (now >= tRec && now < tEnd) { msg.textContent = "Sing or play now"; frames.push({ t: now, m: hasPitch ? curSm : null }); }
         if (now < tEnd) return;
         clearInterval(iv);
-        var tonic = ownTonic(GV.key), list = [], prev = -2;
-        for (var s2 = 0; s2 < S.steps; s2++) {
-          var fr = frames.filter(function (f) { return f.t >= tRec + s2 * sd && f.t < tRec + (s2 + 1) * sd; }), ok = fr.filter(function (f) { return f.m != null; }).map(function (f) { return f.m; }).sort(function (a, b) { return a - b; }), deg = -1;
-          if (fr.length && ok.length >= fr.length * 0.4) {
-            var m = ok[Math.floor(ok.length / 2)], best = 99; while (m < tonic - 1) m += 12; while (m > tonic + 25) m -= 12;
-            for (var d = 0; d < ME_ROWS; d++) { var dd = Math.abs(ownMidi(d, GV.key) - m); if (dd < best) { best = dd; deg = d; } }
+        var tonic = ownTonic(GV.key), notes = 0;
+        for (var bb = 0; bb < nb; bb++) {
+          var list = [], prev = -2;
+          for (var s2 = 0; s2 < S.steps; s2++) {
+            var a0 = tRec + (bb * S.steps + s2) * sd, fr = frames.filter(function (f) { return f.t >= a0 && f.t < a0 + sd; }), ok = fr.filter(function (f) { return f.m != null; }).map(function (f) { return f.m; }).sort(function (a, b) { return a - b; }), deg = -1;
+            if (fr.length && ok.length >= fr.length * 0.4) {
+              var m = ok[Math.floor(ok.length / 2)], best = 99; while (m < tonic - 1) m += 12; while (m > tonic + 25) m -= 12;
+              for (var d = 0; d < ME_ROWS; d++) { var dd = Math.abs(ownMidi(d, GV.key) - m); if (dd < best) { best = dd; deg = d; } }
+            }
+            if (deg !== prev && !(deg === -1 && prev === -2)) list.push([s2, deg]);
+            prev = deg;
           }
-          if (deg !== prev && !(deg === -1 && prev === -2)) list.push([s2, deg]);
-          prev = deg;
+          var cnt = list.filter(function (q) { return q[1] >= 0; }).length;
+          if (cnt) { T.map(true)[st.bar + bb] = list; notes += cnt; }
         }
-        var notes = list.filter(function (q) { return q[1] >= 0; }).length;
-        if (notes) { T.map(true)[st.bar] = list; changed(); draw(); msg.textContent = "Got " + notes + " note" + (notes > 1 ? "s" : "") + " for bar " + (st.bar + 1) + ". Tap Hear this bar to check it."; }
+        if (notes) { changed(); draw(); msg.textContent = "Got " + notes + " note" + (notes > 1 ? "s" : "") + (nb > 1 ? " across " + nb + " bars" : " for bar " + (st.bar + 1)) + ". Tap Hear this bar to check."; }
         else msg.textContent = "I did not hear a clear note. Try again a little louder.";
       }, 20);
-    });
+    }
+    $(pre + "-sing").addEventListener("click", function () { singIn(1); });
+    $(pre + "-singall").addEventListener("click", function () { singIn(8); });
     return { draw: draw };
   }
   var ED_B = mkEditor("me", ME, function () {
@@ -4076,7 +4142,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function sbScoreShow() {
     var names = sfNames(), parts = [];
     SF.secs.forEach(function (x, i) { var sc = SB.score && SB.score[i]; if (sc && sc.total > 20) parts.push(names[i] + ": " + Math.round(100 * sc.hit / sc.total) + "%"); });
-    $("sb-score").textContent = parts.length ? "On the melody (any octave). " + parts.join("  ·  ") : "";
+    $("sb-score").textContent = parts.length ? (SBV.harm ? "On the harmony (any octave). " : "On the melody (any octave). ") + parts.join("  ·  ") : "";
   }
   /* fit the song to my range */
   $("sb-fit").addEventListener("click", function () {
@@ -4094,6 +4160,123 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     $("gv-key").value = nk; gvApply(""); sfRender(); sbDraw(); meDraw();
     msg.textContent = (best.s === 0 ? "The key of " + old + " already fits best. " : "Moved from the key of " + old + " to " + KEY_MAJ[(nk + xp) % 12] + ". ") + "Sung in your octave, the melody runs from " + bothLabel(best.a) + " to " + bothLabel(best.b) + ". Your range is " + bothLabel(savedRange.low) + " to " + bothLabel(savedRange.high) + "." + (best.out > 0 ? " It is wider than your range, so a few notes will still be outside it." : "");
   });
+  /* ---------- finding grooves: search, more like this, tap tempo ---------- */
+  function styleTags(st) {
+    var t = [st.name, st.group, st.tip, st.bpm < 80 ? "slow" : st.bpm > 118 ? "fast" : "medium mid", st.beats === 3 ? "waltz 3/4 three" : "", st.steps === 12 ? "6/8 six triplet shuffle" : "", st.kit === "e" ? "electronic drum machine" : "acoustic",
+      !(st.k || st.s || st.s2 || st.h) ? "nodrums quiet" : "drums", st.bpm >= 100 && st.k && st.k.length >= 4 ? "dance" : "", st.fx ? "echo" : ""];
+    return t.join(" ").toLowerCase();
+  }
+  function styleMatch(st) {
+    var q = (GV.q || "").toLowerCase().replace(/no drums?|without drums?/g, "nodrums").trim(); if (!q) return true;
+    var tags = st._tags || (st._tags = styleTags(st));
+    return q.split(/\s+/).every(function (w) { if (/^\d+$/.test(w)) return Math.abs(st.bpm - +w) <= 8; return tags.indexOf(w) >= 0; });
+  }
+  $("gv-q").addEventListener("input", function (e) {
+    GV.q = e.target.value; var before = GV.style.id; gvFill();
+    var n = $("gv-style").options.length, hit = STYLES.some(styleMatch); $("gv-q-msg").textContent = GV.q.trim() ? (hit && n < STYLES.length ? n + " groove" + (n > 1 ? "s" : "") + " match in this shelf" : hit ? "" : "Nothing matches. Showing everything in this shelf.") : "";
+    if (GV.style.id !== before) { $("gv-style").value = GV.style.id; gvApply("style"); }
+  });
+  $("gv-like").addEventListener("click", function () {
+    var S = GV.style, best = null, bs = 1e9, drums = !!(S.k || S.s);
+    STYLES.forEach(function (st) {
+      if (st.group === S.group || st.id === S.id) return;
+      var sc = Math.abs(st.bpm - S.bpm) + (st.steps === S.steps ? 0 : 25) + (st.beats === S.beats ? 0 : 40) + ((st.kit === "e") === (S.kit === "e") ? 0 : 12) + (!!(st.k || st.s) === drums ? 0 : 30) + (!!st.arp === !!S.arp ? 0 : 8) + Math.random() * 6;
+      if (sc < bs) { bs = sc; best = st; }
+    });
+    if (!best) return;
+    GV.q = ""; $("gv-q").value = ""; $("gv-q-msg").textContent = "Similar feel, from “" + best.group + "”.";
+    if (GV.shelf !== "all") { GV.shelf = "all"; $("gv-shelf").value = "all"; prefs.shelf = "all"; savePrefs(); }
+    gvFill(); $("gv-style").value = best.id; gvApply("style");
+  });
+  var taps = [];
+  $("gv-tap").addEventListener("click", function () {
+    var now = performance.now(); if (taps.length && now - taps[taps.length - 1] > 2500) taps = [];
+    taps.push(now); if (taps.length > 6) taps.shift();
+    if (taps.length < 3) { $("gv-tap").textContent = "Tap again…"; return; }
+    var bpm = Math.round(60000 / ((taps[taps.length - 1] - taps[0]) / (taps.length - 1))); bpm = clamp(bpm, 40, 220);
+    $("gv-bpm").value = bpm; gvApply(""); $("gv-tap").textContent = "Tap the tempo (" + bpm + ")";
+  });
+  /* ---------- arrangement: who plays in each section ---------- */
+  ["d", "b", "c", "m"].forEach(function (k) {
+    $("sf-m-" + k).addEventListener("change", function (e) { var x = sfSelSec(); if (!x) return; if (!x.mute) x.mute = {}; x.mute[k] = !e.target.checked; if (GV.on && GV.song) gvStop(); sbDraw(); });
+  });
+  $("me-fromjam").addEventListener("click", function () {
+    var x = sfSelSec(), has = Object.keys(JM.own).some(function (k) { return JM.own[k] && JM.own[k].length; });
+    if (!x) return; if (!has) { $("me-state").textContent = "Write a melody in the Jam tab first."; return; }
+    x.own = {}; for (var i = 0; i < x.bars; i++) x.own[i] = (JM.own[i % JM.bars] || []).map(function (q) { return q.slice(); });
+    if (GV.on && GV.song) gvStop(); meDraw(); sbDraw();
+  });
+  /* ---------- harmony guide, weakest section, practice log ---------- */
+  function harmNote(m, steps, key) {
+    var sc = SCALE[GV.prog.mode === "min" ? "minor" : "major"], n = sc.length, r = Math.round(m), pc = ((r - key) % 12 + 12) % 12, best = 0, bd = 99, i, k;
+    for (i = 0; i < n; i++) for (k = -1; k <= 1; k++) { var dd = Math.abs(sc[i] + 12 * k - pc); if (dd < bd) { bd = dd; best = i + n * k; } }
+    function at(ix) { return sc[((ix % n) + n) % n] + 12 * Math.floor(ix / n); }
+    return r - pc + at(best + steps);
+  }
+  function sbTarget(P) { var mel = sbMel(P); return SBV.harm ? mel.map(function (n) { return { st: n.st, len: n.len, m: harmNote(n.m, SBV.harm, P.key) }; }) : mel; }
+  $("sb-harm").addEventListener("change", function (e) { SBV.harm = +e.target.value; SB.melBar = -1; sbDraw(); });
+  $("sb-weak").addEventListener("click", function () {
+    var worst = -1, wp = 101;
+    SF.secs.forEach(function (x, i) { var sc = SB.score && SB.score[i]; if (sc && sc.total > 20) { var p = 100 * sc.hit / sc.total; if (p < wp) { wp = p; worst = i; } } });
+    if (worst < 0) { $("sb-log").textContent = "Sing through the song once with Start listening on, then tap this."; return; }
+    SF.loop = true; $("sb-loop").checked = true; sbGo(worst);
+  });
+  function plogSave() {
+    var name = $("sb-name").value.trim(), names = sfNames(), s = {}, any = false;
+    SF.secs.forEach(function (x, i) { var sc = SB.score && SB.score[i]; if (sc && sc.total > 20) { s[names[i]] = Math.round(100 * sc.hit / sc.total); any = true; } });
+    if (!name || !any) return;
+    var all = store.get("pm.plog") || {}, list = all[name] || (all[name] = []), d = new Date();
+    list.push({ d: (d.getMonth() + 1) + "/" + d.getDate(), s: s }); if (list.length > 12) list.shift();
+    store.set("pm.plog", all); plogShow();
+  }
+  function plogShow() {
+    var name = $("sb-name").value.trim(), list = ((store.get("pm.plog") || {})[name] || []);
+    if (!list.length) { $("sb-log").textContent = name ? "" : "Give the song a name below and your scores are remembered each time you sing it."; return; }
+    var last = list[list.length - 1], prev = list[list.length - 2];
+    $("sb-log").textContent = "Practice log for “" + name + "” (" + list.length + " run" + (list.length > 1 ? "s" : "") + "). Latest, " + last.d + ": " + Object.keys(last.s).map(function (k) { return k + " " + last.s[k] + "%" + (prev && prev.s[k] != null ? " (was " + prev.s[k] + "%)" : ""); }).join(", ") + ".";
+  }
+  /* ---------- record me over the whole song ---------- */
+  $("sb-recsong").addEventListener("click", function () {
+    var msg = $("sb-recsong-msg");
+    if (GV.on || GV.ending) gvStop();
+    SB.recSong = true; msg.textContent = "Starting the microphone…";
+    if (!running) $("toggle").click();
+    var tries = 0, iv = setInterval(function () {
+      if (running) { clearInterval(iv); var keep = SF.count; SF.count = true; if (!SF.on) { SF.on = true; $("sf-on").checked = true; } gvStart(0); setTimeout(function () { SF.count = keep; }, 800); msg.textContent = "Recording. Sing or play along; it stops by itself at the end of the song. Wear headphones for a clean take."; }
+      else if (++tries > 60) { clearInterval(iv); SB.recSong = false; msg.textContent = "The microphone did not start. Allow it, then try again."; }
+    }, 100);
+  });
+  function songEnded() {
+    if (SB.recSong) { SB.recSong = false; if (running) $("toggle").click(); $("sb-recsong-msg").textContent = "Done. Your take is below the chart with a play and a download button."; return; }
+    if (SL.playing >= 0) slNext();
+  }
+  /* ---------- setlist ---------- */
+  var SL = { list: store.get("pm.setlist") || [], playing: -1 };
+  function slShow() {
+    var all = songsGet(); SL.list = SL.list.filter(function (n) { return all[n]; });
+    var host = $("sl-list"); host.innerHTML = "";
+    SL.list.forEach(function (n, i) {
+      var sg = all[n], li = document.createElement("div"); li.className = "chip" + (i === SL.playing ? " cur" : ""); li.style.display = "block"; li.style.textAlign = "left"; li.style.margin = "4px 0";
+      li.textContent = (i + 1) + ". " + n + "  ·  key of " + KEY_MAJ[(sg.gv.key + xp) % 12] + (sg.gv.scale === "min" ? " minor" : "") + "  ·  " + Math.round(sg.gv.bpm) + " bpm"; host.appendChild(li);
+    });
+    $("sl-msg").textContent = SL.list.length ? "" : "The setlist is empty. Pick a saved song above and add it.";
+  }
+  function slSave() { store.set("pm.setlist", SL.list); slShow(); }
+  $("sl-add").addEventListener("click", function () { var n = $("sb-songs").value; if (n && songsGet()[n]) { SL.list.push(n); slSave(); } });
+  $("sl-pop").addEventListener("click", function () { SL.list.pop(); slSave(); });
+  function slPlay(i) { var all = songsGet(), n = SL.list[i]; if (!n || !all[n]) { SL.playing = -1; slShow(); return; } SL.playing = i; songApply(n, all[n]); slShow(); setTimeout(function () { gvStart(0); }, 300); }
+  function slNext() { if (SL.playing + 1 < SL.list.length) slPlay(SL.playing + 1); else { SL.playing = -1; slShow(); $("sl-msg").textContent = "End of the setlist."; } }
+  $("sl-play").addEventListener("click", function () { if (GV.on || GV.ending) { SL.playing = -1; gvStop(); slShow(); return; } if (SL.list.length) slPlay(0); });
+  $("sl-charts").addEventListener("click", function () {
+    var all = songsGet(), cvs = [], H = 0; if (!SL.list.length) return;
+    if (GV.on || GV.ending) gvStop();
+    SL.list.forEach(function (n) { if (!all[n]) return; songApply(n, all[n]); var c = sbChartCanvas(n); cvs.push(c); H += c.height; });
+    var big = document.createElement("canvas"), g = big.getContext("2d"), y = 0; big.width = 1100; big.height = H;
+    cvs.forEach(function (c) { g.drawImage(c, 0, y); y += c.height; });
+    chartShow(big, "setlist");
+  });
+  slShow(); plogShow();
+  $("sb-name").addEventListener("input", plogShow);
   function gvGridIdle() { if (mode === "jam" && !GV.on) gridDraw("gv-grid", gvPlan(0), gvPlan(1), 0, -1); }
   function gvProgFill(modeV, want) {
     var ps = $("gv-prog"); ps.innerHTML = "";
@@ -4106,7 +4289,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     var favs = prefs.favs || {}, favOn = GV.shelf === "fav" && STYLES.some(function (s) { return favs[s.id]; });
     if (GV.shelf === "fav" && !favOn) { GV.shelf = "all"; $("gv-shelf").value = "all"; }
     var shelf = SHELVES.filter(function (x) { return x[0] === GV.shelf; })[0] || SHELVES[0];
-    function inShelf(st) { return favOn ? !!favs[st.id] : (!shelf[2] || shelf[2].indexOf(st.group) >= 0); }
+    function inShelf0(st) { return favOn ? !!favs[st.id] : (!shelf[2] || shelf[2].indexOf(st.group) >= 0); }
+    var anyQ = STYLES.some(function (st) { return inShelf0(st) && styleMatch(st); });
+    function inShelf(st) { return inShelf0(st) && (!anyQ || styleMatch(st)); }
     groups = GROUP_ORDER.filter(function (g) { return STYLES.some(function (st) { return st.group === g && inShelf(st); }); });
     if (!inShelf(GV.style)) GV.style = STYLES.filter(function (st) { return st.group === groups[0] && inShelf(st); })[0] || GV.style;
     groups.forEach(function (g) {
