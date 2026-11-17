@@ -555,7 +555,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   </section>
 
   <section class="panel" id="panel-learn" hidden>
-    <p>Short lessons on how songs are put together. Each one ends with something to try in the Builder or the Jam tab. <b id="learn-prog"></b></p>
+    <p>Short lessons on how songs are put together. Tap a section to open it, then tap a lesson. Each one ends with something to try. <b id="learn-prog"></b></p>
     <div id="learn-host" style="display:flex;flex-direction:column;gap:12px"></div>
   </section>
   <section class="panel" id="panel-build" hidden>
@@ -4290,66 +4290,197 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     sfRender(); sbDraw(); window.scrollTo(0, 0);
   }
   function learnPreset(id) { goTab("build"); if (GV.on || GV.ending) gvStop(); SF.form = id; $("sf-form").value = id; sfLoad(); sbDraw(); window.scrollTo(0, 0); }
+  function styleByName(nm) { return STYLES.filter(function (st) { return st.name === nm || st.id === nm; })[0]; }
+  function learnStyle(nm, formId) {
+    var st = styleByName(nm); if (!st) { goTab("jam"); return; }
+    goTab("jam"); if (GV.on || GV.ending) gvStop();
+    GV.q = ""; $("gv-q").value = ""; if (GV.shelf !== "all") { GV.shelf = "all"; $("gv-shelf").value = "all"; prefs.shelf = "all"; savePrefs(); }
+    gvFill(); $("gv-style").value = st.id; gvApply("style");
+    if (formId) learnPreset(formId); else window.scrollTo(0, 0);
+  }
+  function LS(id, t, p, steps, acts) { return { id: id, t: t, p: [p], steps: steps, acts: acts || [] }; }
+  var toB = ["Open the Builder", function () { goTab("build"); }], toJ = ["Go to the Jam tab", function () { goTab("jam"); }];
+  var VC = [["intro", 4], ["verse", 8], ["chorus", 8], ["verse", 8], ["chorus", 8]];
   var LESSONS = [
-    { part: "Structure" },
+    { part: "Structure", about: "How the sections of a song fit together." },
     { id: "l1", t: "What a verse and a chorus do", p: ["The verse tells the story, and its words change each time. The chorus is the main idea, and its words stay the same every time it comes back.", "If someone remembers one line of your song, it should be the chorus."],
-      steps: ["Tap the button to build a verse, chorus, verse, chorus song.", "Play it and listen for where the song feels like it arrives home. That is the chorus."], acts: [["Build verse and chorus", function () { learnForm([["intro", 4], ["verse", 8], ["chorus", 8], ["verse", 8], ["chorus", 8]]); }]] },
+      steps: ["Tap the button to build a verse, chorus, verse, chorus song.", "Play it and listen for where the song feels like it arrives home. That is the chorus."], acts: [["Build verse and chorus", function () { learnForm(VC); }]] },
     { id: "l2", t: "Make the chorus stand out", p: ["A chorus works because it is different from the verse: fuller, higher, or on new chords. If verse and chorus sound the same, the song feels flat."],
       steps: ["Tap the button. I turned the drums off in the verses.", "Play it and hear how the chorus lands when the drums come in.", "Then tap the Chorus and choose different chords for it."], acts: [["Build it with quiet verses", function () { learnForm([["intro", 4, { d: true }], ["verse", 8, { d: true }], ["chorus", 8], ["verse", 8, { d: true }], ["chorus", 8]]); }]] },
     { id: "l3", t: "Different styles use different shapes", p: ["A corrido is verse after verse with no chorus, because it tells a story. A ballad saves a key change for the last chorus. A pop song adds a short pre-chorus that builds tension."],
       steps: ["Load each shape and look at the song map.", "Count the bars of each section while it plays."], acts: [["Corrido shape", function () { learnPreset("corrido"); }], ["Ballad shape", function () { learnPreset("balada"); }], ["Pop shape", function () { learnPreset("pop"); }]] },
     { id: "l4", t: "Intros and endings", p: ["An intro is short, usually four or eight bars, and it often plays the hook before anyone sings. An ending needs a clear last hit, so the song stops on purpose instead of fading out by accident."],
-      steps: ["In the Jam tab, play a groove and tap Finish with an ending.", "In the Builder, play only the Intro, then jump to the last section to hear the ending."], acts: [["Go to the Jam tab", function () { goTab("jam"); }]] },
+      steps: ["In the Jam tab, play a groove and tap Finish with an ending.", "In the Builder, play only the Intro, then jump to the last section to hear the ending."], acts: [toJ] },
     { id: "l5", t: "The bridge: one new place", p: ["After the second chorus the listener has heard everything twice. A bridge is eight bars of something new, usually different chords, and then the song returns to the chorus."],
-      steps: ["Build the shape with a bridge.", "Tap the Bridge and mute the drums or the melody so it feels like a different room."], acts: [["Build a song with a bridge", function () { learnForm([["intro", 4], ["verse", 8], ["chorus", 8], ["verse", 8], ["chorus", 8], ["bridge", 8], ["chorus", 8]]); }]] },
-    { part: "Planning" },
+      steps: ["Build the shape with a bridge.", "Tap the Bridge and mute the drums or the melody so it feels like a different room."], acts: [["Build a song with a bridge", function () { learnForm(VC.concat([["bridge", 8], ["chorus", 8]])); }]] },
+    LS("s6", "Count the bars", "Almost every section is 4, 8 or 16 bars long. Being able to feel eight bars go by is the most useful structure skill there is.", ["Play the song and count each bar out loud: one, two, three, up to eight.", "Close your eyes and say “now” when you think the section changes. Check the song map."], [["Build verse and chorus", function () { learnForm(VC); }]]),
+    LS("s7", "The pre-chorus: a ramp", "A pre-chorus is two or four bars that lift the listener from the verse into the chorus. It usually ends on a chord that wants to resolve.", ["Load the pop shape and find the Pre-chorus on the map.", "Loop Verse, Pre-chorus, Chorus and listen to the tension rise and release.", "Remove the feeling: mute the melody in the Pre-chorus and hear what is lost."], [["Pop shape", function () { learnPreset("pop"); }]]),
+    LS("s8", "A A B A: the old standard shape", "Boleros and jazz standards often have no chorus. They state a tune (A), repeat it, go somewhere new (B), and come back (A). The title usually sits in the first or last line of each A.", ["Load the bolero shape. The Verses are the A parts and the Bridge is the B.", "Listen for the relief when the A comes back."], [["Bolero shape", function () { learnPreset("bolero"); }]]),
+    LS("s9", "Cut it down", "Most first drafts are too long. A song that makes its point in two and a half minutes beats one that repeats for five.", ["Build any song and look at the length under the section list.", "Remove or shorten sections until it is under 2:45.", "Play it. If you do not miss what you cut, it was not needed."], [toB]),
+    { part: "Planning", about: "Deciding what the song is before you write it." },
     { id: "l6", t: "Plan a song in five lines", p: ["Before writing lyrics, answer five things in plain words: what is the song about in one sentence, who is talking to whom, what happens in verse one, what changes in verse two, and what is the one line everyone sings."],
-      steps: ["Open the Builder and tap each section.", "Type your plain-words answer into its lyrics box. Do not rhyme yet.", "Now you have a map, and each section has one job."], acts: [["Open the Builder", function () { goTab("build"); }]] },
+      steps: ["Open the Builder and tap each section.", "Type your plain-words answer into its lyrics box. Do not rhyme yet.", "Now you have a map, and each section has one job."], acts: [toB] },
     { id: "l7", t: "Line lengths and rhyme", p: ["Eight bars usually hold four lines, two bars each. Lines that pair up should be about the same number of syllables. Rhyme the second line with the fourth, or pair them one-two and three-four."],
       steps: ["Write four lines in the Verse 1 lyrics box, one per row.", "Play the verse and speak the lines in time as they light up.", "Shorten any line that does not fit in its two bars."], acts: [["Build a short song to write in", function () { learnForm([["verse", 8], ["chorus", 8]]); }]] },
-    { part: "Melody" },
+    LS("p3", "Start from a title", "A strong title tells you what the chorus says and what the verses must explain. Many writers will not start until they have one.", ["Write three possible titles of two to five words.", "Pick the one that makes you ask a question, such as why or what happened.", "Type it as the first and last line of the Chorus lyrics."], [toB]),
+    LS("p4", "Give every section an energy number", "Rate each section from 1 (almost nothing) to 5 (everything). A good song has a shape, for example 2, 3, 4, 3, 5, 2, 5.", ["Write a number at the start of each section’s lyrics box.", "Use the Drums, Bass, Chords and Melody boxes so each section matches its number.", "Play it through and check that the biggest number really is the biggest moment."], [toB]),
+    LS("p5", "Pick the tempo and key on purpose", "Tempo sets the mood before a single word. Key decides whether the chorus sits where your voice is strong.", ["In the Jam tab, try the same groove at three tempos with Tap the tempo.", "In the Builder, tap Move the song into my range and hear the difference."], [toJ]),
+    { part: "Songwriting (lyrics)", about: "Words: what to say and how to make it singable." },
+    LS("w1", "Say it plain first", "Write what you mean as if you were texting a friend. You can make it poetic later, but only if you know exactly what it says.", ["Write the whole chorus as one plain sentence.", "Now split it into four short lines.", "Change only the words that sound stiff when you say them out loud."], [toB]),
+    LS("w2", "Show it, do not say it", "“I miss you” is a feeling. “Your jacket is still on the chair” is a picture, and the listener feels the missing by themselves. Verses are for pictures; the chorus can say the feeling.", ["Pick a feeling. List five objects, places or small actions that prove it.", "Put two of them in Verse 1."], [toB]),
+    LS("w3", "Where the hook line goes", "Put the title where it cannot be missed: the first line of the chorus, the last line, or both. Everything else in the chorus points at it.", ["Type your title as line one of the Chorus.", "Write two lines that lead to it, then repeat the title as line four."], [toB]),
+    LS("w4", "Verse two must move", "If verse two says the same thing as verse one in new words, the song stalls. Change the time, the place, or who is speaking.", ["Read your Verse 1. Ask: what happens next, or what happened before?", "Write Verse 2 from that new moment, ending so the same chorus now means a little more."], [toB]),
+    LS("w5", "Rhyme without forcing it", "A near rhyme that sounds natural beats a perfect rhyme that twists the sentence. In Spanish, matching the last vowels (cielo, tiempo) is often enough.", ["Circle the last word of lines two and four.", "List five words that share the vowel sounds, even if the consonants differ.", "Choose the one you would really say."], [toB]),
+    LS("w6", "Put the strong syllable on the strong beat", "Words have a natural stress. If the stressed syllable falls on beat one or three it sounds right; if it falls between beats it sounds wrong, in English or Spanish.", ["Speak a line over the groove and clap on the stressed syllables.", "If a clap misses the beat, add or remove a small word until it lands."], [["Build a short song to write in", function () { learnForm([["verse", 8], ["chorus", 8]]); }]]),
+    LS("w7", "Five-minute object writing", "A daily warm-up used by many songwriters: pick an object and write about it with all your senses for five minutes without stopping. It fills your notebook with pictures to steal for verses.", ["Set a five-minute timer. Pick anything you can see.", "Write what it looks, sounds, smells and feels like, and what it reminds you of.", "Underline one line you like and paste it into a section’s lyrics box."], []),
+    { part: "Melody", about: "Building a tune people can remember." },
     { id: "l8", t: "A motif: one small idea, repeated", p: ["Good melodies are built from a tiny idea of three to five notes. Repeat it so the ear learns it, then change the ending so it does not get boring."],
-      steps: ["In the Jam tab, find My melody over this groove and set it to 2 bars.", "Tap three to five notes in bar 1.", "Tap Copy to the next bar, then move only the last note."], acts: [["Go to the Jam tab", function () { goTab("jam"); }]] },
+      steps: ["In the Jam tab, find My melody over this groove and set it to 2 bars.", "Tap three to five notes in bar 1.", "Tap Copy to the next bar, then move only the last note."], acts: [toJ] },
     { id: "l9", t: "Question and answer", p: ["A phrase that ends away from the home note sounds like a question. A phrase that ends on the home note sounds like an answer. The home note is the bold row in the melody grid."],
-      steps: ["Set My melody to 4 bars.", "Bars 1 and 2: end on any row that is not bold.", "Bars 3 and 4: use a similar shape, but end on a bold row."], acts: [["Go to the Jam tab", function () { goTab("jam"); }]] },
+      steps: ["Set My melody to 4 bars.", "Bars 1 and 2: end on any row that is not bold.", "Bars 3 and 4: use a similar shape, but end on a bold row."], acts: [toJ] },
     { id: "l10", t: "Melody that fits the chords", p: ["On the strong beats, especially beat one, a melody sounds settled when it sits on a note of the chord. Between those beats it can pass through other notes."],
-      steps: ["In the Builder, write your own melody for the Chorus.", "Look at the Notes chart: the faint blocks are the chord. Put your beat-one notes on the same rows, in any octave.", "Play it, then move one beat-one note off the chord and hear the difference."], acts: [["Open the Builder", function () { goTab("build"); }]] },
-    { part: "Arrangement" },
+      steps: ["In the Builder, write your own melody for the Chorus.", "Look at the Notes chart: the faint blocks are the chord. Put your beat-one notes on the same rows, in any octave.", "Play it, then move one beat-one note off the chord and hear the difference."], acts: [toB] },
+    LS("m4", "Rhythm first", "A melody is rhythm before it is notes. If the rhythm of the words is catchy on one note, it will be catchy on any notes.", ["In My melody, put every note of a bar on the same row.", "Change only where the notes fall until the rhythm alone sounds like a hook.", "Then move two or three of the notes up or down."], [toJ]),
+    LS("m5", "Verse low, chorus high", "The simplest way to lift a chorus is to sing it higher than the verse. Keep the verse in the lower half of your range and save your top notes.", ["Write a verse melody using only the bottom half of the grid.", "Write the chorus so its longest note is higher than anything in the verse.", "Check both against your range with Move the song into my range."], [toB]),
+    LS("m6", "Repeat, repeat, change", "A very common four-bar pattern: say an idea, say it again, then do something different and land. Listeners love the surprise in bar three because bars one and two set it up.", ["Set My melody to 4 bars.", "Write bar 1, copy it to bar 2.", "Make bar 3 go somewhere new and bar 4 one long note on a bold row."], [toJ]),
+    LS("m7", "Sing it before you tap it", "The tunes that come out of your mouth are usually more natural than the ones you click in. Hum first, then capture.", ["Play a groove and hum over it until something repeats by itself.", "Tap Start listening, then Sing in all the bars from here.", "Clean up the grid afterward."], [toJ]),
+    { part: "Arrangement", about: "Which instruments play, and when." },
     { id: "l11", t: "Who plays when", p: ["Arrangement is deciding which instruments play in each section. If everyone plays all the time there is nowhere to go. Start small and add."],
       steps: ["Tap the button. Verse 1 has no drums and no melody, the chorus has everyone, the bridge drops to chords only, and the last chorus is full again.", "Play it and watch the Drums, Bass, Chords and Melody boxes change as each section plays.", "Then change one section your own way."], acts: [["Build the energy map", function () { learnForm([["intro", 4, { d: true, b: true }], ["verse", 8, { d: true, m: true }], ["chorus", 8], ["verse", 8, { m: true }], ["chorus", 8], ["bridge", 8, { d: true, b: true, m: true }], ["chorus", 8]]); }]] },
     { id: "l12", t: "Leave space for the singer", p: ["Instruments should answer the singer, not talk over them. In the verses, the melody instrument plays in the gaps at the ends of lines. That is what the answer fills do."],
-      steps: ["In the Jam tab, open the Melody section menu and pick the answer or fill shape for your style.", "Play it and sing or hum a line, stopping where the instrument answers."], acts: [["Go to the Jam tab", function () { goTab("jam"); }]] },
+      steps: ["In the Jam tab, open the Melody section menu and pick the answer or fill shape for your style.", "Play it and sing or hum a line, stopping where the instrument answers."], acts: [toJ] },
     { id: "l13", t: "The lift for the last chorus", p: ["Moving the last chorus up a half step or a whole step makes it feel bigger without changing anything else. Ballads and grupera songs use this all the time."],
-      steps: ["Tap the button to build a ballad with the last chorus a whole step up.", "Play from the second-to-last section and hear the lift."], acts: [["Build it with a key change", function () { learnForm([["intro", 4], ["verse", 8], ["chorus", 8], ["verse", 8], ["chorus", 8], ["chorus", 8]], 2); }]] },
-    { part: "Finishing" },
+      steps: ["Tap the button to build a ballad with the last chorus a whole step up.", "Play from the second-to-last section and hear the lift."], acts: [["Build it with a key change", function () { learnForm(VC.concat([["chorus", 8]]), 2); }]] },
+    LS("a4", "One new thing per section", "Each time a section comes around, add or change one thing: verse two gets the bass, chorus two gets the melody instrument. The song grows without getting crowded.", ["Build verse, chorus, verse, chorus.", "Verse 1: chords only. Chorus 1: add drums and bass. Verse 2: keep the bass. Chorus 2: add the melody.", "Play it and notice it never repeats exactly."], [["Build verse and chorus", function () { learnForm([["verse", 8, { d: true, b: true, m: true }], ["chorus", 8, { m: true }], ["verse", 8, { d: true, m: true }], ["chorus", 8]]); }]]),
+    LS("a5", "Drop out before the drop in", "Silence makes the next hit bigger. Pulling the drums or everything out for the last bars before a chorus is one of the oldest tricks there is.", ["Add a short 4-bar Pre-chorus before a Chorus.", "Turn off Drums and Bass in the Pre-chorus.", "Play into the Chorus and feel the impact."], [["Build it with a drop", function () { learnForm([["verse", 8], ["pre", 4, { d: true, b: true }], ["chorus", 8]]); }]]),
+    LS("a6", "Listen to one instrument at a time", "To learn how a groove is built, solo each part. Notice how the bass and kick drum usually hit together and how the chords fill the gaps.", ["In the Jam tab, pull three of the four Mix sliders to zero.", "Listen to drums alone, then bass alone, then chords alone.", "Watch the rhythm grid while you do it."], [toJ]),
+    { part: "Finishing", about: "Getting songs done." },
     { id: "l14", t: "Finish a sketch", p: ["A finished rough sketch teaches more than a perfect idea that never gets done. Give the song a name, save it, and record one take all the way through, mistakes included."],
-      steps: ["In the Builder, type a song name and tap Save.", "Tap Record me over the whole song and sing or play along.", "Download the take and make the chord chart. That is one finished sketch."], acts: [["Open the Builder", function () { goTab("build"); }]] }
+      steps: ["In the Builder, type a song name and tap Save.", "Tap Record me over the whole song and sing or play along.", "Download the take and make the chord chart. That is one finished sketch."], acts: [toB] },
+    LS("f2", "Listen back and fix one thing", "After a take, do not start over. Listen once, pick the single weakest moment, and fix only that.", ["Play your take back.", "Tap Loop my weakest section and practice it five times.", "Record the whole song once more and compare the scores in the practice log."], [toB]),
+    LS("f3", "Three sketches in a week", "Speed teaches structure faster than polish. Three quick, different songs will show you what you always do and what you always avoid.", ["Use Surprise me in the Jam tab three times to pick three grooves.", "For each, build a form, write a chorus line, and save it.", "Add all three to the setlist and play them back to back."], [toJ]),
+    { part: "Style guide: Regional Mexican", about: "Corridos, rancheras and norteño." },
+    LS("g-mx1", "A corrido is a story", "A corrido has no chorus. It is verse after verse, each usually four lines of about eight syllables, telling what happened in order: who, where, what, and how it ended. An instrumental interlude gives the listener a breath.", ["Load the corrido groove and shape.", "Plan the story as four verses: introduce the person, the problem, what happened, the farewell.", "Use the 16-bar corrido verse in the Chords menu."], [["Load a corrido", function () { learnStyle("corrido", "corrido"); }]]),
+    LS("g-mx2", "Two chords are enough", "Most rancheras and corridos live on the one chord and the five-seven, with the four chord for colour. The interest comes from the story, the voice and the remates between lines.", ["Pick a Regional Mexican groove and try the chords under Fits this style.", "Choose the Remate fills melody and sing a line, letting the accordion or trumpets answer."], [["Load a ranchera", function () { learnStyle("vals", "ranchera"); }]]),
+    LS("g-mx3", "Second voice in thirds", "The sound of the style is two voices moving together a third apart. The lower or upper voice follows the same rhythm and shape as the lead.", ["In the Builder, set the Harmony guide to a third above or below.", "Sing the harmony against the melody and watch your score."], [toB]),
+    { part: "Style guide: Grupera", about: "Keyboard bands and romantic ballads." },
+    LS("g-gr1", "Open with the keyboard hook", "Grupera songs usually start with a short keyboard or guitar melody, four or eight bars, that returns between verses. People recognise the song from that hook before the singer starts.", ["Load a grupera ballad.", "Pick the Keyboard hook melody and loop the Intro.", "Write your own hook in My melody and use it in the Intro and Interlude."], [["Load a grupera ballad", function () { learnStyle("grupbalada", "balada"); }]]),
+    LS("g-gr2", "Simple words, direct feeling", "The lyrics speak straight to one person: I love you, I miss you, forgive me. Verses set the situation in a few lines and the chorus repeats the plea.", ["Write a chorus that says the feeling in the first line, to one person, as “tú” or “you”.", "Try the Romantic chords under Fits this style."], [toB]),
+    LS("g-gr3", "Ballad or cumbia", "The same band plays slow ballads for dancing close and cumbias for dancing apart. The song shape is the same; the beat and tempo change the whole mood.", ["Load a grupera cumbia, then a ballad, with the same chords.", "Notice which one your chorus idea fits."], [["Load a grupera cumbia", function () { learnStyle("grupcumbia", "cumbia"); }]]),
+    { part: "Style guide: Ballads", about: "Romantic and dramatic ballads." },
+    LS("g-ba1", "Build slowly", "A ballad starts almost empty, often just piano or guitar, and adds something in each section until the last chorus is the biggest moment of the song.", ["Load a ballad and the ballad shape.", "Set the Intro and Verse 1 to chords only and add one part per section.", "Use the key change on the last chorus."], [["Load a ballad", function () { learnStyle("Pop ballad with orchestra", "balada"); }]]),
+    LS("g-ba2", "Long notes on the important words", "In a ballad the chorus melody holds its notes. Put the title on the longest, highest note so the singer can open up on it.", ["Pick the Big chorus line melody and listen to how long each note lasts.", "Write a chorus melody with one note that lasts half a bar or more, and put your title word there."], [toB]),
+    LS("g-ba3", "Chords that pull", "Ballads use chords that lean toward the next one: a seventh before the four chord, or a major three chord lifting into the six. That pull is what feels romantic.", ["Try Inner line and Ballad with a lift in the Chords menu.", "Listen for the one chord that makes you expect the next."], [toJ]),
+    { part: "Style guide: Dream pop", about: "Texture, space and long notes." },
+    LS("g-dp1", "Texture over changes", "Dream pop often sits on two chords for a long time. The interest comes from layers: echoing guitar, a pad, a soft voice far back in the mix.", ["Load a dream pop groove and choose a two-chord progression.", "Use the Mix sliders: chords up, drums down."], [["Load a dream pop groove", function () { learnStyle("Slow shimmer", "pop"); }]]),
+    LS("g-dp2", "Float the melody", "Melodies are slow and smooth, with long notes that start a little after the beat and few big jumps. The voice is another instrument in the wash.", ["Pick the Floating note or Chiming descent melody.", "Write your own with only three or four long notes per two bars."], [toJ]),
+    LS("g-dp3", "Images, not stories", "Lyrics are impressions: light, weather, rooms, memories. A few repeated lines are enough; the mood does the rest.", ["Write six short image lines with no “because” in them.", "Use three for the verse and repeat one as the chorus."], [toB]),
+    { part: "Style guide: Lorde style", about: "Minimal beats, few chords, big contrasts." },
+    LS("g-lo1", "Almost nothing, on purpose", "The early sound is a sparse beat, a deep bass and one held chord, leaving the whole middle of the song empty for the voice and stacked harmonies.", ["Load a Pure Heroine era groove.", "Mute the chords in the Verse so it is only drums, bass and voice.", "Bring them back in the Chorus."], [["Load a minimal groove", function () { learnStyle("lo-ph1", "pop"); }]]),
+    LS("g-lo2", "Melody close to speech", "Verses often stay on two or three neighbouring notes with a talking rhythm, then the chorus opens up wider and higher. The rhythm of the words is the hook.", ["Pick the Two-note chant melody and listen.", "Write a verse melody on only two rows, then a chorus that uses five."], [toJ]),
+    LS("g-lo3", "Few chords, used well", "Many songs in this style use two to four chords for the whole song. Sections change by adding and removing layers, not by changing harmony.", ["Try the progressions under Fits this style for each era.", "Keep the same chords for verse and chorus and make the difference with the Drums, Bass, Chords and Melody boxes."], [toB]),
+    LS("g-lo4", "The pre-chorus build and the drop", "From the second album on, songs often strip down before the chorus and then hit with piano and a dance beat. Contrast is the whole trick.", ["Load a Melodrama era groove and the pop shape.", "Turn off Drums and Bass in the Pre-chorus."], [["Load a piano dance groove", function () { learnStyle("lo-me1", "pop"); }]]),
+    { part: "Style guide: The Marías style", about: "Soft, jazzy and laid-back." },
+    LS("g-ma1", "Seventh chords", "The smooth sound comes from seventh chords: major sevenths and minor sevenths instead of plain triads, moving in gentle steps.", ["Load a groove from The Marías style group.", "Try Sunny sevenths, Lounge and Velvet cycle in the Chords menu.", "Open Show chord shapes to see them on guitar."], [["Load a lounge groove", function () { learnStyle("Velvet lounge", "pop"); }]]),
+    LS("g-ma2", "Sing softer, sit back", "The groove is steady and relaxed and the voice is quiet and close. Melodies start after the beat and leave gaps that a trumpet or guitar answers.", ["Pick the Lazy trumpet or Muted answers melody.", "Hum a line that starts on beat two instead of beat one."], [toJ]),
+    LS("g-ma3", "Two languages", "Lines can move between Spanish and English when the feeling changes, for example a verse in one and the chorus in the other.", ["Write the same chorus line in both languages.", "Keep whichever sings better on your melody, and use the other language for the verse."], [toB])
   ];
   function learnRender() {
-    var host = $("learn-host"), done = prefs.learn || {}, total = 0, n = 0, num = 0; host.innerHTML = "";
+    var host = $("learn-host"), done = prefs.learn || {}, total = 0, n = 0, cur = null, open = prefs.learnOpen || {}; host.innerHTML = "";
     LESSONS.forEach(function (L) {
-      if (L.part) { var h = document.createElement("b"); h.textContent = L.part; h.style.fontSize = "18px"; h.style.marginTop = "6px"; host.appendChild(h); return; }
-      total++; num++; if (done[L.id]) n++;
-      var box = document.createElement("div"); box.className = "builder";
-      var t = document.createElement("b"); t.textContent = num + ". " + L.t + (done[L.id] ? "  ✓" : ""); box.appendChild(t);
+      if (L.part) {
+        cur = { det: document.createElement("details"), sum: document.createElement("summary"), name: L.part, total: 0, done: 0, num: 0 };
+        cur.det.className = "builder"; cur.det.open = !!open[L.part]; cur.sum.style.cursor = "pointer"; cur.sum.style.fontWeight = "700"; cur.sum.style.fontSize = "17px"; cur.sum.style.padding = "6px 0";
+        cur.det.appendChild(cur.sum);
+        if (L.about) { var ab = document.createElement("p"); ab.className = "small"; ab.textContent = L.about; cur.det.appendChild(ab); }
+        (function (c) { c.det.addEventListener("toggle", function () { if (!prefs.learnOpen) prefs.learnOpen = {}; prefs.learnOpen[c.name] = c.det.open; savePrefs(); }); })(cur);
+        host.appendChild(cur.det); return;
+      }
+      total++; cur.total++; cur.num++; if (done[L.id]) { n++; cur.done++; }
+      var box = document.createElement("details"), t = document.createElement("summary"); box.style.borderTop = "1px solid var(--line)"; box.style.padding = "8px 0"; box.open = !!open["#" + L.id];
+      t.textContent = (done[L.id] ? "✓ " : "") + cur.num + ". " + L.t; t.style.cursor = "pointer"; t.style.fontWeight = "600"; box.appendChild(t);
+      box.addEventListener("toggle", function () { if (!prefs.learnOpen) prefs.learnOpen = {}; prefs.learnOpen["#" + L.id] = box.open; savePrefs(); });
       L.p.forEach(function (x) { var p = document.createElement("p"); p.textContent = x; box.appendChild(p); });
-      var ol = document.createElement("ol"); ol.style.margin = "0"; ol.style.paddingLeft = "22px";
+      var ol = document.createElement("ol"); ol.style.margin = "0 0 10px"; ol.style.paddingLeft = "22px";
       L.steps.forEach(function (x) { var li = document.createElement("li"); li.textContent = x; li.style.margin = "4px 0"; ol.appendChild(li); }); box.appendChild(ol);
-      var row = document.createElement("div"); row.className = "row";
-      L.acts.forEach(function (a) { var b = document.createElement("button"); b.type = "button"; b.className = "ghost"; b.textContent = a[0]; b.addEventListener("click", a[1]); row.appendChild(b); });
-      box.appendChild(row);
+      if (L.acts.length) { var row = document.createElement("div"); row.className = "row"; row.style.marginBottom = "10px";
+        L.acts.forEach(function (a) { var b = document.createElement("button"); b.type = "button"; b.className = "ghost"; b.textContent = a[0]; b.addEventListener("click", a[1]); row.appendChild(b); }); box.appendChild(row); }
       var lab = document.createElement("label"), inp = document.createElement("input"); lab.className = "check"; inp.type = "checkbox"; inp.checked = !!done[L.id];
       inp.addEventListener("change", function () { if (!prefs.learn) prefs.learn = {}; prefs.learn[L.id] = inp.checked; savePrefs(); learnRender(); });
       lab.appendChild(inp); lab.appendChild(document.createTextNode(" I did this one")); box.appendChild(lab);
-      host.appendChild(box);
+      cur.det.appendChild(box);
+      cur.sum.textContent = cur.name + "  (" + cur.done + " of " + cur.total + ")";
     });
     $("learn-prog").textContent = n + " of " + total + " done";
   }
   learnRender();
   function gvGridIdle() { if (mode === "jam" && !GV.on) gridDraw("gv-grid", gvPlan(0), gvPlan(1), 0, -1); }
+  /* ---------- chord progressions tagged by style family (common progressions in the general feel of each style, not taken from songs) ---------- */
+  function PG(id, name, bars, mode, fams) { PROGS.push({ id: id, name: name, bars: bars, mode: mode, fams: fams }); }
+  PG("lp1", "Two-chord sway: I – IV", ["I", "I", "IV", "IV"], "maj", ["lph", "lsi", "epop", "lsp"]);
+  PG("lp2", "Rising: I – iii – IV", ["I", "iii", "IV", "IV"], "maj", ["lph", "lme"]);
+  PG("lp3", "Start on four: IV – I – vi", ["IV", "I", "vi", "vi"], "maj", ["lph", "lme", "lsi"]);
+  PG("lp4", "Minor two-chord sway: i – VI", ["i", "i", "bVI", "bVI"], "min", ["lph", "lvi", "lsi", "epop"]);
+  PG("lp5", "Minor drop: i – VII – VI", ["i", "bVII", "bVI", "bVI"], "min", ["lph", "lvi"]);
+  PG("lp6", "Open road: I – bVII – IV", ["I", "bVII", "IV", "IV"], "maj", ["lph", "lsp", "rock"]);
+  PG("lm1", "Climb to home: IV – V – vi – I", ["IV", "V", "vi", "I"], "maj", ["lme", "lsi", "indie"]);
+  PG("lm2", "Lingering: I – vi – IV", ["I", "vi", "IV", "IV"], "maj", ["lme", "lph", "bal"]);
+  PG("lm3", "Piano push: ii – IV – I – V", ["ii", "IV", "I", "V"], "maj", ["lme", "indie"]);
+  PG("lm4", "Bittersweet: I – IV – iv", ["I", "I", "IV", "iv"], "maj", ["lme", "bal", "rh", "dream"]);
+  PG("lm5", "Minor anthem: VI – III – VII – i", ["bVI", "bIII", "bVII", "i"], "min", ["lme", "lvi", "epop", "rock"]);
+  PG("ls1", "Folk: I – IV – V – IV", ["I", "IV", "V", "IV"], "maj", ["lsp", "indie", "alv"]);
+  PG("ls2", "Gentle: I – ii – IV – I", ["I", "ii", "IV", "I"], "maj", ["lsp", "dream"]);
+  PG("ls3", "Sunny sevenths: Imaj7 – IVmaj7", ["Imaj7", "Imaj7", "IVmaj7", "IVmaj7"], "maj", ["lsp", "dream", "mar", "nfr"]);
+  PG("ls4", "Coming down: vi – V – IV – V", ["vi", "V", "IV", "V"], "maj", ["lsp", "lme"]);
+  PG("lv1", "Minor climb: i – iv – VI – VII", ["i", "iv", "bVI", "bVII"], "min", ["lvi", "epop", "lsi"]);
+  PG("lv2", "Arrive late: VI – VII – i", ["bVI", "bVII", "i", "i"], "min", ["lvi", "epop", "lph"]);
+  PG("lv3", "Dark three: i – III – iv", ["i", "bIII", "iv", "iv"], "min", ["lvi", "rh", "nfr"]);
+  PG("dr1", "Dream sevenths: Imaj7 – iii7 – IVmaj7", ["Imaj7", "iii7", "IVmaj7", "IVmaj7"], "maj", ["dream", "mar", "indie"]);
+  PG("dr2", "Shimmer: I – IV – vi – IV", ["I", "IV", "vi", "IV"], "maj", ["dream", "indie", "alv"]);
+  PG("dr3", "Floating: IVmaj7 – V – iii7 – vi7", ["IVmaj7", "V", "iii7", "vi7"], "maj", ["dream", "mar"]);
+  PG("dr4", "Minor haze: i – VI – III – iv", ["i", "bVI", "bIII", "iv"], "min", ["dream", "nfr", "rh"]);
+  PG("dr5", "Fading light: I – Imaj7 – IV – iv", ["I", "Imaj7", "IV", "iv"], "maj", ["dream", "bal", "nfr"]);
+  PG("ma2", "Lounge: ii7 – V7 – Imaj7", ["ii7", "V7", "Imaj7", "Imaj7"], "maj", ["mar", "jazz", "rnb", "jj"]);
+  PG("ma3", "Minor lounge: i7 – iv7 – i7 – V7", ["i7", "iv7", "i7", "V7"], "min", ["mar", "jj", "rnb"]);
+  PG("ma5", "Velvet cycle: iv7 – VII7 – IIImaj7 – VImaj7", ["iv7", "bVII7", "bIIImaj7", "bVImaj7"], "min", ["mar", "jazz", "jj"]);
+  PG("ma6", "Slow soul: Imaj7 – iii7 – vi7 – V7", ["Imaj7", "iii7", "vi7", "V7"], "maj", ["mar", "rnb"]);
+  PG("nr1", "Cold minor: i – VI – iv – i", ["i", "bVI", "iv", "i"], "min", ["nfr", "rh"]);
+  PG("nr2", "Soft five: i – v – VI – iv", ["i", "v", "bVI", "iv"], "min", ["nfr", "dream"]);
+  PG("mx1", "Corrido verse, 16 bars: I – V7 – V7 – I", ["I", "I", "I", "I", "V7", "V7", "V7", "V7", "V7", "V7", "V7", "V7", "I", "I", "I", "I"], "maj", ["mex", "tumb"]);
+  PG("mx2", "Ranchera with the four, 8 bars", ["I", "I7", "IV", "IV", "V7", "V7", "I", "I"], "maj", ["mex", "jg", "buk"]);
+  PG("mx3", "With a lift to five: I – II7 – V7 – I", ["I", "II7", "V7", "I"], "maj", ["mex", "jg"]);
+  PG("mx4", "Minor corrido, 8 bars: i – V7 – V7 – i", ["i", "i", "V7", "V7", "V7", "V7", "i", "i"], "min", ["mex", "tumb"]);
+  PG("tb1", "Sad corrido: i – VI – V7", ["i", "bVI", "V7", "V7"], "min", ["tumb", "mex"]);
+  PG("tb2", "From the four: iv – i – V7 – i", ["iv", "i", "V7", "i"], "min", ["tumb", "mex", "jg"]);
+  PG("gp3", "Keyboard ballad: I – III7 – IV – V7", ["I", "III7", "IV", "V7"], "maj", ["grup", "buk", "tem"]);
+  PG("gp4", "Romantic, 8 bars: I – vi – ii – V7", ["I", "I", "vi", "vi", "ii", "ii", "V7", "V7"], "maj", ["grup", "buk", "tem", "bal"]);
+  PG("gp5", "Grupera chorus: IV – V7 – I – vi", ["IV", "V7", "I", "vi"], "maj", ["grup", "buk", "tem"]);
+  PG("gp6", "Minor grupera: i – VII – VI – V7, 8 bars", ["i", "i", "bVII", "bVII", "bVI", "bVI", "V7", "V7"], "min", ["grup", "buk", "tem", "tumb"]);
+  PG("bl1", "Long descent, 8 bars", ["I", "V", "vi", "iii", "IV", "I", "ii", "V7"], "maj", ["bal", "cs", "jg", "jj"]);
+  PG("bl2", "Inner line: I – Imaj7 – I7 – IV", ["I", "Imaj7", "I7", "IV"], "maj", ["bal", "jj", "cs", "jg"]);
+  PG("bl3", "Minor circle, 8 bars", ["i", "iv", "bVII", "bIII", "bVI", "iv", "V7", "V7"], "min", ["bal", "cs", "jj"]);
+  PG("bl4", "Coming home: vi – ii – V7 – I", ["vi", "ii", "V7", "I"], "maj", ["bal", "jj", "mar"]);
+  PG("rb1", "Step down: IVmaj7 – iii7 – ii7 – Imaj7", ["IVmaj7", "iii7", "ii7", "Imaj7"], "maj", ["rnb", "mar"]);
+  PG("rb2", "Minor groove: i7 – iv7", ["i7", "i7", "iv7", "iv7"], "min", ["rnb", "mar"]);
+  PG("rh4", "Borrowed chord: I – bVI – IV – I", ["I", "bVI", "IV", "I"], "maj", ["rh", "rock"]);
+  PG("rh5", "Uneasy: i – IV – i – VI", ["i", "IV", "i", "bVI"], "min", ["rh"]);
+  PG("in2", "Bright: IV – I – V", ["IV", "I", "V", "V"], "maj", ["indie", "alv"]);
+  PG("in3", "Restless: I – V – ii – IV", ["I", "V", "ii", "IV"], "maj", ["indie", "alv", "lme"]);
+  PG("rk1", "Rock: I – bIII – IV", ["I", "bIII", "IV", "I"], "maj", ["rock", "metal"]);
+  PG("mt2", "Heavy: i – VI – VII", ["i", "bVI", "bVII", "i"], "min", ["metal", "rock"]);
+  PG("jz1", "Standard: Imaj7 – VI7 – ii7 – V7", ["Imaj7", "VI7", "ii7", "V7"], "maj", ["jazz", "jj", "mar"]);
+  var PROG_FAMS = { "6415": ["lme", "lph", "epop"], pop: ["lme", "indie", "alv", "bal"], minb: ["lph", "lvi", "nfr"], "m-pop": ["lvi", "epop", "lph"], onem: ["lph", "lvi", "rh"], dream2: ["dream", "mar", "lsp"], dream3: ["dream", "mar"], dream4: ["dream"], dream: ["dream"],
+    "m-dream": ["dream", "nfr", "rh"], bol7: ["mar", "jj"], "2516": ["mar", "jazz", "rnb"], "m-sad": ["nfr", "bal", "cs"], "m-rom": ["nfr", "bal", "grup"], "1364": ["bal", "nfr", "lme"], "50s": ["bal", "grup", "buk", "tem"], bolero: ["bal", "jj", "grup", "buk", "tem", "jg"],
+    "1-4-5": ["mex", "grup", "buk", "jg"], ranch: ["mex", "jg"], ranch7: ["mex", "jg"], ranch8: ["mex", "jg"], "1-5": ["mex", "tumb"], "m1-5": ["mex", "tumb"], "m1-4-5": ["mex", "tumb", "grup"], "m-tumb": ["tumb", "mex"], andal: ["tumb", "mex", "metal"], "m-bol": ["jj", "mar", "bal"],
+    "1376": ["bal", "cs", "jg", "tem"], "1625": ["jj", "bal"], royal: ["bal", "cs", "dream"], canon: ["cs", "bal"], "1b74": ["rock", "lsp", "rh"], "m-epic": ["cs", "lme", "rock", "metal"], "m-v": ["lvi", "rh", "nfr"], "1465": ["indie", "alv", "lsp"], "4156": ["lme", "indie"],
+    "14m": ["rh", "dream", "bal"], m251: ["jazz"], "251": ["jazz"], turn: ["jazz"], blues: ["jazz", "rock"], rnb: ["rnb", "mar"], "1-3-4-5": ["grup", "buk", "tem", "indie"], "m-cumb": ["grup", "mex"], cumb: ["mex", "grup"], metal: ["metal"], phryg: ["metal"], "1545": ["indie", "lsp"] };
+  PROGS.forEach(function (pg) { if (!pg.fams && PROG_FAMS[pg.id]) pg.fams = PROG_FAMS[pg.id]; });
   function gvProgFill(modeV, want) {
     var ps = $("gv-prog"); ps.innerHTML = "";
-    PROGS.forEach(function (pg) { if (pg.mode !== modeV) return; var o = document.createElement("option"); o.value = pg.id; o.textContent = pg.name; ps.appendChild(o); });
+    var fk = FAM_OF[GV.style.group], F = FAMS[fk], og1 = document.createElement("optgroup"), og2 = document.createElement("optgroup");
+    og1.label = "Fits this style" + (F ? " (" + F.name + ")" : ""); og2.label = "All the others";
+    PROGS.forEach(function (pg) { if (pg.mode !== modeV) return; var o = document.createElement("option"); o.value = pg.id; o.textContent = pg.name; (pg.fams && pg.fams.indexOf(fk) >= 0 ? og1 : og2).appendChild(o); });
+    if (og1.children.length) ps.appendChild(og1); ps.appendChild(og2);
     ps.value = want; if (ps.value !== want) ps.selectedIndex = 0;
   }
   function gvFill() {
