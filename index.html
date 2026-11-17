@@ -497,6 +497,28 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         </select></label>
       </div>
     </div>
+    <div class="builder" id="jm-box">
+      <b>My melody over this groove</b>
+      <p class="small" id="jm-state"></p>
+      <label class="fld">Length of my melody<select id="jm-len"><option value="1">1 bar</option><option value="2">2 bars</option><option value="4">4 bars</option><option value="8">8 bars</option></select></label>
+      <div class="row" style="align-items:center">
+        <button type="button" class="ghost" id="jm-prev" style="flex:0 0 60px">←</button>
+        <b id="jm-bar" style="flex:1;text-align:center">Bar 1</b>
+        <button type="button" class="ghost" id="jm-next" style="flex:0 0 60px">→</button>
+      </div>
+      <canvas id="jm-grid" style="width:100%;height:292px;display:block;cursor:pointer;touch-action:manipulation"></canvas>
+      <p class="small">Tap a square to put a note there. It lasts until the next note or a square on the rest row. The instrument is the one in "Played by".</p>
+      <div class="row">
+        <button type="button" class="ghost" id="jm-hear">Hear this bar</button>
+        <button type="button" class="ghost" id="jm-copy">Copy to the next bar</button>
+      </div>
+      <div class="row">
+        <button type="button" class="ghost" id="jm-clear">Clear this bar</button>
+        <button type="button" class="ghost" id="jm-remove">Erase my melody</button>
+      </div>
+      <button type="button" class="ghost" id="jm-sing">Sing or play this bar in</button>
+      <p class="small" id="jm-sing-msg">With Start listening on, you get a count-in and then one bar to sing or play.</p>
+    </div>
     <div class="builder" id="cs-box">
       <label class="check"><input type="checkbox" id="cs-on"> Show chord shapes</label>
       <div id="cs-body" hidden style="display:flex;flex-direction:column;gap:10px">
@@ -560,6 +582,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         <button type="button" class="ghost" id="me-clear">Clear this bar</button>
         <button type="button" class="ghost" id="me-remove">Back to the preset melody</button>
       </div>
+      <button type="button" class="ghost" id="me-sing">Sing or play this bar in</button>
+      <p class="small" id="me-sing-msg">With Start listening on, you get a count-in and then one bar to sing or play. The notes land on the grid.</p>
     </div>
     <div class="builder">
       <b>Fit to my voice</b>
@@ -582,6 +606,11 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <button type="button" class="ghost" id="sb-load" style="flex:1 1 70px">Load</button>
       <button type="button" class="ghost" id="sb-delete" style="flex:1 1 70px">Delete</button>
     </div>
+    <div class="row">
+      <button type="button" class="ghost" id="sb-export">Share the selected song as a file</button>
+      <label class="ghost" style="display:flex;align-items:center;justify-content:center;min-height:46px;cursor:pointer">Open a song file<input type="file" id="sb-import" accept=".json,application/json" hidden></label>
+    </div>
+    <a id="sb-export-dl" hidden style="display:block;text-align:center;padding:8px"></a>
     <p class="small" id="sb-save-msg">Songs are saved on this device only.</p>
     <b>Chord chart</b>
     <button type="button" class="ghost" id="sb-chart-btn">Make a chord chart of this song</button>
@@ -691,7 +720,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <label class="filebtn">Analyze a recording instead
         <input type="file" id="file" accept="audio/*">
       </label>
-      <p class="small">Piano: Salamander Grand Piano V3 by Alexander Holm, CC BY 3.0. Guitars, basses, strings, clarinet, sax, trumpet, trombone, tuba, horn and harp: tonejs-instruments samples by Nicholaus Brosowsky, CC BY 3.0. Acoustic drum kit: Virtuosity Drums by Versilian Studios, CC0. Accordion, alto, tenor and soprano sax, muted trumpet, flute and the Rhodes and DX electric pianos: FluidR3 GM soundfont by Frank Wen, via midi-js-soundfonts, CC BY 3.0. All trimmed and re-encoded. Clef and accidental symbols: Noto Music, SIL Open Font License.</p>
+      <p class="small">Piano: Salamander Grand Piano V3 by Alexander Holm, CC BY 3.0. Guitars, basses, strings, clarinet, sax, trumpet, trombone, tuba, horn and harp: tonejs-instruments samples by Nicholaus Brosowsky, CC BY 3.0. Acoustic drum kit: Virtuosity Drums by Versilian Studios, CC0. Tenor sax: Versilian Community Sample Library by Versilian Studios, CC0. Alto sax: MusyngKite soundfont by Kite, via midi-js-soundfonts, CC BY-SA 3.0. Accordion, soprano sax, muted trumpet, flute and the Rhodes and DX electric pianos: FluidR3 GM soundfont by Frank Wen, via midi-js-soundfonts, CC BY 3.0. All trimmed and re-encoded. Clef and accidental symbols: Noto Music, SIL Open Font License.</p>
     </div>
   </details>
   <div class="msg" id="msg"></div>
@@ -2784,6 +2813,64 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   var FAM_OF = { "Regional Mexican": "mex", "Modern regional Mexican": "mex", "Grupera": "grup", "Los Bukis style": "grup", "Los Temerarios style": "grup", "Ballads": "bal", "Juan Gabriel style": "bal", "Camilo Sesto style": "bal", "José José style": "bal",
     "R&B": "rnb", "Lorde style: Pure Heroine era": "lph", "Lorde style: Melodrama era": "lme", "Lorde style: Solar Power era": "lsp", "Lorde style: Virgin era": "lvi", "Lorde style: singles, covers and collabs": "lvi", "Electro-pop": "lph",
     "Dream and indie pop": "dream", "Alvvays style": "dream", "The Marías style": "mar", "Not for Radio style": "nfr", "Radiohead style": "rh", "Jazz": "jazz", "Rock": "rock", "Metal": "rock", "Basics": "rock", "Kick drum": "rock" };
+  /* melody sets for the artist groups (original phrases in the general feel of each, not taken from songs) */
+  FAMS.buk = { name: "Los Bukis style", hook: "bu-riff", fill: "bu-thirds", long: "bu-synth", solo: "bu-organ" };
+  FAMS.tem = { name: "Los Temerarios style", hook: "te-theme", fill: "te-sigh", long: "te-swell", solo: "te-sax" };
+  FAMS.jg = { name: "Juan Gabriel style", hook: "jg-intro", fill: "jg-tpt", long: "jg-violins", solo: "jg-duet" };
+  FAMS.cs = { name: "Camilo Sesto style", hook: "cs-theme", fill: "cs-stabs", long: "cs-high", solo: "cs-guitar" };
+  FAMS.jj = { name: "José José style", hook: "jj-theme", fill: "jj-sax", long: "jj-velvet", solo: "jj-solo" };
+  FAMS.lsi = { name: "Lorde singles and collabs", hook: "ls-chop", fill: "ls-shout", long: "ls-film", solo: "ls-siren" };
+  FAMS.alv = { name: "Alvvays style", hook: "al-surf", fill: "al-twang", long: "al-organ", solo: "al-fuzz" };
+  FAMS.tumb = { name: "Modern regional Mexican", hook: "tu-req", fill: "tu-slide", long: "tu-bone", solo: "tu-run" };
+  FAMS.metal = { name: "Metal", hook: "mt-chug", fill: "mt-squeal", long: "mt-twin", solo: "mt-shred" };
+  FAMS.indie = { name: "Indie pop", hook: "in-whistle", fill: "in-clap", long: "in-ooh", solo: "in-jangle" };
+  FAMS.epop = { name: "Electro-pop", hook: "ep-hook", fill: "ep-chop", long: "ep-pad", solo: "ep-arp" };
+  MS("bu-riff", "Keyboard riff", [[[0, 2, 4], [2, 2, 5], [4, 3, 6], [7, 1, 5], [8, 4, 4], [12, 4, 2]], [[0, 2, 2], [2, 2, 3], [4, 3, 4], [7, 1, 3], [8, 8, 2]]]);
+  MS("bu-thirds", "Guitar answers", [[], [[8, 2, 2], [10, 2, 3], [12, 4, 4]], [], [[8, 2, 6], [10, 2, 5], [12, 4, 4]]]);
+  MS("bu-synth", "Singing synth line", [[[0, 8, 4], [8, 4, 5], [12, 4, 6]], [[0, 12, 7], [12, 4, 6]], [[0, 8, 5], [8, 8, 4]], [[0, 16, 2]]]);
+  MS("bu-organ", "Organ solo", [[[0, 2, 7], [2, 1, 6], [3, 1, 7], [4, 2, 9], [6, 2, 7], [8, 2, 6], [10, 2, 4], [12, 4, 6]], [[0, 2, 4], [2, 2, 6], [4, 2, 7], [6, 2, 6], [8, 8, 4]]]);
+  MS("te-theme", "Slow synth theme", [[[0, 6, 7], [6, 2, 6], [8, 8, 4]], [[0, 6, 5], [6, 2, 4], [8, 8, 2]]]);
+  MS("te-sigh", "Sax sighs", [[], [[9, 3, 6], [12, 4, 4]], [], [[8, 2, 4], [10, 2, 5], [12, 4, 7]]]);
+  MS("te-swell", "String swell", [[[0, 16, 4]], [[0, 8, 5], [8, 8, 6]], [[0, 16, 7]], [[0, 8, 6], [8, 8, 4]]]);
+  MS("te-sax", "Sax solo", [[[0, 3, 4], [3, 1, 6], [4, 6, 7], [10, 2, 6], [12, 2, 4], [14, 2, 6]], [[0, 6, 7], [6, 2, 9], [8, 8, 7]]]);
+  MS("jg-intro", "Mariachi introduction", [[[0, 2, 4], [2, 2, 4], [4, 2, 7], [6, 2, 7], [8, 3, 9], [11, 1, 7], [12, 4, 6]], [[0, 2, 5], [2, 2, 4], [4, 2, 3], [6, 2, 2], [8, 8, 4]]]);
+  MS("jg-tpt", "Trumpet answers", [[], [[10, 1, 4], [11, 1, 6], [12, 2, 7], [14, 2, 7]], [], [[8, 2, 9], [10, 2, 7], [12, 4, 4]]]);
+  MS("jg-violins", "Violins singing along", [[[0, 12, 2], [12, 4, 3]], [[0, 12, 4], [12, 4, 5]], [[0, 12, 6], [12, 4, 5]], [[0, 16, 4]]]);
+  MS("jg-duet", "Trumpet run", [runOf([4, 5, 6, 7, 9, 7, 6, 5], 2), [[0, 4, 4], [4, 4, 6], [8, 8, 7]]]);
+  MS("cs-theme", "Dramatic string theme", [[[0, 4, 0], [4, 4, 2], [8, 4, 4], [12, 4, 7]], [[0, 12, 9], [12, 4, 7]]]);
+  MS("cs-stabs", "String stabs", [[], [[8, 1, 7], [10, 1, 7], [12, 4, 9]], [], [[8, 2, 9], [10, 2, 8], [12, 4, 7]]]);
+  MS("cs-high", "High held note", [[[0, 16, 9]], [[0, 8, 8], [8, 8, 7]]]);
+  MS("cs-guitar", "Soaring guitar line", [[[0, 2, 7], [2, 2, 9], [4, 4, 11], [8, 2, 9], [10, 2, 7], [12, 4, 9]], [[0, 4, 7], [4, 4, 6], [8, 8, 4]]]);
+  MS("jj-theme", "Smooth string theme", [[[0, 6, 6], [6, 2, 5], [8, 6, 4], [14, 2, 3]], [[0, 10, 2], [10, 6, 1]]]);
+  MS("jj-sax", "Sax answers", [[], [[10, 2, 6], [12, 1, 5], [13, 3, 4]], [], [[9, 1, 4], [10, 2, 6], [12, 4, 5]]]);
+  MS("jj-velvet", "Velvet strings", [[[0, 16, 6]], [[0, 16, 5]], [[0, 16, 4]], [[0, 8, 3], [8, 8, 2]]]);
+  MS("jj-solo", "Jazz sax solo", [[[0, 1, 4], [1, 1, 5], [2, 2, 6], [4, 3, 8], [7, 1, 6], [8, 2, 5], [10, 2, 4], [12, 4, 6]], [[0, 2, 4], [2, 2, 3], [4, 4, 2], [8, 8, 4]]]);
+  MS("ls-chop", "Chopped hook", [[[0, 1, 7], [2, 1, 7], [3, 1, 6], [6, 2, 4], [8, 1, 7], [10, 1, 7], [11, 1, 6], [14, 2, 9]]]);
+  MS("ls-shout", "Shout answers", [[], [[12, 2, 7], [14, 2, 7]]]);
+  MS("ls-film", "Film-score line", [[[0, 16, 4]], [[0, 16, 5]], [[0, 16, 6]], [[0, 16, 4]]]);
+  MS("ls-siren", "Siren lead", [[[0, 8, 7], [8, 8, 9]], [[0, 8, 11], [8, 8, 9]]]);
+  MS("al-surf", "Surf riff", [[[0, 2, 7], [2, 2, 6], [4, 2, 4], [6, 2, 6], [8, 2, 7], [10, 2, 9], [12, 4, 7]], [[0, 2, 6], [2, 2, 4], [4, 2, 2], [6, 2, 4], [8, 8, 4]]]);
+  MS("al-twang", "Twang answers", [[], [[8, 2, 9], [10, 2, 7], [12, 4, 6]]]);
+  MS("al-organ", "Whistling organ line", [[[0, 8, 9], [8, 8, 8]], [[0, 8, 7], [8, 8, 6]]]);
+  MS("al-fuzz", "Fuzz solo", [runOf([4, 6, 7, 9, 7, 6, 4, 6], 2), [[0, 4, 7], [4, 4, 9], [8, 8, 11]]]);
+  MS("tu-req", "Requinto riff", [[[0, 1, 7], [1, 1, 6], [2, 1, 4], [3, 1, 6], [4, 2, 7], [6, 2, 9], [8, 2, 7], [10, 2, 6], [12, 4, 4]], [[0, 1, 6], [1, 1, 4], [2, 1, 2], [3, 1, 4], [4, 2, 6], [6, 2, 4], [8, 8, 2]]]);
+  MS("tu-slide", "Trombone slides", [[], [[8, 4, 4], [12, 4, 2]], [], [[8, 4, 6], [12, 4, 4]]]);
+  MS("tu-bone", "Trombone line", [[[0, 8, 4], [8, 8, 3]], [[0, 16, 2]]]);
+  MS("tu-run", "Fast requinto run", [runOf([7, 6, 4, 6, 7, 9, 7, 6, 4, 2, 4, 6, 7, 6, 4, 2], 1)]);
+  MS("mt-chug", "Chugging riff", [[[0, 1, 0], [1, 1, 0], [2, 1, 0], [3, 1, 3], [4, 1, 0], [5, 1, 0], [6, 1, 0], [7, 1, 4], [8, 1, 0], [9, 1, 0], [10, 1, 0], [11, 1, 5], [12, 2, 4], [14, 2, 3]]]);
+  MS("mt-squeal", "Squeals", [[], [[12, 2, 11], [14, 2, 9]]]);
+  MS("mt-twin", "Twin-guitar harmony", [[[0, 8, 7], [8, 8, 6]], [[0, 8, 5], [8, 8, 4]]]);
+  MS("mt-shred", "Shred run", [runOf([0, 2, 4, 6, 7, 9, 11, 9, 7, 6, 4, 2, 4, 6, 7, 9], 1)]);
+  MS("in-whistle", "Whistle-along hook", [[[0, 2, 4], [2, 2, 6], [4, 4, 7], [8, 2, 6], [10, 2, 4], [12, 4, 6]], [[0, 2, 4], [2, 2, 6], [4, 4, 7], [8, 8, 9]]]);
+  MS("in-clap", "Short answers", [[], [[8, 1, 7], [10, 1, 7], [12, 2, 9]]]);
+  MS("in-ooh", "Oohs", [[[0, 16, 7]], [[0, 16, 6]]]);
+  MS("in-jangle", "Jangle solo", [runOf([7, 9, 7, 6, 4, 6, 7, 4], 2)]);
+  MS("ep-hook", "Synth hook", [[[0, 2, 7], [3, 2, 7], [6, 2, 6], [8, 2, 4], [11, 2, 4], [14, 2, 6]]]);
+  MS("ep-chop", "Vocal chops", [[], [[10, 1, 9], [11, 1, 7], [13, 1, 9], [14, 2, 7]]]);
+  MS("ep-pad", "Pad lead", [[[0, 12, 4], [12, 4, 6]], [[0, 16, 7]]]);
+  MS("ep-arp", "Arp lead", [runOf([0, 4, 7, 4, 0, 4, 7, 9, 0, 4, 7, 4, 0, 4, 9, 7], 1)]);
+  FAM_OF["Modern regional Mexican"] = "tumb"; FAM_OF["Los Bukis style"] = "buk"; FAM_OF["Los Temerarios style"] = "tem"; FAM_OF["Juan Gabriel style"] = "jg"; FAM_OF["Camilo Sesto style"] = "cs"; FAM_OF["José José style"] = "jj";
+  FAM_OF["Lorde style: singles, covers and collabs"] = "lsi"; FAM_OF["Alvvays style"] = "alv"; FAM_OF["Metal"] = "metal"; FAM_OF["Electro-pop"] = "epop"; FAM_OF["Dream pop"] = "dream"; FAM_OF["Indie pop"] = "indie";
   var GEN_ROLE = { sustain: "long", step: "hook", answer: "fill", arp: "solo", adorno: "hook", fanfare: "hook" };
   function famOf(S) { return FAMS[FAM_OF[(S || GV.style).group]] || null; }
   /* The melody a style starts with: its own default, swapped for the matching shape of its family. */
@@ -2791,6 +2878,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function gvMelFill(S) {
     var ms = $("gv-mel"), F = famOf(S), keep = ms.value; ms.innerHTML = "";
     var o = document.createElement("option"); o.value = "none"; o.textContent = "No melody"; ms.appendChild(o);
+    var mine = document.createElement("option"); mine.value = "mine"; mine.textContent = "My own melody (write it below)"; ms.appendChild(mine);
     if (F) {
       var og = document.createElement("optgroup"); og.label = "Made for this style (" + F.name + ")";
       ["hook", "fill", "long", "solo"].forEach(function (r) { var x = MELS.filter(function (q) { return q.id === F[r]; })[0], q = document.createElement("option"); q.value = x.id; q.textContent = x.name; og.appendChild(q); });
@@ -3200,8 +3288,39 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   SHELVES = [["all", "All grooves", null], ["mex", "Regional Mexican", ["Regional Mexican", "Modern regional Mexican"]], ["grup", "Grupera: Los Bukis, Los Temerarios", ["Grupera", G_BU, G_TE]],
     ["bal", "Ballads and R&B", ["Ballads", "R&B"]], ["balart", "Ballad artists: Juan Gabriel, Camilo Sesto, José José", [G_JG, G_CS, G_JJ]],
     ["dream", "Lorde, dream pop, The Marías and more", [LO_PH, LO_ME, LO_SP, LO_VI, LO_SI, G_DP, G_MA, G_NR, G_AL, G_RH, "Electro-pop"]], ["band", "Jazz, rock, metal and basics", ["Jazz", "Rock", "Metal", "Basics", "Kick drum"]]];
+  /* five more per Lorde era, and the dream pop / indie pop split */
+  var G_IN = "Indie pop"; G_NOTE[G_IN] = "";
+  G(LO_PH, "Bedroom anthem", 88, { kit: E, k: [0, 7, 8], s: BK, h: OFFH, b: [[0, "r"], [7, "r"], [8, "r"]], c: HALF, cv: "pad", c2: PAD16, cv2: "strings", bv: SUB, prog: "m-epic", mel: "ph-chant", by: "lead" }, "A small beat that feels huge, with a chanting synth line.");
+  G(LO_PH, "Sub drop", 74, { kit: E, k: [0], s: [8], h: [14, 15], b: [[0, "r"], [12, "r"]], c2: PAD16, cv2: "pad", bv: SUB, prog: "m-v" }, "Mostly silence, then the sub bass lands.");
+  G(LO_PH, "Finger snaps and organ", 90, { kit: E, k: [0, 10], s2: BK, b: B2, c: HALF, cv: "s:organ", bv: SUB, prog: "minb", mel: "ph-bells", by: "harp" }, "Snaps, a quiet organ and a few bell notes.");
+  G(LO_PH, "Marching drums", 96, { kit: E, k: [0, 4, 6, 8, 12, 14], s: BK, b: B8, c: PAD16, cv: "pad", bv: SUB, prog: "m-pop" }, "A busy marching kick under one long chord.");
+  G(LO_PH, "After-school choir", 82, { kit: E, k: [0, 10], s: BK, b: B2, c: ARP8, arp: true, cv: "s:rhodes", c2: PAD16, cv2: "pad", bv: SUB, prog: "m-dream", mel: "ph-drone", by: "lead" }, "Soft keys and a held choir-like note over a slow beat.");
+  G(LO_ME, "Champagne piano", 110, { kit: E, k: K4, s: BK, h: OFFH, b: BSYNC, c: [[0, 2], [3, 2], [6, 2], [10, 2], [13, 2]], cv: "s:piano", bv: SUB, prog: "1465", mel: "me-rise", by: "piano" }, "Syncopated party piano with a rising piano figure on top.");
+  G(LO_ME, "Taxi ride strings", 88, { k: [0, 8], s: BK, h: EV16, b: BR5, c: ARP8, arp: true, cv: "s:piano", c2: PAD16, cv2: "strings", bv: EB, prog: "m-sad", mel: "me-soar", by: "strings" }, "Rolling piano and a soaring string line.");
+  G(LO_ME, "Neon stairwell", 118, { kit: E, k: K4, h: ALL16, b: B8, c: CHOPS, cv: "s:epfm", c2: PAD16, cv2: "pad", bv: SUB, prog: "m-pop", mel: "me-stacc", by: "lead" }, "No snare, just kick, fast hats and jabbing notes.");
+  G(LO_ME, "Quiet verse, loud chorus", 98, { k: [0, 6, 8, 14], s: BK, h: EV16, b: BSYNC, c: HALF, cv: "s:piano", bv: EB, prog: "4156", mel: "me-oct", by: "trumpets" }, "Piano chords with horn stabs answering.");
+  G(LO_ME, "Hungover morning", 68, { steps: 8, b: B1, c: Q8, cv: "s:rhodes", c2: P8, cv2: "strings", bv: EB, prog: "royal" }, "No drums. Soft electric piano and strings.");
+  G(LO_SP, "Dune walk", 86, { k: [0, 8], s2: BK, p: EV16, pv: "shake", b: BR5, c: [[0, 4], [4, 2], [6, 2], [10, 2], [12, 2], [14, 2]], cv: "s:nylon", bv: UB, prog: "1465", mel: "sp-folk", by: "flute" }, "Nylon guitar strums, a shaker and a folk tune on flute.");
+  G(LO_SP, "Cicada evening", 70, { p: BK, pv: "shake", b: B1, c: ARP8, arp: true, cv: "s:guitar12", bv: UB, prog: "dream2", mel: "sp-sunny", by: "strings" }, "A 12-string picking pattern with warm string harmonies.");
+  G(LO_SP, "Hippie organ groove", 98, { k: [0, 6, 8], s: BK, h: EV16, b: [[0, "r"], [6, "r"], [8, "5"], [14, "a"]], c: CHOPS, cv: "s:organ", bv: EB, prog: "1b74", mel: "sp-slide", by: "elec" }, "Organ chops and a sliding guitar line over easy drums.");
+  G(LO_SP, "Morning swim (6/8)", 66, { steps: 12, k: [0], s2: [6], p: ALL12, pv: "shake", b: [[0, "r"], [6, "5"]], c: A12, arp: true, cv: "s:guitar", bv: UB, prog: "1364" }, "A gentle rocking six-feel on acoustic guitar.");
+  G(LO_SP, "Bonfire singalong", 108, { steps: 8, k: [0, 4], s2: [2, 6], p: ALL8, pv: "shake", b: [[0, "r"], [4, "5"]], c: STRUM8, cv: "s:guitar", bv: UB, prog: "1545", mel: "sp-flutter", by: "flute" }, "Up-tempo strumming for everyone to sing along.");
+  G(LO_VI, "Blacklight", 128, { kit: E, k: K4, s: BK, h: OFFH, b: B8, c: [[0, 1], [3, 1], [6, 1], [8, 1], [11, 1], [14, 1]], cv: "s:epfm", bv: SUB, prog: "m-pop", mel: "vi-ost", by: "lead" }, "Fast club beat with a repeating synth pattern.");
+  G(LO_VI, "Raw nerve", 102, { kit: E, k: [0, 3, 8, 11], s: BK, b: [[0, "r"], [3, "r"], [8, "r"], [11, "r"]], c: HALF, cv: "pad", bv: "pluck", prog: "m-v", mel: "vi-saw", by: "lead" }, "A buzzing bass locked to the kick and a buzzing lead.");
+  G(LO_VI, "Mirror", 84, { kit: E, fx: true, k: [0, 10], s2: [8], b: B2, c: ARP16, arp: true, cv: "s:rhodes", c2: PAD16, cv2: "pad", bv: SUB, prog: "m-dream" }, "Quiet and reflective: echoing keys over almost no drums.");
+  G(LO_VI, "Sweat", 120, { kit: E, k: K4, s2: BK, h: ALL16, b: BSYNC, c: CHOPS, cv: "s:organ", bv: SUB, prog: "m-epic", mel: "vi-glitch", by: "lead" }, "A hot, driving dance beat with organ chops.");
+  G(LO_VI, "Comedown", 72, { kit: E, k: [0], s: [8], b: B1, c: HALF, cv: "s:piano", c2: PAD16, cv2: "strings", bv: SUB, prog: "m-sad", mel: "vi-saw", by: "strings" }, "The slow one at the end: piano, strings and a single kick.");
+  STYLES.forEach(function (s) {
+    if (s.group !== "Dream and indie pop") return;
+    s.group = ["indiepop", "indiekeys", "jangle"].indexOf(s.id) >= 0 || ["Bedroom pop", "Twin guitars", "Melodic bass lead"].indexOf(s.name) >= 0 ? G_IN : "Dream pop";
+  });
+  G_DP = "Dream pop";
+  SHELVES = [["all", "All grooves", null], ["mex", "Regional Mexican", ["Regional Mexican", "Modern regional Mexican"]], ["grup", "Grupera: Los Bukis, Los Temerarios", ["Grupera", G_BU, G_TE]],
+    ["bal", "Ballads and R&B", ["Ballads", "R&B"]], ["balart", "Ballad artists: Juan Gabriel, Camilo Sesto, José José", [G_JG, G_CS, G_JJ]],
+    ["lorde", "Lorde", [LO_PH, LO_ME, LO_SP, LO_VI, LO_SI]], ["marias", "The Marías and Not for Radio", [G_MA, G_NR]], ["dream", "Dream pop", [G_DP]],
+    ["indie", "Indie pop, Alvvays, Radiohead, electro-pop", [G_IN, G_AL, G_RH, "Electro-pop"]], ["band", "Jazz, rock, metal and basics", ["Jazz", "Rock", "Metal", "Basics", "Kick drum"]]];
 
-  var GROUP_ORDER = ["Regional Mexican", "Modern regional Mexican", "Grupera", G_BU, G_TE, "Ballads", "R&B", G_JG, G_CS, G_JJ, LO_PH, LO_ME, LO_SP, LO_VI, LO_SI, G_DP, G_MA, G_NR, G_AL, G_RH, "Electro-pop", "Jazz", "Rock", "Metal", "Basics", "Kick drum"];
+  var GROUP_ORDER = ["Regional Mexican", "Modern regional Mexican", "Grupera", G_BU, G_TE, "Ballads", "R&B", G_JG, G_CS, G_JJ, LO_PH, LO_ME, LO_SP, LO_VI, LO_SI, G_MA, G_NR, G_DP, G_IN, G_AL, G_RH, "Electro-pop", "Jazz", "Rock", "Metal", "Basics", "Kick drum"];
   /* ---------- song form builder ---------- */
   var SEC_NAMES = { intro: "Intro", verse: "Verse", pre: "Pre-chorus", chorus: "Chorus", inter: "Interlude", bridge: "Bridge", solo: "Solo", outro: "Outro" };
   var FORMS = [
@@ -3223,7 +3342,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     sierreno: "sierreno", tumbado: "sierreno", tumbado44: "sierreno", electro: "sierreno", bolero: "bolero", swing: "aaba", jballad: "aaba", bossa: "aaba", blues: "blues", shufflerock: "blues",
     slowjam: "rnb", neosoul: "rnb", rnb90: "rnb" };
   var FORM_GROUP = { "Ballads": "balada", "Grupera": "balada", "Dream and indie pop": "pop", "Electro-pop": "pop", "Lorde style: Pure Heroine era": "pop", "Lorde style: Melodrama era": "pop", "Lorde style: Solar Power era": "pop", "Lorde style: Virgin era": "pop", "The Mar\u00EDas style": "pop", "Not for Radio style": "balada", "Rock": "rock", "Metal": "rock", "Kick drum": "rock", "Basics": "rock" };
-  [G_BU, G_TE, G_JG, G_CS].forEach(function (g) { FORM_GROUP[g] = "balada"; }); FORM_GROUP[G_JJ] = "bolero"; FORM_GROUP[LO_SI] = "pop"; FORM_GROUP[G_AL] = "pop"; FORM_GROUP[G_RH] = "rock";
+  [G_BU, G_TE, G_JG, G_CS].forEach(function (g) { FORM_GROUP[g] = "balada"; }); FORM_GROUP[G_JJ] = "bolero"; FORM_GROUP[LO_SI] = "pop"; FORM_GROUP[G_AL] = "pop"; FORM_GROUP[G_RH] = "rock"; FORM_GROUP[G_DP] = "pop"; FORM_GROUP[G_IN] = "pop";
   var SF = { on: !!(prefs.sf && prefs.sf.on), form: "auto", secs: [], shift: 0, same: false, cur: -1 };
   function sfFormId() { return SF.form !== "auto" ? SF.form : FORM_OF[GV.style.id] || FORM_GROUP[GV.style.group] || "pop"; }
   function sfLoad() {
@@ -3262,9 +3381,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     return GV.prog.bars;
   }
   function secMel(type) {
-    var F = famOf(GV.style), base = GV.mel !== "none" ? GV.mel : famMel(GV.style);
+    var sel = GV.mel === "mine" ? "none" : GV.mel, F = famOf(GV.style), base = sel !== "none" ? sel : famMel(GV.style);
     if (!base || base === "none") return null;
-    if (type === "intro" || type === "inter" || type === "outro") return F ? (GV.mel !== "none" && GV.mel !== famMel(GV.style) ? GV.mel : F.hook) : (base === "answer" ? "step" : base);
+    if (type === "intro" || type === "inter" || type === "outro") return F ? (sel !== "none" && sel !== famMel(GV.style) ? sel : F.hook) : (base === "answer" ? "step" : base);
     if (type === "solo") return F ? F.solo : "arp";
     if (type === "verse") return F ? F.fill : "answer";
     if (type === "chorus") return F ? F.long : "sustain";
@@ -3284,7 +3403,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function gvPlan(bar) {
     if (GV.song && GV.plan) return GV.plan[Math.min(bar, GV.plan.length - 1)];
     if (GV.endBar != null && bar >= GV.endBar) return { si: -1, bi: 0, bars: ["V7"], key: GV.key, mel: null, fill: true };
-    return { si: -1, bi: bar, bars: GV.prog.bars, key: GV.key, mel: GV.mel !== "none" ? GV.mel : null, fill: GV.fillBar === bar };
+    return { si: -1, bi: bar, bars: GV.prog.bars, key: GV.key, mel: GV.mel !== "none" && GV.mel !== "mine" ? GV.mel : null, own: GV.mel === "mine" ? (JM.own[bar % JM.bars] || []) : null, fill: GV.fillBar === bar };
   }
   function gvDone(bar) { return GV.song ? bar >= GV.plan.length : (GV.endBar != null && bar > GV.endBar); }
   function gvFinal(t) {
@@ -3688,8 +3807,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       secs: SF.secs.map(function (x) { return { type: x.type, bars: x.bars, prog: x.prog || null, lyr: x.lyr || "", chords: x.chords || null, own: x.own || null }; }) };
     store.set("pm.songs", all); songsFill(name); $("sb-name").value = name; $("sb-save-msg").textContent = "Saved “" + name + "” on this device.";
   });
-  $("sb-load").addEventListener("click", function () {
-    var name = $("sb-songs").value, sg = songsGet()[name]; if (!sg) return;
+  function songApply(name, sg) {
     gvStop();
     if (GV.shelf !== "all") { GV.shelf = "all"; $("gv-shelf").value = "all"; prefs.shelf = "all"; savePrefs(); gvFill(); }
     $("gv-style").value = sg.gv.style; gvApply("style");
@@ -3699,6 +3817,30 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     SF.form = sg.form || "auto"; $("sf-form").value = SF.form; SF.secs = sg.secs.map(function (x) { return { type: x.type, bars: x.bars, prog: x.prog, lyr: x.lyr, chords: x.chords || null, own: x.own || null }; }); SF.shift = sg.shift || 0; $("sf-key").value = String(SF.shift); SF.sel = 0;
     $("sb-name").value = name; sfRender(); sbDraw(); $("sb-save-msg").textContent = "Loaded “" + name + "”.";
     $("sb-info").textContent = GV.style.name + " · " + GV.prog.name + " · " + Math.round(GV.bpm) + " bpm";
+  }
+  $("sb-load").addEventListener("click", function () { var name = $("sb-songs").value, sg = songsGet()[name]; if (sg) songApply(name, sg); });
+  var songFileUrl = null;
+  $("sb-export").addEventListener("click", function () {
+    var name = $("sb-songs").value, sg = songsGet()[name];
+    if (!sg) { $("sb-save-msg").textContent = "Save the song first, then share it."; return; }
+    if (songFileUrl) { try { URL.revokeObjectURL(songFileUrl); } catch (e) {} }
+    songFileUrl = URL.createObjectURL(new Blob([JSON.stringify({ app: "pitchy-song", v: 1, name: name, song: sg })], { type: "application/json" }));
+    var a = $("sb-export-dl"); a.href = songFileUrl; a.setAttribute("download", name.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").toLowerCase() + ".pitchy.json"); a.hidden = false; a.textContent = "Download \u201C" + name + "\u201D as a file";
+    $("sb-save-msg").textContent = "Tap the download link, then send that file to yourself or a friend.";
+  });
+  $("sb-import").addEventListener("change", function (e) {
+    var f = e.target.files && e.target.files[0]; if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function () {
+      try {
+        var o = JSON.parse(rd.result);
+        if (!o || o.app !== "pitchy-song" || !o.song || !o.song.gv || !o.song.secs) throw new Error("bad");
+        if (!STYLES.some(function (st) { return st.id === o.song.gv.style; })) throw new Error("style");
+        var all = songsGet(), name = String(o.name || "Imported song").slice(0, 60); all[name] = o.song; store.set("pm.songs", all); songsFill(name); songApply(name, o.song);
+        $("sb-save-msg").textContent = "Opened \u201C" + name + "\u201D from the file and saved it on this device.";
+      } catch (err) { $("sb-save-msg").textContent = "That file is not a song from this app."; }
+    };
+    rd.readAsText(f); e.target.value = "";
   });
   $("sb-delete").addEventListener("click", function () {
     var name = $("sb-songs").value, all = songsGet(); if (!all[name]) return;
@@ -3798,7 +3940,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (S.c) parts.push("Chords: " + voiceName(VV.cv, CH_VOICES) + (S.arp ? ", one note at a time" : ""));
     if (S.c2) parts.push("Behind it: " + voiceName(S.cv2, CH_VOICES));
     var mel = GV.mel !== "none" ? GV.mel : (SF.on ? S.mel : null);
-    if (mel && mel !== "none" && GV.mel !== "none") parts.push("Melody shape: " + ((MELS.filter(function (x) { return x.id === GV.mel; })[0] || {}).name || "").toLowerCase());
+    if (GV.mel === "mine") parts.push("Melody shape: your own");
+    else if (mel && mel !== "none" && GV.mel !== "none") parts.push("Melody shape: " + ((MELS.filter(function (x) { return x.id === GV.mel; })[0] || {}).name || "").toLowerCase());
     if (mel && mel !== "none") parts.push("Melody: " + ((MEL_BY.filter(function (x) { return x[0] === GV.by; })[0] || ["", GV.by])[1]).toLowerCase());
     if (S.fx) parts.push("Echo on the chords");
     var txt = ("Who is playing. " + parts.join(". ") + ".").replace(/dx style/g, "DX style").replace(/rhodes/g, "Rhodes").replace(/wurlitzer/g, "Wurlitzer");
@@ -3831,51 +3974,96 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (!GV.melBus) { GV.melBus = ac.createGain(); GV.melBus.gain.value = 0.36; GV.melBus.connect(trk("melody")); }
     ownNotes(P.own, P.key).forEach(function (n) { synth(ac, GV.melBus, v[0], n.m, t + n.st * sd, Math.max(0.15, n.len * sd * 0.95)); });
   }
-  var ME = { bar: 0 }, ME_ROWS = 15;
+  var ME = { bar: 0 }, ME_ROWS = 15, JM = { bars: (prefs.jm && prefs.jm.bars) || 2, own: (prefs.jm && prefs.jm.own) || {} };
   function meSec() { return sfSelSec(); }
-  function meDraw() {
-    if (mode !== "build") return;
-    var x = meSec(); if (!x) return;
-    ME.bar = Math.min(ME.bar, x.bars - 1);
-    var S = GV.style, c = sbCanvas("me-grid", 20 + (ME_ROWS + 1) * 17), g = c.g, L = 30, cw = (c.W - L - 2) / S.steps, rh = 17, per = S.steps / S.beats, names = flats ? FLAT : SHARP, i, r;
-    var list = x.own && x.own[ME.bar] ? x.own[ME.bar] : [], key = GV.key;
-    $("me-bar").textContent = "Bar " + (ME.bar + 1) + " of " + x.bars; $("me-sec").textContent = sfNames()[Math.min(SF.sel || 0, SF.secs.length - 1)];
-    $("me-state").textContent = x.own ? "This section plays your melody." : "This section uses the preset melody. Tap the grid to write your own.";
-    for (i = 0; i < S.steps; i++) { g.fillStyle = i % per === 0 ? TH.text : TH.muted; g.font = (i % per === 0 ? "700 11px" : "9px") + " ui-monospace, monospace"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(i % per === 0 ? String(i / per + 1) : "·", L + i * cw + cw / 2, 9); }
-    for (r = 0; r <= ME_ROWS; r++) {
-      var deg = ME_ROWS - 1 - r, rest = r === ME_ROWS, y0 = 20 + r * rh, m = rest ? 0 : ownMidi(deg, key);
-      g.fillStyle = TH.muted; g.font = (deg % 7 === 0 && !rest ? "700 " : "") + "10px ui-monospace, monospace"; g.textAlign = "right"; if (!rest && deg % 7 === 0) g.fillStyle = TH.text;
-      g.fillText(rest ? "rest" : names[((m + xp) % 12 + 12) % 12] + (Math.floor((m + xp) / 12) - 1), L - 4, y0 + rh / 2);
-      for (i = 0; i < S.steps; i++) {
-        var on = list.some(function (e) { return e[0] === i && e[1] === (rest ? -1 : deg); });
-        g.globalAlpha = on ? 1 : (deg % 7 === 0 && !rest ? 0.22 : 0.1); g.fillStyle = on ? (rest ? TH.muted : TH.note) : TH.text;
-        g.fillRect(L + i * cw + 1, y0 + 1, cw - 2, rh - 2);
+  function jmSave() { prefs.jm = { bars: JM.bars, own: JM.own }; savePrefs(); }
+  /* One melody tap-grid, used twice: for a song section in the Builder and for the loop in the Jam tab. */
+  function mkEditor(pre, st, target, changed) {
+    var geo = null;
+    function draw() {
+      var T = target(); if (!T) return;
+      st.bar = Math.min(st.bar, T.bars - 1);
+      var S = GV.style, c = sbCanvas(pre + "-grid", 20 + (ME_ROWS + 1) * 17), g = c.g, L = 30, cw = (c.W - L - 2) / S.steps, rh = 17, per = S.steps / S.beats, names = flats ? FLAT : SHARP, i, r;
+      var own = T.map(false), list = own && own[st.bar] ? own[st.bar] : [], key = GV.key;
+      $(pre + "-bar").textContent = "Bar " + (st.bar + 1) + " of " + T.bars; T.show(!!own);
+      for (i = 0; i < S.steps; i++) { g.fillStyle = i % per === 0 ? TH.text : TH.muted; g.font = (i % per === 0 ? "700 11px" : "9px") + " ui-monospace, monospace"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(i % per === 0 ? String(i / per + 1) : "·", L + i * cw + cw / 2, 9); }
+      for (r = 0; r <= ME_ROWS; r++) {
+        var deg = ME_ROWS - 1 - r, rest = r === ME_ROWS, y0 = 20 + r * rh, m = rest ? 0 : ownMidi(deg, key);
+        g.fillStyle = TH.muted; g.font = (deg % 7 === 0 && !rest ? "700 " : "") + "10px ui-monospace, monospace"; g.textAlign = "right"; if (!rest && deg % 7 === 0) g.fillStyle = TH.text;
+        g.fillText(rest ? "rest" : names[((m + xp) % 12 + 12) % 12] + (Math.floor((m + xp) / 12) - 1), L - 4, y0 + rh / 2);
+        for (i = 0; i < S.steps; i++) {
+          var on = list.some(function (e) { return e[0] === i && e[1] === (rest ? -1 : deg); });
+          g.globalAlpha = on ? 1 : (deg % 7 === 0 && !rest ? 0.22 : 0.1); g.fillStyle = on ? (rest ? TH.muted : TH.note) : TH.text;
+          g.fillRect(L + i * cw + 1, y0 + 1, cw - 2, rh - 2);
+        }
+        g.globalAlpha = 1;
       }
-      g.globalAlpha = 1;
+      geo = { L: L, cw: cw, rh: rh };
     }
-    ME.geo = { L: L, cw: cw, rh: rh };
+    $(pre + "-grid").addEventListener("click", function (e) {
+      var T = target(); if (!T || !geo) return;
+      var r = e.currentTarget.getBoundingClientRect(), col = Math.floor((e.clientX - r.left - geo.L) / geo.cw), row = Math.floor((e.clientY - r.top - 20) / geo.rh);
+      if (col < 0 || col >= GV.style.steps || row < 0 || row > ME_ROWS) return;
+      var deg = row === ME_ROWS ? -1 : ME_ROWS - 1 - row, own = T.map(true);
+      var list = own[st.bar] || (own[st.bar] = []), had = list.filter(function (q) { return q[0] === col && q[1] === deg; }).length;
+      own[st.bar] = list = list.filter(function (q) { return q[0] !== col; });
+      if (!had) { list.push([col, deg]); if (deg >= 0) ensureContext().then(function () { return loadSamples("piano"); }).then(function () { synth(ac, busOf("chBus", 0.3), "piano", ownMidi(deg, GV.key), ac.currentTime + 0.02, 0.5); }); }
+      changed(); draw();
+    });
+    $(pre + "-prev").addEventListener("click", function () { st.bar = Math.max(0, st.bar - 1); draw(); });
+    $(pre + "-next").addEventListener("click", function () { var T = target(); st.bar = Math.min(T.bars - 1, st.bar + 1); draw(); });
+    $(pre + "-copy").addEventListener("click", function () { var T = target(), own = T && T.map(false); if (!own || !own[st.bar] || st.bar >= T.bars - 1) return; own[st.bar + 1] = own[st.bar].map(function (q) { return q.slice(); }); st.bar++; changed(); draw(); });
+    $(pre + "-clear").addEventListener("click", function () { var T = target(), own = T && T.map(false); if (own) { own[st.bar] = []; changed(); draw(); } });
+    $(pre + "-remove").addEventListener("click", function () { var T = target(); if (T) { T.drop(); changed(); draw(); } });
+    $(pre + "-hear").addEventListener("click", function () {
+      var T = target(), own = T && T.map(false); if (!own || !own[st.bar]) return;
+      ensureContext().then(gvLoadMel).then(function () { gvOwnPlay({ own: own[st.bar], key: GV.key }, ac.currentTime + 0.05); });
+    });
+    /* Sing or play one bar into the grid: a count-in, then one bar of listening. */
+    $(pre + "-sing").addEventListener("click", function () {
+      var T = target(), msg = $(pre + "-sing-msg"); if (!T) return;
+      if (!running) { msg.textContent = "Tap Start listening first, then tap this again."; return; }
+      if (GV.on || GV.ending) gvStop();
+      var S = GV.style, sd = gvStepDur(), bd = sd * S.steps / S.beats, t0 = ac.currentTime + 0.15, tRec = t0 + S.beats * bd, tEnd = tRec + S.steps * sd, frames = [], i;
+      GV.kitNow = GV.kitNow || "syn";
+      for (i = 0; i < S.beats * 2; i++) dRim(t0 + i * bd, i < S.beats ? (i === 0 ? 1 : 0.7) : 0.3);
+      msg.textContent = "Count in…";
+      var iv = setInterval(function () {
+        var now = ac.currentTime;
+        if (now >= tRec && now < tEnd) { msg.textContent = "Sing or play now"; frames.push({ t: now, m: hasPitch ? curSm : null }); }
+        if (now < tEnd) return;
+        clearInterval(iv);
+        var tonic = ownTonic(GV.key), list = [], prev = -2;
+        for (var s2 = 0; s2 < S.steps; s2++) {
+          var fr = frames.filter(function (f) { return f.t >= tRec + s2 * sd && f.t < tRec + (s2 + 1) * sd; }), ok = fr.filter(function (f) { return f.m != null; }).map(function (f) { return f.m; }).sort(function (a, b) { return a - b; }), deg = -1;
+          if (fr.length && ok.length >= fr.length * 0.4) {
+            var m = ok[Math.floor(ok.length / 2)], best = 99; while (m < tonic - 1) m += 12; while (m > tonic + 25) m -= 12;
+            for (var d = 0; d < ME_ROWS; d++) { var dd = Math.abs(ownMidi(d, GV.key) - m); if (dd < best) { best = dd; deg = d; } }
+          }
+          if (deg !== prev && !(deg === -1 && prev === -2)) list.push([s2, deg]);
+          prev = deg;
+        }
+        var notes = list.filter(function (q) { return q[1] >= 0; }).length;
+        if (notes) { T.map(true)[st.bar] = list; changed(); draw(); msg.textContent = "Got " + notes + " note" + (notes > 1 ? "s" : "") + " for bar " + (st.bar + 1) + ". Tap Hear this bar to check it."; }
+        else msg.textContent = "I did not hear a clear note. Try again a little louder.";
+      }, 20);
+    });
+    return { draw: draw };
   }
-  $("me-grid").addEventListener("click", function (e) {
-    var x = meSec(); if (!x || !ME.geo) return;
-    var r = e.currentTarget.getBoundingClientRect(), col = Math.floor((e.clientX - r.left - ME.geo.L) / ME.geo.cw), row = Math.floor((e.clientY - r.top - 20) / ME.geo.rh);
-    if (col < 0 || col >= GV.style.steps || row < 0 || row > ME_ROWS) return;
-    var deg = row === ME_ROWS ? -1 : ME_ROWS - 1 - row;
-    if (!x.own) x.own = {};
-    var list = x.own[ME.bar] || (x.own[ME.bar] = []), had = list.filter(function (q) { return q[0] === col && q[1] === deg; }).length;
-    x.own[ME.bar] = list = list.filter(function (q) { return q[0] !== col; });
-    if (!had) { list.push([col, deg]); if (deg >= 0) ensureContext().then(function () { return loadSamples("piano"); }).then(function () { synth(ac, busOf("chBus", 0.3), "piano", ownMidi(deg, GV.key), ac.currentTime + 0.02, 0.5); }); }
-    if (GV.on && GV.song) gvStop();
-    meDraw(); sbDraw();
-  });
-  $("me-prev").addEventListener("click", function () { ME.bar = Math.max(0, ME.bar - 1); meDraw(); });
-  $("me-next").addEventListener("click", function () { var x = meSec(); ME.bar = Math.min(x.bars - 1, ME.bar + 1); meDraw(); });
-  $("me-copy").addEventListener("click", function () { var x = meSec(); if (!x || !x.own || !x.own[ME.bar] || ME.bar >= x.bars - 1) return; x.own[ME.bar + 1] = x.own[ME.bar].map(function (q) { return q.slice(); }); ME.bar++; meDraw(); sbDraw(); });
-  $("me-clear").addEventListener("click", function () { var x = meSec(); if (x && x.own) { x.own[ME.bar] = []; meDraw(); sbDraw(); } });
-  $("me-remove").addEventListener("click", function () { var x = meSec(); if (x) { x.own = null; if (GV.on && GV.song) gvStop(); meDraw(); sbDraw(); } });
-  $("me-hear").addEventListener("click", function () {
-    var x = meSec(); if (!x || !x.own || !x.own[ME.bar]) return;
-    ensureContext().then(gvLoadMel).then(function () { gvOwnPlay({ own: x.own[ME.bar], key: GV.key }, ac.currentTime + 0.05); });
-  });
+  var ED_B = mkEditor("me", ME, function () {
+    var x = meSec(); if (!x) return null;
+    return { bars: x.bars, map: function (make) { if (!x.own && make) x.own = {}; return x.own; }, drop: function () { x.own = null; },
+      show: function (has) { $("me-sec").textContent = sfNames()[Math.min(SF.sel || 0, SF.secs.length - 1)]; $("me-state").textContent = has ? "This section plays your melody." : "This section uses the preset melody. Tap the grid to write your own."; } };
+  }, function () { if (GV.on && GV.song) gvStop(); sbDraw(); });
+  function meDraw() { if (mode === "build") ED_B.draw(); }
+  var JMS = { bar: 0 };
+  var ED_J = mkEditor("jm", JMS, function () {
+    return { bars: JM.bars, map: function () { return JM.own; }, drop: function () { JM.own = {}; },
+      show: function () { var n = Object.keys(JM.own).filter(function (k) { return JM.own[k] && JM.own[k].length; }).length; $("jm-state").textContent = GV.mel === "mine" ? "The groove plays your melody, looping every " + JM.bars + " bar" + (JM.bars > 1 ? "s" : "") + "." : (n ? "Choose “My own melody” in the Melody section menu to hear it with the groove." : "Tap the grid to write a melody. It loops with the groove."); } };
+  }, function () { jmSave(); if ($("gv-mel").value !== "mine") { $("gv-mel").value = "mine"; gvApply(""); } });
+  function jmDraw() { if (mode === "jam") ED_J.draw(); }
+  $("jm-len").value = String(JM.bars);
+  $("jm-len").addEventListener("change", function (e) { JM.bars = +e.target.value; jmSave(); jmDraw(); });
   /* typed chords */
   $("sf-chords").addEventListener("change", function (e) {
     var x = sfSelSec(); if (!x) return;
@@ -3963,7 +4151,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (!GV.on) $("gv-play").textContent = SF.on ? "Play the song" : "Play groove";
     GV.shown = ""; if (!GV.on) gvChips(-1);
     if (GV.on) gvLoadMel();
-    if (typeof gvGridIdle === "function") { gvGridIdle(); gvWho(); favShow(); }
+    if (typeof gvGridIdle === "function") { gvGridIdle(); gvWho(); favShow(); jmDraw(); }
     prefs.gv = { style: S.id, prog: GV.prog.id, key: GV.key, bpm: GV.bpm, mel: GV.mel, by: GV.by }; savePrefs();
   }
   (function () {
@@ -4150,7 +4338,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     ["target", "key", "range"].forEach(function (p) { $("panel-" + p).hidden = m !== p; });
     $("panel-ex").hidden = m !== "exercise";
     $("panel-jam").hidden = m !== "jam"; $("panel-rhythm").hidden = m !== "rhythm"; $("panel-build").hidden = m !== "build";
-    if (m === "jam") setTimeout(gvGridIdle, 0);
+    if (m === "jam") setTimeout(function () { gvGridIdle(); jmDraw(); }, 0);
     if (m === "build") {
       if (GV.on && !GV.song) gvStop();
       if (!SF.on) { SF.on = true; $("sf-on").checked = true; prefs.sf = { on: true }; savePrefs(); $("gv-play").textContent = "Play the song"; }
