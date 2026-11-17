@@ -511,6 +511,17 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         </select></label>
       </div>
     </div>
+    <div class="builder" id="cd-box">
+      <b>Chord lengths</b>
+      <p class="small"><span id="cd-name"></span>. Change how many beats each chord lasts, then listen and adjust by ear. Saved for this progression.</p>
+      <div id="cd-list" style="display:flex;flex-direction:column;gap:6px"></div>
+      <p class="small" id="cd-total"></p>
+      <div class="row">
+        <button type="button" class="ghost" id="cd-all1">Every chord one bar</button>
+        <button type="button" class="ghost" id="cd-all2">Every chord half a bar</button>
+      </div>
+      <button type="button" class="ghost" id="cd-reset">Back to the original lengths</button>
+    </div>
     <div class="builder" id="jm-box">
       <b>My melody over this groove</b>
       <p class="small" id="jm-state"></p>
@@ -2652,9 +2663,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   function gvStepDur() { return 60 / (GV.bpm * (GV.rate || 1)) * GV.style.beats / GV.style.steps; }
   function gvStep(bar, st, t) {
-    var S = GV.style, P = gvPlan(bar), bars = P.bars, ch = chordOf(bars[P.bi % bars.length], P.key), PN = gvPlan(bar + 1), nxt = chordOf(PN.bars[PN.bi % PN.bars.length], PN.key), sd = gvStepDur(), i;
+    var S = GV.style, P = gvPlan(bar), bars = P.bars, CI = chordInfo(P, st), ch = CI.ch, PN = gvPlan(bar + 1), nxt = CI.nx || chordOf(PN.bars[PN.bi % PN.bars.length], PN.key), sd = gvStepDur(), i;
     GV.ck = P.key;
-    if (st === 0) GV.marks.push({ t: t, ch: ch, key: P.key });
+    if (st === 0 || CI.ci !== GV.lastCi) GV.marks.push({ t: t, ch: ch, key: P.key });
+    GV.lastCi = CI.ci;
     var ek = GV.kitNow === "e", MU = P.mute || {};
     if (!MU.d) {
     if (S.k && S.k.indexOf(st) >= 0) { if (ek) dTone(t, 0.95, 105, 40, 0.5); else dKick(t, 0.9); }
@@ -2690,7 +2702,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       else dSnare(t, 0.45 + 0.4 * fr);
     }
     if (P.crash && st === 0 && (S.k || S.s)) dCrash(t, 1);
-    GV.marks.push({ t: t, bar: bar, st: st, P: P });
+    GV.marks.push({ t: t, bar: bar, st: st, P: P, ci: CI.ci });
   }
   function gvPump() {
     if (!GV.on) return;
@@ -2757,7 +2769,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     while (GV.marks.length && GV.marks[0].t <= now) { var mk = GV.marks.shift(); if (mk.ch) { GV.nowCh = mk.ch; GV.nowKey = mk.key; csDraw(); } else if (mk.count) { $("sb-sec").textContent = "Count in: " + mk.count; $("sf-now").textContent = "Count in: " + mk.count; } else last = mk; }
     if (!last) return;
     if (last.final) { $("sf-now").textContent = "The end"; $("sb-sec").textContent = "The end"; $("sb-chord").textContent = last.name; $("gv-chord").textContent = last.name; $("gv-next").textContent = ""; return; }
-    var P = last.P, bi = P.bi % P.bars.length, tag = P.si + ":" + bi + ":" + P.key;
+    var P = last.P, bi = last.ci != null ? last.ci : P.bi % P.bars.length, tag = P.si + ":" + bi + ":" + P.key;
     if (SB.now && SB.now.bar != null && last.bar < SB.now.bar) SB.trail = [];
     SB.now = last; if (GV.song) { if (P.si < SF.secs.length && SF.sel !== P.si) { SF.sel = P.si; ME.bar = 0; sfSelFill(); sbScoreShow(); } sbDraw(); }
     if (mode === "jam") gridDraw("gv-grid", P, gvPlan(last.bar + 1), last.bar % 2, last.st);
@@ -3686,7 +3698,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   var SBV = { harm: 0, lines: !prefs.sbv || prefs.sbv.lines !== false, names: !prefs.sbv || prefs.sbv.names !== false, tall: !!(prefs.sbv && prefs.sbv.tall) };
   function sbPlan() { return GV.on && GV.song && GV.plan ? GV.plan : gvBuildPlan(); }
   function sbFirst(plan, si) { for (var i = 0; i < plan.length; i++) if (plan[i].si === si) return i; return 0; }
-  function sbChord(P) { return chordOf(P.bars[P.bi % P.bars.length], P.key); }
+  function sbChord(P) { return chordInfo(P, 0).ch; }
   /* The lead melody notes of one bar: [{ st, len (steps), m }] */
   function sbMel(P) {
     if (P.mute && P.mute.m) return [];
@@ -4604,6 +4616,34 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     ["mx-guitarron", "mex", "Guitarrón: root, fifth, approach", [[0, "r"], [0.5, "5"], [0.875, "ab"]]],
     ["mx-slap", "mex", "Tololoche slaps", [[0, "r"], [0.25, "5d"], [0.5, "r"], [0.75, "5d"]]]
   ];
+  BLINES.push(
+    ["lo-half", "lorde", "Half-time sub", [[0, "r"], [0.75, "r"]]],
+    ["lo-jump", "lorde", "Sub with an octave jump", [[0, "r"], [0.5, "8"], [0.625, "r"]]],
+    ["lo-16", "lorde", "Pulsing sixteenths", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map(function (k) { return [k / 16, "r"]; })],
+    ["lo-pump", "lorde", "Two-note pump", [[0, "r"], [0.25, "5d"], [0.5, "r"], [0.75, "5d"]]],
+    ["lo-dot", "lorde", "Dotted pulse", [[0, "r"], [0.375, "r"], [0.75, "r"]]],
+    ["lo-club", "lorde", "Club walk-up", [[0, "r"], [0.5, "r"], [0.75, "2"], [0.875, "3"]]],
+    ["dp-oct8", "dream", "Root and octave eighths", [0, 1, 2, 3, 4, 5, 6, 7].map(function (k) { return [k / 8, k % 2 ? "8" : "r"]; })],
+    ["dp-fall", "dream", "Falling melody", [[0, "8"], [0.375, "5"], [0.5, "3"], [0.75, "2"]]],
+    ["dp-drift", "dream", "Hold and drift", [[0, "r"], [0.5, "5"], [0.875, "a"]]],
+    ["dp-two", "dream", "Two-step pulse", [[0, "r"], [0.25, "r"], [0.5, "5"], [0.75, "5"]]],
+    ["dp-q", "dream", "Quarter-note shimmer", [[0, "r"], [0.25, "r"], [0.5, "r"], [0.75, "r"]]],
+    ["ba-arp", "ballad", "Arpeggio walk", [[0, "r"], [0.25, "5"], [0.5, "8"], [0.75, "5"]]],
+    ["ba-gospel", "ballad", "Walk down from the seventh", [[0, "r"], [0.5, "7"], [0.75, "6"]]],
+    ["ba-step", "ballad", "Step up through two and three", [[0, "r"], [0.5, "2"], [0.75, "3"]]],
+    ["ba-dot", "ballad", "Dotted ballad", [[0, "r"], [0.375, "5"], [0.75, "8"]]],
+    ["ba-half", "ballad", "Half notes with a pickup", [[0, "r"], [0.5, "r"], [0.875, "a"]]],
+    ["gr-run", "grupera", "Cumbia bass with a run", [[0, "r"], [0.375, "5"], [0.5, "5"], [0.625, "6"], [0.75, "7"]]],
+    ["gr-bolero", "grupera", "Bolero grupero", [[0, "r"], [0.375, "5"], [0.5, "5"], [0.75, "3"]]],
+    ["gr-sync", "grupera", "Keyboard-bass syncopation", [[0, "r"], [0.25, "r"], [0.375, "5"], [0.75, "8"]]],
+    ["gr-r35", "grupera", "Slow root, third, fifth", [[0, "r"], [0.5, "3"], [0.75, "5"]]],
+    ["gr-tecno", "grupera", "Tecnocumbia eighths", [0, 1, 2, 3, 4, 5, 6, 7].map(function (k) { return [k / 8, k % 2 ? "5" : "r"]; })],
+    ["mx-ranch", "mex", "Ranchera: root, then fifth halfway", [[0, "r"], [0.5, "5"]]],
+    ["mx-banda", "mex", "Banda tuba eighths", [[0, "r"], [0.25, "3"], [0.5, "5"], [0.75, "3"]]],
+    ["mx-huap", "mex", "Huapango bass", [[0, "r"], [0.5, "5d"], [0.833, "a"]]],
+    ["mx-runup", "mex", "Run up from the root", [[0, "r"], [0.5, "5"], [0.75, "2"], [0.875, "3"]]],
+    ["mx-above", "mex", "Norteño bass, approach from above", [[0, "r"], [0.5, "5"], [0.75, "ab"]]]
+  );
   var BL_GROUP = { general: "General", lorde: "Lorde and electronic", dream: "Dream pop and indie", ballad: "Ballads", grupera: "Grupera", mex: "Regional Mexican" };
   var BL_FAM = { lph: "lorde", lme: "lorde", lsp: "lorde", lvi: "lorde", lsi: "lorde", epop: "lorde", dream: "dream", indie: "dream", alv: "dream", mar: "dream", nfr: "dream",
     bal: "ballad", cs: "ballad", jj: "ballad", jg: "ballad", rnb: "ballad", grup: "grupera", buk: "grupera", tem: "grupera", mex: "mex", tumb: "mex" };
@@ -4628,6 +4668,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (dg === "6") return b0 + 9;
     if (dg === "7") return b0 + (ch.tones[3] != null && ch.tones[3] < 12 ? ch.tones[3] : 10);
     if (dg === "8") return b0 + 12;
+    if (dg === "2") return b0 + 2;
+    if (dg === "4") return b0 + 5;
     if (dg === "a") return nb - 1;
     if (dg === "ab") return nb + 1;
     if (dg === "an") return nb;
@@ -4647,6 +4689,48 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   $("gv-bl").addEventListener("change", function (e) { GV.bline = e.target.value; gvGridIdle(); sbDraw(); gvWho(); });
   blFill();
+  /* ---------- chord lengths: how many beats each chord of a progression lasts ---------- */
+  function progOfBars(bars) {
+    if (bars._pid === undefined) { var pg = PROGS.filter(function (p) { return p.bars === bars; })[0]; bars._pid = pg ? pg.id : null; }
+    return bars._pid ? PROGS.filter(function (p) { return p.id === bars._pid; })[0] : null;
+  }
+  function durFor(bars) {
+    var pg = progOfBars(bars); if (!pg) return null;
+    var d = (prefs.cdur && prefs.cdur[pg.id]) || pg.dur;
+    return d && d.length === bars.length ? d : null;
+  }
+  /* Which chord is sounding at this step of this bar, and which comes next. */
+  function chordInfo(P, st) {
+    var S = GV.style, bars = P.bars, n = bars.length, d = durFor(bars), i;
+    if (!d) { i = P.bi % n; return { ci: i, ch: chordOf(bars[i], P.key), nx: null }; }
+    var per = S.steps / S.beats, T = d.reduce(function (a, b) { return a + b; }, 0), b = (P.bi * S.beats + Math.floor(st / per)) % T, acc = 0;
+    for (i = 0; i < n - 1; i++) { if (b < acc + d[i]) break; acc += d[i]; }
+    return { ci: i, ch: chordOf(bars[i], P.key), nx: chordOf(bars[(i + 1) % n], P.key) };
+  }
+  function cdRender() {
+    var host = $("cd-list"), pg = GV.prog, d = durFor(pg.bars) || pg.bars.map(function () { return GV.style.beats; }), total = 0;
+    host.innerHTML = "";
+    pg.bars.forEach(function (sym, i) {
+      total += d[i];
+      var row = document.createElement("div"); row.className = "row"; row.style.alignItems = "center"; row.style.gap = "8px";
+      var nm = document.createElement("b"); nm.style.flex = "1"; nm.style.fontFamily = "var(--mono)"; nm.textContent = (i + 1) + ". " + chordName(chordOf(sym, GV.key), GV.key);
+      var minus = document.createElement("button"), plus = document.createElement("button"), val = document.createElement("span");
+      minus.type = plus.type = "button"; minus.className = plus.className = "ghost"; minus.style.flex = plus.style.flex = "0 0 48px"; minus.textContent = "−"; plus.textContent = "+";
+      val.style.minWidth = "84px"; val.style.textAlign = "center"; val.textContent = d[i] + " beat" + (d[i] > 1 ? "s" : "");
+      minus.addEventListener("click", function () { cdSet(i, d[i] - 1); }); plus.addEventListener("click", function () { cdSet(i, d[i] + 1); });
+      row.appendChild(nm); row.appendChild(minus); row.appendChild(val); row.appendChild(plus); host.appendChild(row);
+    });
+    var bars = total / GV.style.beats;
+    $("cd-total").textContent = "The whole progression lasts " + total + " beats (" + (Math.round(bars * 100) / 100) + " bar" + (bars === 1 ? "" : "s") + " of " + GV.style.beats + " beats)." + (total % GV.style.beats ? " It does not fill a whole number of bars, so it will drift against the bar line. That can sound great, or odd." : "");
+    $("cd-name").textContent = pg.name;
+  }
+  function cdSet(i, v) {
+    var pg = GV.prog, d = (durFor(pg.bars) || pg.bars.map(function () { return GV.style.beats; })).slice();
+    d[i] = clamp(v, 1, 16); if (!prefs.cdur) prefs.cdur = {}; prefs.cdur[pg.id] = d; savePrefs(); cdRender(); gvGridIdle(); sbDraw();
+  }
+  $("cd-all1").addEventListener("click", function () { var pg = GV.prog; if (!prefs.cdur) prefs.cdur = {}; prefs.cdur[pg.id] = pg.bars.map(function () { return GV.style.beats; }); savePrefs(); cdRender(); sbDraw(); });
+  $("cd-all2").addEventListener("click", function () { var pg = GV.prog; if (!prefs.cdur) prefs.cdur = {}; prefs.cdur[pg.id] = pg.bars.map(function () { return Math.max(1, GV.style.beats / 2); }); savePrefs(); cdRender(); sbDraw(); });
+  $("cd-reset").addEventListener("click", function () { var pg = GV.prog; if (prefs.cdur) delete prefs.cdur[pg.id]; savePrefs(); cdRender(); sbDraw(); });
   function gvGridIdle() { if (mode === "jam" && !GV.on) gridDraw("gv-grid", gvPlan(0), gvPlan(1), 0, -1); }
   /* ---------- chord progressions tagged by style family (common progressions in the general feel of each style, not taken from songs) ---------- */
   function PG(id, name, bars, mode, fams) { PROGS.push({ id: id, name: name, bars: bars, mode: mode, fams: fams }); }
@@ -4729,6 +4813,29 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   LP("lr-ca", "“Current Affairs” pre-chorus: IV – Vsus4 – vi", ["IV", "Vsus4", "vi"], "maj", "lvi");
   LP("lr-fd", "“Favourite Daughter” chorus: IVmaj7 – I – V", ["IVmaj7", "I", "V"], "maj", "lvi");
   LP("lr-da", "“David” chorus: V – vi – IVmaj7", ["V", "vi", "IVmaj7"], "maj", "lvi");
+  /* More of Lorde's songs, from a research report built on Hooktheory and published chord sheets. "approx." marks single-source readings. */
+  function LPd(id, name, bars, mode, era, dur) { LP(id, name, bars, mode, era); if (dur) PROGS[PROGS.length - 1].dur = dur; }
+  LP("lr-pa1", "“The Path” verse: i – IV", ["i", "IV"], "min", "lsp");
+  LP("lr-pa2", "“The Path” pre-chorus: i – IV – i – IV – III – v – IV", ["i", "IV", "i", "IV", "bIII", "v", "IV"], "min", "lsp");
+  LP("lr-pa3", "“The Path” chorus: IV – I – V (twice), IV – I – vi – V", ["IV", "I", "V", "IV", "I", "V", "IV", "I", "vi", "V"], "maj", "lsp");
+  LP("lr-ca1", "“California” verse: IV – I – IV – I – V – IV – I – V", ["IV", "I", "IV", "I", "V", "IV", "I", "V"], "maj", "lsp");
+  LP("lr-ca2", "“California” pre-chorus: IV – I – ii – V", ["IV", "I", "ii", "V"], "maj", "lsp");
+  LP("lr-ca3", "“California” chorus: IV – vi – IV – I – V", ["IV", "vi", "IV", "I", "V"], "maj", "lsp");
+  LP("lr-ff1", "“Fallen Fruit” verse: i – III – i – VII – III – V7 – i – i – IV – VImaj7", ["i", "bIII", "i", "bVII", "bIII", "V7", "i", "i", "IV", "bVImaj7"], "min", "lsp");
+  LP("lr-ff2", "“Fallen Fruit” chorus: VImaj7 – i – VImaj7 – V7", ["bVImaj7", "i", "bVImaj7", "V7"], "min", "lsp");
+  LP("lr-oc", "“Oceanic Feeling” chorus: ii – I – ii – IV", ["ii", "I", "ii", "IV"], "maj", "lsp");
+  LP("lr-bs", "“Big Star” chorus: i – VII7 – VImaj7 – IV7", ["i", "bVII7", "bVImaj7", "IV7"], "min", "lsp");
+  LP("lr-ln", "“Leader of a New Regime” verse: I – bVII", ["I", "bVII"], "maj", "lsp");
+  LP("lr-do", "“Dominoes” chorus: ii – IV6 – I", ["ii", "IV6", "I"], "maj", "lsp");
+  LP("lr-bg1", "“Broken Glass” verse: IVmaj7 – I", ["IVmaj7", "I"], "maj", "lvi");
+  LP("lr-bg2", "“Broken Glass” chorus: I – V – IVmaj7 – I – ii – IVmaj7 – I – V – IVmaj7 – I – V", ["I", "V", "IVmaj7", "I", "ii", "IVmaj7", "I", "V", "IVmaj7", "I", "V"], "maj", "lvi");
+  LP("lr-bg3", "“Broken Glass” bridge: I – V – IV – I", ["I", "V", "IV", "I"], "maj", "lvi");
+  LP("lr-gr1", "“GRWM” verse: I – iii – vi", ["I", "iii", "vi"], "maj", "lvi");
+  LP("lr-gr2", "“GRWM” chorus: I – iii – vi – IV", ["I", "iii", "vi", "IV"], "maj", "lvi");
+  LP("lr-is1", "“If She Could See Me Now” verse (approx.): iii – II – vi – I", ["iii", "II", "vi", "I"], "maj", "lvi");
+  LP("lr-is2", "“If She Could See Me Now” chorus (approx.): IV – I – V – II – IV – V", ["IV", "I", "V", "II", "IV", "V"], "maj", "lvi");
+  LPd("lr-sh2", "“Shapeshifter” verse: vi – IV – I – V (2 bars each)", ["vi", "IV", "I", "V"], "maj", "lvi", [8, 8, 8, 8]);
+  LP("lr-sh3", "“Shapeshifter” chorus (chord sheets): I – V – vi – IV", ["I", "V", "vi", "IV"], "maj", "lvi");
   var PROG_FAMS = { "6415": ["lme", "lph", "epop"], pop: ["lme", "indie", "alv", "bal"], minb: ["lph", "lvi", "nfr"], "m-pop": ["lvi", "epop", "lph"], onem: ["lph", "lvi", "rh"], dream2: ["dream", "mar", "lsp"], dream3: ["dream", "mar"], dream4: ["dream"], dream: ["dream"],
     "m-dream": ["dream", "nfr", "rh"], bol7: ["mar", "jj"], "2516": ["mar", "jazz", "rnb"], "m-sad": ["nfr", "bal", "cs"], "m-rom": ["nfr", "bal", "grup"], "1364": ["bal", "nfr", "lme"], "50s": ["bal", "grup", "buk", "tem"], bolero: ["bal", "jj", "grup", "buk", "tem", "jg"],
     "1-4-5": ["mex", "grup", "buk", "jg"], ranch: ["mex", "jg"], ranch7: ["mex", "jg"], ranch8: ["mex", "jg"], "1-5": ["mex", "tumb"], "m1-5": ["mex", "tumb"], "m1-4-5": ["mex", "tumb", "grup"], "m-tumb": ["tumb", "mex"], andal: ["tumb", "mex", "metal"], "m-bol": ["jj", "mar", "bal"],
@@ -4788,7 +4895,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     GV.style = S; GV.prog = PROGS.filter(function (pg) { return pg.id === $("gv-prog").value; })[0] || PROGS[0];
     if (from === "style") $("gv-kit").value = "auto";
     GV.kit = $("gv-kit").value; GV.kitNow = GV.kit === "auto" ? (S.kit === "e" ? "e" : "ac") : GV.kit;
-    GV.key = +$("gv-key").value; GV.bpm = +$("gv-bpm").value; GV.mel = $("gv-mel").value; GV.by = $("gv-by").value; GV.cvo = $("gv-cv").value; GV.bvo = $("gv-bv").value; if (typeof blFill === "function") blFill();
+    GV.key = +$("gv-key").value; GV.bpm = +$("gv-bpm").value; GV.mel = $("gv-mel").value; GV.by = $("gv-by").value; GV.cvo = $("gv-cv").value; GV.bvo = $("gv-bv").value; if (typeof blFill === "function") blFill(); if (typeof cdRender === "function" && $("cd-list")) cdRender();
     $("gv-bpm-lbl").textContent = "Tempo " + GV.bpm + " bpm"; $("gv-tip").textContent = S.tip;
     var dots = $("gv-beats"); dots.innerHTML = ""; for (var i = 0; i < S.beats; i++) dots.appendChild(document.createElement("i"));
     if ((from === "style" || from === "scale") && GV.on && !GV.song) { GV.step = 0; GV.bar = 0; GV.arp = 0; }
