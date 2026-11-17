@@ -245,6 +245,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     <button type="button" data-mode="song" aria-pressed="false">Song</button>
     <button type="button" data-mode="jam" aria-pressed="false">Jam</button>
     <button type="button" data-mode="build" aria-pressed="false">Builder</button>
+    <button type="button" data-mode="learn" aria-pressed="false">Compose</button>
     <button type="button" data-mode="rhythm" aria-pressed="false">Rhythm</button>
   </div>
 
@@ -553,6 +554,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     <p>To record yourself over the groove, wear headphones and tap Start listening. When you tap Stop, your take plays back with the groove mixed in, and you can download it.</p>
   </section>
 
+  <section class="panel" id="panel-learn" hidden>
+    <p>Short lessons on how songs are put together. Each one ends with something to try in the Builder or the Jam tab. <b id="learn-prog"></b></p>
+    <div id="learn-host" style="display:flex;flex-direction:column;gap:12px"></div>
+  </section>
   <section class="panel" id="panel-build" hidden>
     <p class="small" id="sb-info"></p>
     <p class="small" id="sb-who"></p>
@@ -4277,6 +4282,70 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   });
   slShow(); plogShow();
   $("sb-name").addEventListener("input", plogShow);
+  /* ---------- Compose tab: short lessons, each with a hands-on task ---------- */
+  function goTab(m) { var b = document.querySelector('button[data-mode="' + m + '"]'); if (b) b.click(); }
+  function learnForm(spec, shift) {
+    goTab("build"); if (GV.on || GV.ending) gvStop();
+    SF.secs = spec.map(function (x) { return { type: x[0], bars: x[1], mute: x[2] || null }; }); SF.sel = 0; SF.shift = shift || 0; $("sf-key").value = String(SF.shift);
+    sfRender(); sbDraw(); window.scrollTo(0, 0);
+  }
+  function learnPreset(id) { goTab("build"); if (GV.on || GV.ending) gvStop(); SF.form = id; $("sf-form").value = id; sfLoad(); sbDraw(); window.scrollTo(0, 0); }
+  var LESSONS = [
+    { part: "Structure" },
+    { id: "l1", t: "What a verse and a chorus do", p: ["The verse tells the story, and its words change each time. The chorus is the main idea, and its words stay the same every time it comes back.", "If someone remembers one line of your song, it should be the chorus."],
+      steps: ["Tap the button to build a verse, chorus, verse, chorus song.", "Play it and listen for where the song feels like it arrives home. That is the chorus."], acts: [["Build verse and chorus", function () { learnForm([["intro", 4], ["verse", 8], ["chorus", 8], ["verse", 8], ["chorus", 8]]); }]] },
+    { id: "l2", t: "Make the chorus stand out", p: ["A chorus works because it is different from the verse: fuller, higher, or on new chords. If verse and chorus sound the same, the song feels flat."],
+      steps: ["Tap the button. I turned the drums off in the verses.", "Play it and hear how the chorus lands when the drums come in.", "Then tap the Chorus and choose different chords for it."], acts: [["Build it with quiet verses", function () { learnForm([["intro", 4, { d: true }], ["verse", 8, { d: true }], ["chorus", 8], ["verse", 8, { d: true }], ["chorus", 8]]); }]] },
+    { id: "l3", t: "Different styles use different shapes", p: ["A corrido is verse after verse with no chorus, because it tells a story. A ballad saves a key change for the last chorus. A pop song adds a short pre-chorus that builds tension."],
+      steps: ["Load each shape and look at the song map.", "Count the bars of each section while it plays."], acts: [["Corrido shape", function () { learnPreset("corrido"); }], ["Ballad shape", function () { learnPreset("balada"); }], ["Pop shape", function () { learnPreset("pop"); }]] },
+    { id: "l4", t: "Intros and endings", p: ["An intro is short, usually four or eight bars, and it often plays the hook before anyone sings. An ending needs a clear last hit, so the song stops on purpose instead of fading out by accident."],
+      steps: ["In the Jam tab, play a groove and tap Finish with an ending.", "In the Builder, play only the Intro, then jump to the last section to hear the ending."], acts: [["Go to the Jam tab", function () { goTab("jam"); }]] },
+    { id: "l5", t: "The bridge: one new place", p: ["After the second chorus the listener has heard everything twice. A bridge is eight bars of something new, usually different chords, and then the song returns to the chorus."],
+      steps: ["Build the shape with a bridge.", "Tap the Bridge and mute the drums or the melody so it feels like a different room."], acts: [["Build a song with a bridge", function () { learnForm([["intro", 4], ["verse", 8], ["chorus", 8], ["verse", 8], ["chorus", 8], ["bridge", 8], ["chorus", 8]]); }]] },
+    { part: "Planning" },
+    { id: "l6", t: "Plan a song in five lines", p: ["Before writing lyrics, answer five things in plain words: what is the song about in one sentence, who is talking to whom, what happens in verse one, what changes in verse two, and what is the one line everyone sings."],
+      steps: ["Open the Builder and tap each section.", "Type your plain-words answer into its lyrics box. Do not rhyme yet.", "Now you have a map, and each section has one job."], acts: [["Open the Builder", function () { goTab("build"); }]] },
+    { id: "l7", t: "Line lengths and rhyme", p: ["Eight bars usually hold four lines, two bars each. Lines that pair up should be about the same number of syllables. Rhyme the second line with the fourth, or pair them one-two and three-four."],
+      steps: ["Write four lines in the Verse 1 lyrics box, one per row.", "Play the verse and speak the lines in time as they light up.", "Shorten any line that does not fit in its two bars."], acts: [["Build a short song to write in", function () { learnForm([["verse", 8], ["chorus", 8]]); }]] },
+    { part: "Melody" },
+    { id: "l8", t: "A motif: one small idea, repeated", p: ["Good melodies are built from a tiny idea of three to five notes. Repeat it so the ear learns it, then change the ending so it does not get boring."],
+      steps: ["In the Jam tab, find My melody over this groove and set it to 2 bars.", "Tap three to five notes in bar 1.", "Tap Copy to the next bar, then move only the last note."], acts: [["Go to the Jam tab", function () { goTab("jam"); }]] },
+    { id: "l9", t: "Question and answer", p: ["A phrase that ends away from the home note sounds like a question. A phrase that ends on the home note sounds like an answer. The home note is the bold row in the melody grid."],
+      steps: ["Set My melody to 4 bars.", "Bars 1 and 2: end on any row that is not bold.", "Bars 3 and 4: use a similar shape, but end on a bold row."], acts: [["Go to the Jam tab", function () { goTab("jam"); }]] },
+    { id: "l10", t: "Melody that fits the chords", p: ["On the strong beats, especially beat one, a melody sounds settled when it sits on a note of the chord. Between those beats it can pass through other notes."],
+      steps: ["In the Builder, write your own melody for the Chorus.", "Look at the Notes chart: the faint blocks are the chord. Put your beat-one notes on the same rows, in any octave.", "Play it, then move one beat-one note off the chord and hear the difference."], acts: [["Open the Builder", function () { goTab("build"); }]] },
+    { part: "Arrangement" },
+    { id: "l11", t: "Who plays when", p: ["Arrangement is deciding which instruments play in each section. If everyone plays all the time there is nowhere to go. Start small and add."],
+      steps: ["Tap the button. Verse 1 has no drums and no melody, the chorus has everyone, the bridge drops to chords only, and the last chorus is full again.", "Play it and watch the Drums, Bass, Chords and Melody boxes change as each section plays.", "Then change one section your own way."], acts: [["Build the energy map", function () { learnForm([["intro", 4, { d: true, b: true }], ["verse", 8, { d: true, m: true }], ["chorus", 8], ["verse", 8, { m: true }], ["chorus", 8], ["bridge", 8, { d: true, b: true, m: true }], ["chorus", 8]]); }]] },
+    { id: "l12", t: "Leave space for the singer", p: ["Instruments should answer the singer, not talk over them. In the verses, the melody instrument plays in the gaps at the ends of lines. That is what the answer fills do."],
+      steps: ["In the Jam tab, open the Melody section menu and pick the answer or fill shape for your style.", "Play it and sing or hum a line, stopping where the instrument answers."], acts: [["Go to the Jam tab", function () { goTab("jam"); }]] },
+    { id: "l13", t: "The lift for the last chorus", p: ["Moving the last chorus up a half step or a whole step makes it feel bigger without changing anything else. Ballads and grupera songs use this all the time."],
+      steps: ["Tap the button to build a ballad with the last chorus a whole step up.", "Play from the second-to-last section and hear the lift."], acts: [["Build it with a key change", function () { learnForm([["intro", 4], ["verse", 8], ["chorus", 8], ["verse", 8], ["chorus", 8], ["chorus", 8]], 2); }]] },
+    { part: "Finishing" },
+    { id: "l14", t: "Finish a sketch", p: ["A finished rough sketch teaches more than a perfect idea that never gets done. Give the song a name, save it, and record one take all the way through, mistakes included."],
+      steps: ["In the Builder, type a song name and tap Save.", "Tap Record me over the whole song and sing or play along.", "Download the take and make the chord chart. That is one finished sketch."], acts: [["Open the Builder", function () { goTab("build"); }]] }
+  ];
+  function learnRender() {
+    var host = $("learn-host"), done = prefs.learn || {}, total = 0, n = 0, num = 0; host.innerHTML = "";
+    LESSONS.forEach(function (L) {
+      if (L.part) { var h = document.createElement("b"); h.textContent = L.part; h.style.fontSize = "18px"; h.style.marginTop = "6px"; host.appendChild(h); return; }
+      total++; num++; if (done[L.id]) n++;
+      var box = document.createElement("div"); box.className = "builder";
+      var t = document.createElement("b"); t.textContent = num + ". " + L.t + (done[L.id] ? "  ✓" : ""); box.appendChild(t);
+      L.p.forEach(function (x) { var p = document.createElement("p"); p.textContent = x; box.appendChild(p); });
+      var ol = document.createElement("ol"); ol.style.margin = "0"; ol.style.paddingLeft = "22px";
+      L.steps.forEach(function (x) { var li = document.createElement("li"); li.textContent = x; li.style.margin = "4px 0"; ol.appendChild(li); }); box.appendChild(ol);
+      var row = document.createElement("div"); row.className = "row";
+      L.acts.forEach(function (a) { var b = document.createElement("button"); b.type = "button"; b.className = "ghost"; b.textContent = a[0]; b.addEventListener("click", a[1]); row.appendChild(b); });
+      box.appendChild(row);
+      var lab = document.createElement("label"), inp = document.createElement("input"); lab.className = "check"; inp.type = "checkbox"; inp.checked = !!done[L.id];
+      inp.addEventListener("change", function () { if (!prefs.learn) prefs.learn = {}; prefs.learn[L.id] = inp.checked; savePrefs(); learnRender(); });
+      lab.appendChild(inp); lab.appendChild(document.createTextNode(" I did this one")); box.appendChild(lab);
+      host.appendChild(box);
+    });
+    $("learn-prog").textContent = n + " of " + total + " done";
+  }
+  learnRender();
   function gvGridIdle() { if (mode === "jam" && !GV.on) gridDraw("gv-grid", gvPlan(0), gvPlan(1), 0, -1); }
   function gvProgFill(modeV, want) {
     var ps = $("gv-prog"); ps.innerHTML = "";
@@ -4522,7 +4591,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     document.querySelectorAll(".seg button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-mode") === m)); });
     ["target", "key", "range"].forEach(function (p) { $("panel-" + p).hidden = m !== p; });
     $("panel-ex").hidden = m !== "exercise";
-    $("panel-jam").hidden = m !== "jam"; $("panel-rhythm").hidden = m !== "rhythm"; $("panel-build").hidden = m !== "build";
+    $("panel-jam").hidden = m !== "jam"; $("panel-rhythm").hidden = m !== "rhythm"; $("panel-build").hidden = m !== "build"; $("panel-learn").hidden = m !== "learn";
     if (m === "jam") setTimeout(function () { gvGridIdle(); jmDraw(); }, 0);
     if (m === "build") {
       if (GV.on && !GV.song) gvStop();
@@ -4532,7 +4601,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       setTimeout(sbDraw, 0);
     } else if ($("sf-body").parentNode !== $("sf-box")) $("sf-box").appendChild($("sf-body"));
     document.querySelector(".trace-wrap").hidden = m === "rhythm";
-    sizeChart(); $("kb-card").hidden = m === "song" || m === "rhythm" || m === "build" || !sw("kb");
+    sizeChart(); $("kb-card").hidden = m === "song" || m === "rhythm" || m === "build" || m === "learn" || !sw("kb");
     if (m === "exercise") { setFlats(); renderChips(); }
     kbHint();
     $("panel-song").hidden = m !== "song";
