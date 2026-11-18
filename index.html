@@ -574,7 +574,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   <section class="panel" id="panel-play" hidden>
     <p>Play guitar or piano along with a song. Pick a real song below, or use the song you made in the Builder.</p>
     <div class="builder" style="display:flex;flex-direction:column;gap:6px">
-      <div class="row"><label class="fld" style="flex:3 1 200px">Song<select id="sm-song"></select></label><button type="button" class="ghost" id="sm-load" style="flex:1 1 100px">Load it</button></div>
+      <div class="row"><label class="fld" style="flex:1 1 140px">Style<select id="sm-genre"><option value="">All styles</option><option value="pop">Pop (Lorde, Dua Lipa, Olivia Newton-John)</option><option value="dream">Dream pop and indie (The Marías, Not for Radio, Alvvays)</option><option value="mex">Regional Mexican and ballads (Juan Gabriel, Los Bukis, Los Temerarios)</option></select></label>
+      <label class="fld" style="flex:1 1 140px">Artist<select id="sm-art"></select></label></div>
+      <label class="fld">Search<input type="text" id="sm-q" placeholder="Song or artist name" autocomplete="off"></label>
+      <div class="row"><label class="fld" style="flex:3 1 200px"><span>Song <b id="sm-count" class="small"></b></span><select id="sm-song"></select></label><button type="button" class="ghost" id="sm-load" style="flex:1 1 100px">Load it</button></div>
       <p class="small" id="sm-note">Loads the song's chords section by section, with a matching groove, key and tempo.</p>
     </div>
     <b id="pl-title" style="font-size:20px"></b>
@@ -4980,14 +4983,31 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   SMX("al-am", "Archie, Marry Me", ALV, null, "Alvvays (2014)", G_AL + "|Dreamy mid-tempo", 0, 115, "intro: G Gmaj7 G6 G|verse: G D Am C G D Am C|chorus: G D Am C G D Am C|verse: G D Am C G D Am C|chorus: G D Am C G D Am C|solo: G D Am C G D Am C|bridge: Em F F# G Em F F# G|chorus: G D Am C G D Am C G D Am C G D Am C D|outro: G", "Ultimate Guitar and GuitarTabsExplorer (moved to G, no capo)");
   SMX("al-dt", "Dreams Tonite", ALV, null, "Antisocialites (2017)", G_AL + "|Dreamy mid-tempo", 0, 101, "verse: Gmaj7 A F#m G Gmaj7 A F#m G|pre: Gmaj7 A Gmaj7 A|chorus: D Gmaj7 F#m D Em Bm A Gmaj7 A|verse: Gmaj7 A F#m G Gmaj7 A F#m Gmaj7 A|pre: Gmaj7 A Gmaj7 A|chorus: D Gmaj7 F#m D Em Bm A Gmaj7 A D Em Bm A Gmaj7 F#m A|bridge: E F#m G A D A E F#m G A D Am Em F#m Bm A#dim7 Gmaj7 D A|outro: D Em Bm A Gmaj7 F#m A D Em Bm A Gmaj7 A");
   SF.meta = null;
-  (function () {
-    var sel = $("sm-song"), groups = {};
+  /* Song picker: filter by style, artist (Lorde by album) and a search box, so the list stays short. */
+  var SM_GENRE = { "Lorde": "pop", "Dua Lipa": "pop", "Olivia Newton-John": "pop", "The Marías": "dream", "Not for Radio": "dream", "Alvvays": "dream", "Juan Gabriel": "mex", "Los Bukis": "mex", "Los Temerarios": "mex" };
+  function smFill(keep) {
+    var g = $("sm-genre").value, a = $("sm-art").value, q = $("sm-q").value.trim().toLowerCase(), sel = $("sm-song"), groups = {}, n = 0;
+    var arts = $("sm-art"), keepA = a; arts.innerHTML = "";
+    var oA = document.createElement("option"); oA.value = ""; oA.textContent = "All artists"; arts.appendChild(oA);
+    var seen = {};
+    SONGMAPS.forEach(function (M) { var gk = M.grp || M.artist; if (seen[gk] || (g && SM_GENRE[M.artist] !== g)) return; seen[gk] = 1; var o = document.createElement("option"); o.value = gk; o.textContent = gk + " (" + SONGMAPS.filter(function (x) { return (x.grp || x.artist) === gk; }).length + ")"; arts.appendChild(o); });
+    arts.value = seen[keepA] ? keepA : ""; a = arts.value;
+    sel.innerHTML = "";
     SONGMAPS.forEach(function (M) {
       var gk = M.grp || M.artist;
+      if (g && SM_GENRE[M.artist] !== g) return; if (a && gk !== a) return;
+      if (q && (M.title + " " + M.artist + " " + (M.from || "")).toLowerCase().indexOf(q) < 0) return;
       if (!groups[gk]) { groups[gk] = document.createElement("optgroup"); groups[gk].label = gk; sel.appendChild(groups[gk]); }
-      var o = document.createElement("option"); o.value = M.id; o.textContent = M.title + (M.from && !M.grp ? "  (" + M.from + ")" : ""); groups[gk].appendChild(o);
+      var o = document.createElement("option"); o.value = M.id; o.textContent = M.title + (M.from && !M.grp ? "  (" + M.from + ")" : ""); groups[gk].appendChild(o); n++;
     });
-  })();
+    if (keep) sel.value = keep;
+    $("sm-count").textContent = n + (n === 1 ? " song" : " songs");
+    $("sm-load").disabled = !n;
+  }
+  $("sm-genre").addEventListener("change", function () { smFill($("sm-song").value); });
+  $("sm-art").addEventListener("change", function () { smFill($("sm-song").value); });
+  $("sm-q").addEventListener("input", function () { smFill($("sm-song").value); });
+  smFill();
   function smLoad(id) {
     var M = SONGMAPS.filter(function (x) { return x.id === id; })[0]; if (!M) return;
     learnStyle(M.style, null, null);
