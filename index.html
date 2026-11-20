@@ -67,7 +67,7 @@ select { font: 500 16px var(--display); min-height: 46px; border-radius: 12px; b
 select:disabled { opacity: .45; }
 select:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid #8ab4ff; outline-offset: 2px; }
 
-button.big { font: 700 17px var(--display); min-height: 52px; border-radius: 14px; border: 0; cursor: pointer; background: var(--good); color: #07210f; width: 100%; }
+button.big { font: 700 17px var(--display); min-height: 52px; border-radius: 14px; border: 0; cursor: pointer; background: var(--good); color: var(--good-ink, #07210f); width: 100%; }
 button.big.stop { background: #3a4252; color: var(--text); }
 button.ghost { font: 500 15px var(--display); min-height: 46px; border-radius: 12px; border: 2px solid var(--line); background: transparent; color: var(--text); cursor: pointer; width: 100%; padding: 0 10px; }
 button.ghost:disabled { opacity: .4; }
@@ -84,8 +84,9 @@ body.printing #print-box img { width: 100%; }
 .chip { font-family: var(--mono); font-size: 13px; padding: 5px 8px; border-radius: 8px; border: 2px solid var(--line); color: var(--muted); min-width: 40px; text-align: center; }
 .chip.cur { color: var(--text); border-color: var(--text); font-weight: 600; }
 .chip.ok { color: var(--good); border-color: var(--good); }
+#nm-tools button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .chip.meh { color: var(--warn); border-color: var(--warn); }
-.chip.on { background: var(--good); border-color: var(--good); color: #07210f; font-weight: 600; }
+.chip.on { background: var(--good); border-color: var(--good); color: var(--good-ink, #07210f); font-weight: 600; }
 .summary { font-size: 22px; font-weight: 700; }
 .bignote { font-size: 22px; font-weight: 700; line-height: 1.25; }
 
@@ -329,6 +330,49 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     <div class="row" id="song-player" hidden>
       <button type="button" class="ghost" id="song-play" style="flex:0 1 96px">Play</button>
       <label class="fld" style="flex:3 1 180px"><span id="song-time">0:00 / 0:00</span><input type="range" id="song-seek" min="0" max="1" step="0.1" value="0" aria-label="Position in the recording"></label>
+    </div>
+    <div class="builder" id="nm-box" hidden style="display:flex;flex-direction:column;gap:8px">
+      <b>Note map</b>
+      <p class="small" id="nm-msg"></p>
+      <canvas id="nm-cv" style="width:100%;height:280px;border-radius:10px;touch-action:none;cursor:pointer"></canvas>
+      <input type="range" id="nm-pos" min="0" max="1" step="0.1" value="0" aria-label="Scroll the note map">
+      <div class="row" id="nm-tools">
+        <button type="button" class="ghost on" data-tool="select" aria-pressed="true">Select</button>
+        <button type="button" class="ghost" data-tool="draw" aria-pressed="false">Add notes</button>
+        <button type="button" class="ghost" data-tool="erase" aria-pressed="false">Erase area</button>
+        <button type="button" class="ghost" data-tool="skip" aria-pressed="false">Skip a part</button>
+      </div>
+      <p class="small" id="nm-sel"></p>
+      <div class="row">
+        <button type="button" class="ghost" id="nm-up" aria-label="Move note up a half step">▲ Up</button>
+        <button type="button" class="ghost" id="nm-dn" aria-label="Move note down a half step">▼ Down</button>
+        <button type="button" class="ghost" id="nm-sh">Shorter</button>
+        <button type="button" class="ghost" id="nm-lg">Longer</button>
+      </div>
+      <div class="row">
+        <button type="button" class="ghost" id="nm-hear">Hear it</button>
+        <button type="button" class="ghost" id="nm-del">Delete</button>
+        <button type="button" class="ghost" id="nm-undo">Undo</button>
+      </div>
+      <div class="row">
+        <label class="fld" style="flex:1 1 120px">Show<select id="nm-zoom"><option value="4">4 seconds</option><option value="8" selected>8 seconds</option><option value="16">16 seconds</option><option value="32">32 seconds</option><option value="90">90 seconds</option></select></label>
+        <label class="fld" style="flex:1 1 140px">Play back<select id="nm-play"><option value="both">Recording and notes</option><option value="orig">Recording only</option><option value="notes">Notes only</option></select></label>
+        <label class="fld" style="flex:1 1 140px">Note sound<select id="nm-snd"></select></label>
+      </div>
+      <b class="small">Clean up</b>
+      <div class="row">
+        <label class="fld" style="flex:1 1 90px">Lowest note<select id="nm-lo"></select></label>
+        <label class="fld" style="flex:1 1 90px">Highest note<select id="nm-hi"></select></label>
+        <label class="fld" style="flex:1 1 110px">Shortest note<select id="nm-min"><option value="0.06">Keep tiny ones</option><option value="0.12" selected>0.12 s</option><option value="0.2">0.2 s</option><option value="0.35">0.35 s</option></select></label>
+      </div>
+      <div class="row">
+        <button type="button" class="ghost" id="nm-myrange">Use my vocal range</button>
+        <button type="button" class="ghost" id="nm-rebuild">Rebuild from the recording</button>
+        <button type="button" class="ghost" id="nm-clearskip">Clear skipped parts</button>
+      </div>
+      <label class="check"><input type="checkbox" id="nm-line" checked> Show the raw pitch line behind the notes</label>
+      <label class="check"><input type="checkbox" id="nm-use" checked> Use the note map as the guide when I sing along</label>
+      <p class="small">Select: tap a note to hear it, drag empty space to scroll. Add notes: tap where a note should go. Erase area: drag across notes to delete them. Skip a part: drag across a part (like a sax solo) to remove it and keep it out when you rebuild. Your edits save on this device for this file.</p>
     </div>
     <div class="builder" id="duet-box">
       <b>Duet recorder</b>
@@ -874,15 +918,15 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
 
   /* ---------- colors and designs ---------- */
   var THEMES = {
-    midnight: { name: "Midnight", bg: "#0b0d13", text: "#eef1f6", note: "#8f9dff", accent: "#8f9dff", panel: "#141824", img: "radial-gradient(900px 420px at 50% -120px, #1c2452 0%, rgba(28,36,82,0) 70%) no-repeat" },
-    red: { name: "Red", bg: "#b10f1a", text: "#ffffff", note: "#ffffff", accent: "#111111" },
-    redblack: { name: "Red and black", bg: "#c1121f", text: "#0a0a0a", note: "#0a0a0a", accent: "#0a0a0a" },
-    blackred: { name: "Black and red", bg: "#090909", text: "#ffe1e1", note: "#ff2e2e", accent: "#ff2e2e" },
-    fire: { name: "Fire", bg: "#170400", text: "#fff1dc", note: "#ffb300", accent: "#ff7a00", fx: "flame", img: "radial-gradient(130% 62% at 50% 108%, #ffb300 0%, #ff6a00 22%, #c21f00 46%, rgba(23,4,0,0) 76%) no-repeat" },
-    blueflame: { name: "Blue flame", bg: "#020512", text: "#e2f3ff", note: "#7dd3fc", accent: "#38bdf8", fx: "flame", img: "radial-gradient(130% 62% at 50% 108%, #e0f7ff 0%, #38bdf8 20%, #1d4ed8 46%, rgba(2,5,18,0) 76%) no-repeat" },
-    lava: { name: "Lava", bg: "#120301", text: "#ffe9d6", note: "#ff9100", accent: "#ff3d00", fx: "lava", size: "220% 220%", img: "radial-gradient(38% 26% at 18% 22%, rgba(255,61,0,.75), rgba(255,61,0,0) 70%), radial-gradient(34% 24% at 82% 48%, rgba(255,145,0,.7), rgba(255,145,0,0) 70%), radial-gradient(46% 30% at 40% 78%, rgba(213,0,0,.8), rgba(213,0,0,0) 70%), radial-gradient(30% 20% at 70% 12%, rgba(255,214,0,.45), rgba(255,214,0,0) 70%)" },
+    midnight: { name: "Midnight", good: "#38bdf8", bg: "#0b0d13", text: "#eef1f6", note: "#8f9dff", accent: "#8f9dff", panel: "#141824", img: "radial-gradient(900px 420px at 50% -120px, #1c2452 0%, rgba(28,36,82,0) 70%) no-repeat" },
+    red: { name: "Red", good: "#ffd0d0", bg: "#b10f1a", text: "#ffffff", note: "#ffffff", accent: "#111111" },
+    redblack: { name: "Red and black", good: "#ff9a9a", bg: "#c1121f", text: "#0a0a0a", note: "#0a0a0a", accent: "#0a0a0a" },
+    blackred: { name: "Black and red", good: "#ff5c5c", bg: "#090909", text: "#ffe1e1", note: "#ff2e2e", accent: "#ff2e2e" },
+    fire: { name: "Fire", good: "#ff3b30", bg: "#170400", text: "#fff1dc", note: "#ffb300", accent: "#ff7a00", fx: "flame", img: "radial-gradient(130% 62% at 50% 108%, #ffb300 0%, #ff6a00 22%, #c21f00 46%, rgba(23,4,0,0) 76%) no-repeat" },
+    blueflame: { name: "Blue flame", good: "#3b82f6", bg: "#020512", text: "#e2f3ff", note: "#7dd3fc", accent: "#38bdf8", fx: "flame", img: "radial-gradient(130% 62% at 50% 108%, #e0f7ff 0%, #38bdf8 20%, #1d4ed8 46%, rgba(2,5,18,0) 76%) no-repeat" },
+    lava: { name: "Lava", good: "#ff3b30", bg: "#120301", text: "#ffe9d6", note: "#ff9100", accent: "#ff3d00", fx: "lava", size: "220% 220%", img: "radial-gradient(38% 26% at 18% 22%, rgba(255,61,0,.75), rgba(255,61,0,0) 70%), radial-gradient(34% 24% at 82% 48%, rgba(255,145,0,.7), rgba(255,145,0,0) 70%), radial-gradient(46% 30% at 40% 78%, rgba(213,0,0,.8), rgba(213,0,0,0) 70%), radial-gradient(30% 20% at 70% 12%, rgba(255,214,0,.45), rgba(255,214,0,0) 70%)" },
     sunset: { name: "Sunset", bg: "#1b0b2e", text: "#ffeede", note: "#ffb86b", accent: "#ff7eb6", img: "linear-gradient(180deg, rgba(27,11,46,0) 30%, rgba(214,60,120,.5) 75%, rgba(255,140,60,.75) 100%) no-repeat" },
-    ocean: { name: "Ocean", bg: "#04202b", text: "#e6fbff", note: "#5eead4", accent: "#22d3ee", img: "linear-gradient(180deg, rgba(34,211,238,.18) 0%, rgba(4,32,43,0) 55%) no-repeat" },
+    ocean: { name: "Ocean", good: "#38bdf8", bg: "#04202b", text: "#e6fbff", note: "#5eead4", accent: "#22d3ee", img: "linear-gradient(180deg, rgba(34,211,238,.18) 0%, rgba(4,32,43,0) 55%) no-repeat" },
     forest: { name: "Forest", bg: "#0c1a10", text: "#eef6e6", note: "#a3e635", accent: "#84cc16" },
     neon: { name: "Neon", bg: "#07010f", text: "#f6e9ff", note: "#39ff14", accent: "#ff2bd6", img: "radial-gradient(700px 360px at 50% -80px, rgba(255,43,214,.35), rgba(255,43,214,0) 70%) no-repeat" },
     paper: { name: "Paper", bg: "#f5efe3", text: "#1c1a15", note: "#1c1a15", accent: "#9a4a0c" }
@@ -899,7 +943,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     var t = prefs.theme;
     if (t && t.id === "custom" && t.bg && t.text && t.note && t.accent) return { name: "Custom", bg: t.bg, text: t.text, note: t.note, accent: t.accent, id: "custom" };
     var id = t && THEMES[t.id] ? t.id : "midnight", th = THEMES[id];
-    return { name: th.name, bg: th.bg, text: th.text, note: th.note, accent: th.accent, panel: th.panel, img: th.img, fx: th.fx, size: th.size, id: id };
+    return { name: th.name, bg: th.bg, text: th.text, note: th.note, accent: th.accent, panel: th.panel, img: th.img, fx: th.fx, size: th.size, good: th.good, id: id };
   }
   function applyTheme() {
     var t = curTheme(), dark = lum(t.bg) < 0.5, st = root.style;
@@ -914,8 +958,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     st.setProperty("--bg-image", t.img || "none"); st.setProperty("--bg-size", t.size || "auto");
     st.setProperty("color-scheme", dark ? "dark" : "light");
     if (t.fx && sw("anim")) root.setAttribute("data-fx", t.fx); else root.removeAttribute("data-fx");
+    GOOD = t.good || "#2fd27a"; st.setProperty("--good", GOOD); st.setProperty("--good-ink", inkFor(GOOD));
     var cur = null;
-    [t.text, t.accent, inkFor(t.note), "#2fd27a"].forEach(function (c) { if (!cur && dist(c, t.note) > 90 && dist(c, chart) > 90) cur = c; });
+    [t.text, t.accent, inkFor(t.note), GOOD].forEach(function (c) { if (!cur && dist(c, t.note) > 90 && dist(c, chart) > 90) cur = c; });
     TH = { bg: t.bg, text: t.text, muted: mix(t.text, chart, 0.4), chart: chart, rowA: mix(chart, t.text, 0.11), rowB: chart, grid: mix(chart, t.text, 0.24), dim: mix(chart, t.text, 0.3), note: t.note, noteInk: inkFor(t.note), cur: cur || inkFor(chart), id: t.id };
     if (themeReady) { mapRender(); rvRender(); themeUI(); }
   }
@@ -948,7 +993,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function rms(x) { var s = 0; for (var i = 0; i < x.length; i++) s += x[i] * x[i]; return Math.sqrt(s / x.length); }
 
   /* ---------- YIN pitch detection ---------- */
-  function yin(x, sr) {
+  function yin(x, sr, thr, loose) {
+    thr = thr || 0.15;
     var W = x.length >> 1;
     var tauMin = Math.floor(sr / 2200);
     var tauMax = Math.min(W - 1, Math.floor(sr / 40));
@@ -962,11 +1008,12 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     for (tau = 1; tau <= tauMax; tau++) { run += d[tau]; c[tau] = run === 0 ? 1 : d[tau] * tau / run; }
     var t = -1;
     for (tau = Math.max(2, tauMin); tau <= tauMax; tau++) {
-      if (c[tau] < 0.15) {
+      if (c[tau] < thr) {
         while (tau + 1 <= tauMax && c[tau + 1] < c[tau]) tau++;
         t = tau; break;
       }
     }
+    if (t < 0 && loose) { var bm = 1; for (tau = Math.max(2, tauMin); tau <= tauMax; tau++) if (c[tau] < bm) { bm = c[tau]; t = tau; } if (bm > loose) t = -1; }
     if (t < 0) return 0;
     var a = c[t - 1], b = c[t], g = c[t + 1 <= tauMax ? t + 1 : t];
     var denom = a + g - 2 * b;
@@ -2166,7 +2213,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   function trackAt(sec, raw) {
     if (!song.track || sec < 0 || sec > song.dur) return null;
-    var v = song.track[Math.round((sec - 0.04) / song.hop)];
+    var v = NM.on && !$("nm-box").hidden ? nmNoteAt(sec) : song.track[Math.round((sec - 0.04) / song.hop)];
     if (v == null) return null;
     return song.duet && !raw ? duetNote(v + song.shift, song.duet) : v + song.shift;
   }
@@ -2175,6 +2222,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (!song.playing) return;
     song.offset = songTime(); song.playing = false;
     try { song.node.onended = null; song.node.stop(); } catch (e) {}
+    nmStopNotes();
     $("song-play").textContent = "Play";
   }
   function songPlay() {
@@ -2183,7 +2231,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       if (song.offset >= song.dur - 0.1) song.offset = 0;
       var n = ac.createBufferSource(); n.buffer = song.playBuf || song.buf; n.playbackRate.value = song.rate; n.connect(master());
       n.onended = function () { if (song.node === n && song.playing) { song.playing = false; song.offset = 0; $("song-play").textContent = "Play"; } };
+      if (!$("nm-box").hidden && NM.play === "notes") { n.disconnect(); }
       n.start(0, song.offset * song.rate); song.node = n; song.startAt = ac.currentTime; song.playing = true;
+      if (!$("nm-box").hidden) nmStartNotes();
       $("song-play").textContent = "Pause";
     });
   }
@@ -2201,16 +2251,16 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       for (j = 0; j < D; j++) acc += ch1 ? (ch0[i * D + j] + ch1[i * D + j]) * 0.5 : ch0[i * D + j];
       x[i] = acc / D;
     }
-    var win = 2048, hop = 512, frames = Math.max(0, Math.floor((n2 - win) / hop)), level = new Float32Array(frames);
+    var win = 1024, hop = 256, frames = Math.max(0, Math.floor((n2 - win) / hop)), level = new Float32Array(frames);
     for (i = 0; i < frames; i++) level[i] = rms(x.subarray(i * hop, i * hop + win));
     var sorted = Array.prototype.slice.call(level).sort(function (p, q) { return p - q; });
-    var gate = Math.max(0.003, 0.1 * (sorted[Math.floor(sorted.length * 0.9)] || 0));
+    var gate = Math.max(0.0015, 0.04 * (sorted[Math.floor(sorted.length * 0.9)] || 0));
     var out = new Array(frames), at = 0;
     return new Promise(function (resolve) {
       (function chunk() {
-        var stop = Math.min(frames, at + 120);
+        var stop = Math.min(frames, at + 240);
         for (; at < stop; at++) {
-          var f = level[at] > gate ? yin(x.subarray(at * hop, at * hop + win), sr2) : 0;
+          var f = level[at] > gate ? yin(x.subarray(at * hop, at * hop + win), sr2, 0.22, 0.4) : 0;
           out[at] = f > 0 ? 69 + 12 * Math.log2(f / a4) : null;
         }
         onProgress(frames ? at / frames : 1);
@@ -2228,7 +2278,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   function songLoadFile(file, label) {
     var st = $("song-status");
-    songPause(); song.buf = null; song.track = null; $("song-player").hidden = true;
+    songPause(); song.buf = null; song.track = null; $("song-player").hidden = true; $("nm-box").hidden = true;
     song.job++; song.shift = 0; song.playBuf = null; song.rate = 1; $("song-shift").hidden = true; $("shift-lbl").textContent = "Original key";
     st.textContent = "Reading the file…";
     ensureContext().then(function () { return file.arrayBuffer(); })
@@ -2242,7 +2292,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
           $("song-seek").max = b.duration; $("song-seek").value = 0; $("song-player").hidden = false; $("song-shift").hidden = false;
           if (!voicedN) { st.textContent = "I couldn't find a clear single voice in that file. A voice-only recording works best."; song.track = null; }
           else {
-            st.textContent = "Charted " + (label || file.name) + ". Tap Play to follow it on the chart. Tap Start listening to sing along with headphones.";
+            st.textContent = "Charted " + (label || file.name) + ". The note map below shows the notes it found. Tap Play to follow along, and Start listening to sing with headphones.";
+            nmShow(label || file.name);
             if (!running) showReview(pts, "Recording", false);
           }
           R = 100; applyScale();
@@ -2255,6 +2306,161 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (file) songLoadFile(file);
     e.target.value = "";
   });
+  /* ---------- note map: turn the pitch line of an audio file into note blocks you can see, hear and edit ---------- */
+  var NM = { notes: [], skips: [], view0: 0, spp: 8, sel: -1, tool: "select", undo: [], drag: null, on: true, play: "both", gain: null, name: "", lo: 40, hi: 84, minLen: 0.12, conf: 0 };
+  function nmSegment(track, hop) {
+    var out = [], cur = null, gap = 0, i;
+    function close() { if (cur) { var ms = cur.ms.slice().sort(function (a, b) { return a - b; }); var med = ms[ms.length >> 1]; out.push({ t0: cur.t0, t1: cur.t1, m: Math.round(med), raw: med }); } cur = null; }
+    for (i = 0; i < track.length; i++) {
+      var m = track[i], t = i * hop;
+      if (m == null) { if (cur && ++gap > 3) close(); continue; }
+      if (cur && Math.abs(m - cur.ms[cur.ms.length - 1]) < 0.7 && Math.abs(Math.round(m) - Math.round(cur.ref)) < 1) { cur.ms.push(m); cur.t1 = t + hop; gap = 0; cur.ref = cur.ms.length > 4 ? cur.ms[cur.ms.length - 3] : cur.ref; }
+      else { close(); cur = { t0: t, t1: t + hop, ms: [m], ref: m }; gap = 0; }
+    }
+    close();
+    return out;
+  }
+  function nmBuild() {
+    if (!song.track) return;
+    var all = nmSegment(song.track, song.hop);
+    for (var k = 0; k < all.length; k++) {
+      var pv = all[k - 1], nx = all[k + 1], n = all[k];
+      if (!pv || !nx) continue;
+      [12, -12].forEach(function (d) { if (Math.abs(n.m - pv.m) >= 9 && Math.abs(n.m - nx.m) >= 9 && Math.abs(n.m + d - pv.m) <= 5 && Math.abs(n.m + d - nx.m) <= 5) n.m += d; });
+    }
+    NM.notes = all.filter(function (n) { return n.t1 - n.t0 >= NM.minLen && n.m >= NM.lo && n.m <= NM.hi && !nmSkipped(n); });
+    NM.sel = -1; NM.undo = [];
+    nmMsg(); nmDraw();
+  }
+  function nmSkipped(n) { return NM.skips.some(function (s) { return n.t0 < s[1] && n.t1 > s[0]; }); }
+  function nmSnap() { NM.undo.push(JSON.stringify({ n: NM.notes, s: NM.skips })); if (NM.undo.length > 40) NM.undo.shift(); }
+  function nmSave() {
+    if (!NM.name) return;
+    var all = {}; try { all = JSON.parse(localStorage.getItem("pm.maps") || "{}"); } catch (e) {}
+    all[NM.name] = { d: Math.round(song.dur), n: NM.notes.map(function (n) { return [+n.t0.toFixed(3), +n.t1.toFixed(3), n.m]; }), s: NM.skips, at: Date.now() };
+    var keys = Object.keys(all).sort(function (a, b) { return all[b].at - all[a].at; }); keys.slice(12).forEach(function (k) { delete all[k]; });
+    try { localStorage.setItem("pm.maps", JSON.stringify(all)); } catch (e) {}
+  }
+  function nmLoadSaved() {
+    var all = {}; try { all = JSON.parse(localStorage.getItem("pm.maps") || "{}"); } catch (e) {}
+    var s = all[NM.name]; if (!s || Math.abs(s.d - Math.round(song.dur)) > 1) return false;
+    NM.notes = s.n.map(function (a) { return { t0: a[0], t1: a[1], m: a[2] }; }); NM.skips = s.s || []; return true;
+  }
+  function nmMsg(extra) {
+    var n = NM.notes.length, lo = 99, hi = 0;
+    NM.notes.forEach(function (x) { lo = Math.min(lo, x.m); hi = Math.max(hi, x.m); });
+    $("nm-msg").textContent = (n ? n + " notes, from " + noteLabel(lo) + " to " + noteLabel(hi) + "." : "No notes left. Widen the range or lower the shortest note length.") + (extra ? " " + extra : "");
+  }
+  function nmRows() {
+    var lo = 99, hi = 0; NM.notes.forEach(function (x) { lo = Math.min(lo, x.m); hi = Math.max(hi, x.m); });
+    if (lo > hi) { lo = 55; hi = 72; }
+    return { lo: lo - 2, hi: hi + 2 };
+  }
+  function nmCanvas() { var cv = $("nm-cv"), dpr = window.devicePixelRatio || 1, W = cv.clientWidth || 360, H = cv.clientHeight || 280; if (cv.width !== Math.round(W * dpr)) { cv.width = W * dpr; cv.height = H * dpr; } var g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); return { g: g, W: W, H: H }; }
+  var NM_L = 34;
+  function nmGeo() { var c = nmCanvas(), r = nmRows(), rows = r.hi - r.lo + 1, rh = (c.H - 18) / rows, pps = (c.W - NM_L) / NM.spp; return { c: c, r: r, rh: rh, pps: pps, x: function (t) { return NM_L + (t - NM.view0) * pps; }, t: function (x) { return NM.view0 + (x - NM_L) / pps; }, y: function (m) { return 4 + (r.hi - m) * rh; }, m: function (y) { return Math.round(r.hi - (y - 4) / rh + 0.5 - 0.5); } }; }
+  function nmDraw() {
+    if ($("nm-box").hidden) return;
+    var G = nmGeo(), g = G.c.g, W = G.c.W, H = G.c.H, r = G.r, now = songTime();
+    g.clearRect(0, 0, W, H); g.fillStyle = TH.chart; g.fillRect(0, 0, W, H);
+    for (var m = r.lo; m <= r.hi; m++) {
+      var y = G.y(m), blk = [1, 3, 6, 8, 10].indexOf(((m % 12) + 12) % 12) >= 0;
+      g.fillStyle = blk ? TH.rowB : TH.rowA; g.fillRect(NM_L, y, W - NM_L, G.rh - 0.5);
+      if (G.rh >= 9 || ((m % 12) + 12) % 12 === 0) { g.fillStyle = TH.muted; g.font = Math.min(11, Math.max(8, G.rh * 0.8)) + "px system-ui, sans-serif"; g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(noteLabel(m), NM_L - 4, y + G.rh / 2); }
+    }
+    g.strokeStyle = TH.grid; g.lineWidth = 1; g.fillStyle = TH.muted; g.font = "10px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "bottom";
+    var step = NM.spp > 30 ? 10 : NM.spp > 12 ? 5 : NM.spp > 5 ? 2 : 1;
+    for (var s = Math.ceil(NM.view0 / step) * step; s <= NM.view0 + NM.spp; s += step) { var xs = G.x(s); g.beginPath(); g.moveTo(xs, 0); g.lineTo(xs, H - 14); g.stroke(); g.fillText(fmt(s), xs, H - 1); }
+    NM.skips.forEach(function (sk) { g.fillStyle = rgba(TH.text, 0.12); g.fillRect(G.x(sk[0]), 0, G.x(sk[1]) - G.x(sk[0]), H - 14); });
+    if (song.track && $("nm-line").checked) {
+      g.strokeStyle = rgba(TH.text, 0.35); g.lineWidth = 1.2; g.beginPath(); var pen = false;
+      var i0 = Math.max(0, Math.floor(NM.view0 / song.hop)), i1 = Math.min(song.track.length - 1, Math.ceil((NM.view0 + NM.spp) / song.hop));
+      for (var i = i0; i <= i1; i++) { var v = song.track[i]; if (v == null) { pen = false; continue; } var px = G.x(i * song.hop), py = G.y(v) + G.rh / 2; if (pen) g.lineTo(px, py); else { g.moveTo(px, py); pen = true; } }
+      g.stroke();
+    }
+    NM.notes.forEach(function (n, k) {
+      if (n.t1 < NM.view0 || n.t0 > NM.view0 + NM.spp) return;
+      var x0 = Math.max(NM_L, G.x(n.t0)), x1 = G.x(n.t1), y = G.y(n.m), on = now >= n.t0 && now < n.t1 && song.playing;
+      g.fillStyle = k === NM.sel ? TH.cur : on ? GOOD : TH.note; g.fillRect(x0, y + 1, Math.max(2, x1 - x0), Math.max(3, G.rh - 2));
+      if (x1 - x0 > 26 && G.rh >= 10) { g.fillStyle = k === NM.sel ? inkFor(TH.cur) : on ? inkFor(GOOD) : TH.noteInk; g.font = "600 " + Math.min(11, G.rh - 2) + "px system-ui, sans-serif"; g.textAlign = "left"; g.textBaseline = "middle"; g.fillText(noteLabel(n.m), x0 + 3, y + G.rh / 2); }
+    });
+    if (NM.drag && NM.drag.kind === "erase") { var a = Math.min(NM.drag.t0, NM.drag.t1), b = Math.max(NM.drag.t0, NM.drag.t1); g.fillStyle = rgba(WARN, 0.25); g.fillRect(G.x(a), 0, G.x(b) - G.x(a), H - 14); }
+    var xn = G.x(now); if (xn >= NM_L && xn <= W) { g.strokeStyle = TH.cur; g.lineWidth = 2; g.beginPath(); g.moveTo(xn, 0); g.lineTo(xn, H - 14); g.stroke(); }
+    $("nm-pos").max = Math.max(0, song.dur - NM.spp); $("nm-pos").value = NM.view0;
+    var sel = NM.notes[NM.sel]; $("nm-sel").textContent = sel ? "Selected: " + noteLabel(sel.m) + " at " + fmt(sel.t0) + ", " + (sel.t1 - sel.t0).toFixed(2) + " s long" : "Tap a note to select and hear it.";
+    ["nm-up", "nm-dn", "nm-sh", "nm-lg", "nm-del", "nm-hear"].forEach(function (id) { $(id).disabled = !sel; });
+    $("nm-undo").disabled = !NM.undo.length;
+  }
+  function nmHear(m, dur) { ensureContext().then(function () { synth(ac, master(), $("nm-snd").value, m + song.shift, ac.currentTime + 0.02, Math.min(1.5, Math.max(0.2, dur || 0.5))); }); }
+  function nmAt(G, x, y) { var t = G.t(x), m = G.m(y), best = -1; NM.notes.forEach(function (n, k) { if (t >= n.t0 - 0.03 && t <= n.t1 + 0.03 && Math.abs(n.m - m) <= 0) best = k; }); return best; }
+  $("nm-cv").addEventListener("pointerdown", function (e) {
+    var G = nmGeo(), rc = e.target.getBoundingClientRect(), x = e.clientX - rc.left, y = e.clientY - rc.top; if (x < NM_L) return;
+    var t = G.t(x), m = G.m(y);
+    if (NM.tool === "select") { NM.sel = nmAt(G, x, y); if (NM.sel >= 0) { var n = NM.notes[NM.sel]; nmHear(n.m, n.t1 - n.t0); } else { NM.drag = { kind: "pan", x: x, v: NM.view0 }; e.target.setPointerCapture(e.pointerId); } }
+    else if (NM.tool === "draw") { nmSnap(); var nn = { t0: Math.max(0, t), t1: Math.min(song.dur, t + 0.35), m: m }; NM.notes.push(nn); NM.notes.sort(function (a, b) { return a.t0 - b.t0; }); NM.sel = NM.notes.indexOf(nn); nmHear(m, 0.35); nmSave(); nmMsg(); }
+    else if (NM.tool === "erase" || NM.tool === "skip") { NM.drag = { kind: "erase", t0: t, t1: t, skip: NM.tool === "skip" }; e.target.setPointerCapture(e.pointerId); }
+    nmDraw();
+  });
+  $("nm-cv").addEventListener("pointermove", function (e) {
+    if (!NM.drag) return; var G = nmGeo(), rc = e.target.getBoundingClientRect(), x = e.clientX - rc.left;
+    if (NM.drag.kind === "pan") NM.view0 = Math.max(0, Math.min(Math.max(0, song.dur - NM.spp), NM.drag.v - (x - NM.drag.x) / G.pps));
+    else NM.drag.t1 = G.t(x);
+    nmDraw();
+  });
+  $("nm-cv").addEventListener("pointerup", function () {
+    var d = NM.drag; NM.drag = null; if (!d) return;
+    if (d.kind === "erase") {
+      var a = Math.max(0, Math.min(d.t0, d.t1)), b = Math.min(song.dur, Math.max(d.t0, d.t1));
+      if (b - a > 0.05) { nmSnap(); if (d.skip) NM.skips.push([a, b]); NM.notes = NM.notes.filter(function (n) { return !(n.t0 < b && n.t1 > a); }); NM.sel = -1; nmSave(); nmMsg(d.skip ? "Marked " + fmt(a) + " to " + fmt(b) + " to skip. Rebuild keeps it skipped." : ""); }
+    }
+    nmDraw();
+  });
+  function nmEdit(f) { var n = NM.notes[NM.sel]; if (!n) return; nmSnap(); f(n); nmSave(); nmHear(n.m, n.t1 - n.t0); nmDraw(); nmMsg(); }
+  $("nm-up").addEventListener("click", function () { nmEdit(function (n) { n.m++; }); });
+  $("nm-dn").addEventListener("click", function () { nmEdit(function (n) { n.m--; }); });
+  $("nm-lg").addEventListener("click", function () { nmEdit(function (n) { n.t1 = Math.min(song.dur, n.t1 + 0.1); }); });
+  $("nm-sh").addEventListener("click", function () { nmEdit(function (n) { n.t1 = Math.max(n.t0 + 0.06, n.t1 - 0.1); }); });
+  $("nm-hear").addEventListener("click", function () { var n = NM.notes[NM.sel]; if (n) nmHear(n.m, n.t1 - n.t0); });
+  $("nm-del").addEventListener("click", function () { if (NM.sel < 0) return; nmSnap(); NM.notes.splice(NM.sel, 1); NM.sel = -1; nmSave(); nmDraw(); nmMsg(); });
+  $("nm-undo").addEventListener("click", function () { var s = NM.undo.pop(); if (!s) return; s = JSON.parse(s); NM.notes = s.n; NM.skips = s.s; NM.sel = -1; nmSave(); nmDraw(); nmMsg(); });
+  $("nm-rebuild").addEventListener("click", function () { nmReadFilters(); nmBuild(); nmSave(); });
+  $("nm-clearskip").addEventListener("click", function () { nmSnap(); NM.skips = []; nmReadFilters(); nmBuild(); nmSave(); });
+  function nmReadFilters() { NM.lo = +$("nm-lo").value; NM.hi = +$("nm-hi").value; NM.minLen = +$("nm-min").value; if (NM.lo > NM.hi) { var t = NM.lo; NM.lo = NM.hi; NM.hi = t; } }
+  $("nm-myrange").addEventListener("click", function () {
+    if (!savedRange) { nmMsg("Find your range in the Range tab first, then this button uses it."); return; }
+    $("nm-lo").value = String(Math.max(30, savedRange.low - 1)); $("nm-hi").value = String(Math.min(96, savedRange.high + 1)); nmReadFilters(); nmBuild(); nmSave();
+  });
+  ["nm-lo", "nm-hi", "nm-min"].forEach(function (id) { $(id).addEventListener("change", function () { nmReadFilters(); nmBuild(); nmSave(); }); });
+  $("nm-line").addEventListener("change", nmDraw);
+  $("nm-zoom").addEventListener("change", function (e) { var mid = NM.view0 + NM.spp / 2; NM.spp = +e.target.value; NM.view0 = Math.max(0, Math.min(Math.max(0, song.dur - NM.spp), mid - NM.spp / 2)); nmDraw(); });
+  $("nm-pos").addEventListener("input", function (e) { NM.view0 = +e.target.value; nmDraw(); });
+  Array.prototype.forEach.call(document.querySelectorAll("#nm-tools button"), function (b) {
+    b.addEventListener("click", function () { NM.tool = b.getAttribute("data-tool"); Array.prototype.forEach.call(document.querySelectorAll("#nm-tools button"), function (o) { o.setAttribute("aria-pressed", o === b ? "true" : "false"); o.classList.toggle("on", o === b); }); NM.sel = -1; nmDraw(); });
+  });
+  $("nm-use").addEventListener("change", function (e) { NM.on = e.target.checked; });
+  $("nm-play").addEventListener("change", function (e) { NM.play = e.target.value; if (song.playing) { songPause(); songPlay(); } });
+  /* note playback: notes go through their own gain node so Pause can silence them at once */
+  function nmStartNotes() {
+    if (NM.play === "orig" || !NM.notes.length) return;
+    var gnode = ac.createGain(); gnode.gain.value = 0.9; gnode.connect(master()); NM.gain = gnode;
+    var t0 = ac.currentTime + 0.03, off = song.offset, inst = $("nm-snd").value;
+    NM.notes.forEach(function (n) { if (n.t1 <= off || n.t0 - off > 600) return; var st = Math.max(0, n.t0 - off) / song.rate; synth(ac, gnode, inst, n.m + song.shift, t0 + st, Math.max(0.08, (n.t1 - Math.max(n.t0, off)) / song.rate)); });
+  }
+  function nmStopNotes() { if (NM.gain) { try { NM.gain.gain.setValueAtTime(0, ac.currentTime); NM.gain.disconnect(); } catch (e) {} NM.gain = null; } }
+  function nmNoteAt(sec) { if (!NM.notes.length) return null; for (var i = 0; i < NM.notes.length; i++) { var n = NM.notes[i]; if (sec >= n.t0 && sec < n.t1) return n.m; if (n.t0 > sec) break; } return null; }
+  function nmShow(file) {
+    NM.name = file || ""; NM.skips = []; NM.view0 = 0; NM.sel = -1;
+    $("nm-box").hidden = false;
+    if (savedRange && !$("nm-lo").dataset.set) { $("nm-lo").value = String(Math.max(30, savedRange.low - 3)); $("nm-hi").value = String(Math.min(96, savedRange.high + 3)); }
+    nmReadFilters();
+    if (nmLoadSaved()) { NM.undo = []; nmMsg("Loaded your edited map of this file."); nmDraw(); } else nmBuild();
+  }
+  (function () {
+    var lo = $("nm-lo"), hi = $("nm-hi");
+    for (var m = 28; m <= 96; m++) { var a = document.createElement("option"); a.value = String(m); a.textContent = noteLabel(m); lo.appendChild(a); var b = a.cloneNode(true); hi.appendChild(b); }
+    lo.value = "40"; hi.value = "84";
+    var s = $("nm-snd"); SOUNDS.forEach(function (x) { var o = document.createElement("option"); o.value = x[0]; o.textContent = x[1]; s.appendChild(o); }); s.value = "piano";
+  })();
   var takeBlob = null;
   function duetKeyMsg() { $("duet-key").textContent = song.duet ? "The guide stays inside " + keyName() + ". Change the key in the Key tab. Voice 1 is the thin line, your guide is the wide green one." : ""; }
   $("duet-use").addEventListener("click", function () {
@@ -2406,7 +2612,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     c.save(); c.beginPath(); c.rect(gut, 0, w - gut, ph); c.clip();
     var P = rv.pts, a, b;
     c.lineCap = "round";
-    c.strokeStyle = "rgba(47,210,122,.3)"; c.lineWidth = Math.max(4 * k, rowH * 0.8);
+    c.strokeStyle = rgba(GOOD, 0.3); c.lineWidth = Math.max(4 * k, rowH * 0.8);
     for (i = 1; i < P.length; i++) {
       a = P[i - 1]; b = P[i];
       if (a.r == null || b.r == null || Math.abs(a.r - b.r) > 1 || b.t - a.t > 300 || b.t / 1000 < t0 || a.t / 1000 > t1) continue;
@@ -6013,7 +6219,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         var bright = mode === "key" ? keyDegree(fpc) >= 0 : !black, isAct = fm === act;
         ctx2d.fillStyle = bright ? TH.rowA : TH.rowB;
         ctx2d.fillRect(34, fy - rowH / 2, w - 34, rowH - 1);
-        if (isAct) { ctx2d.fillStyle = curGood ? "rgba(47,210,122,.3)" : "rgba(245,197,24,.3)"; ctx2d.fillRect(0, fy - rowH / 2, w, rowH - 1); }
+        if (isAct) { ctx2d.fillStyle = curGood ? rgba(GOOD, 0.3) : "rgba(245,197,24,.3)"; ctx2d.fillRect(0, fy - rowH / 2, w, rowH - 1); }
         if (fpc === 0 && !isAct) { ctx2d.fillStyle = TH.grid; ctx2d.fillRect(34, fy + rowH / 2 - 1, w - 34, 1); }
         if (sw("plines")) {
           ctx2d.globalAlpha = fpc === 0 ? 0.7 : 0.9; ctx2d.fillStyle = fpc === 0 ? TH.text : TH.grid; ctx2d.fillRect(34, Math.round(fy + rowH / 2) - 1, w - 34, fpc === 0 ? 2 : 1); ctx2d.globalAlpha = 1;
@@ -6035,7 +6241,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (gl) {
       var from = Math.max(ex.t0, now - WINDOW * nowFrac), to = Math.min(ex.gEnd, now + WINDOW * (1 - nowFrac));
       ctx2d.lineCap = "butt"; ctx2d.lineJoin = "round";
-      ctx2d.lineWidth = Math.max(8, 2 * curTol() / 100 * h / span); ctx2d.strokeStyle = "rgba(47,210,122,.22)";
+      ctx2d.lineWidth = Math.max(8, 2 * curTol() / 100 * h / span); ctx2d.strokeStyle = rgba(GOOD, 0.22);
       ctx2d.beginPath();
       for (var tt = from, first = true; tt <= to; tt += 40) {
         var gy = yOf(ex.root + glideAt((tt - ex.gStart) / 1000));
@@ -6047,8 +6253,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       ctx2d.fillStyle = GOOD; ctx2d.beginPath(); ctx2d.arc(xOf(now), yOf(ref), 5, 0, 6.3); ctx2d.fill();
     } else if (ref != null && !earActive()) {
       var y1 = yOf(ref + tol / 100), y2 = yOf(ref - tol / 100);
-      ctx2d.fillStyle = "rgba(47,210,122,.2)"; ctx2d.fillRect(34, y1, w - 34, y2 - y1);
-      ctx2d.strokeStyle = "rgba(47,210,122,.7)"; ctx2d.lineWidth = 1.5;
+      ctx2d.fillStyle = rgba(GOOD, 0.2); ctx2d.fillRect(34, y1, w - 34, y2 - y1);
+      ctx2d.strokeStyle = rgba(GOOD, 0.7); ctx2d.lineWidth = 1.5;
       ctx2d.beginPath(); ctx2d.moveTo(34, yOf(ref)); ctx2d.lineTo(w, yOf(ref)); ctx2d.stroke();
     }
     if (sp) {
@@ -6063,7 +6269,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         }
         ctx2d.stroke(); started = false;
       }
-      ctx2d.lineWidth = Math.max(6, h / (hi2 - lo2) * 0.9); ctx2d.strokeStyle = "rgba(47,210,122,.3)";
+      ctx2d.lineWidth = Math.max(6, h / (hi2 - lo2) * 0.9); ctx2d.strokeStyle = rgba(GOOD, 0.3);
       ctx2d.beginPath();
       for (var pt = now - WINDOW * nowFrac; pt <= now + WINDOW * (1 - nowFrac); pt += 32) {
         var pm = trackAt(sNow + (pt - now) / 1000);
@@ -6085,8 +6291,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     }
     if (full && hasPitch) {
       ctx2d.fillStyle = curGood ? GOOD : WARN;
-      ctx2d.beginPath(); ctx2d.arc(sp ? xOf(now) : w - 7, yOf(curSm), 5, 0, 6.3); ctx2d.fill();
-      ctx2d.strokeStyle = TH.chart; ctx2d.lineWidth = 2; ctx2d.stroke();
+      var axp = sp ? xOf(now) + 4 : w - 2, ayp = yOf(curSm);
+      ctx2d.beginPath(); ctx2d.moveTo(axp, ayp); ctx2d.lineTo(axp - 16, ayp - 9); ctx2d.lineTo(axp - 11, ayp); ctx2d.lineTo(axp - 16, ayp + 9); ctx2d.closePath();
+      ctx2d.strokeStyle = TH.chart; ctx2d.lineWidth = 2.5; ctx2d.lineJoin = "round"; ctx2d.stroke(); ctx2d.fill();
     }
   }
 
