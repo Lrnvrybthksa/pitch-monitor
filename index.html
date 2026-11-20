@@ -6240,7 +6240,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     }
     ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx2d.clearRect(0, 0, w, h);
-    var now = performance.now(), gl = gliding(), sp = songPath(), nowFrac = gl || sp ? 0.75 : 1, span = gl ? 16 : 12;
+    var now = performance.now(), gl = gliding(), sp = songPath(), nowFrac = gl || sp ? 0.5 : 1, span = gl ? 16 : 12;
     while (history.length && now - history[0].t > WINDOW + 500) history.shift();
     var ref = modeRef(now);
     var spT = null;
@@ -6346,7 +6346,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     }
     if (full && hasPitch) {
       ctx2d.fillStyle = curGood ? GOOD : WARN;
-      var axp = sp ? xOf(now) + 4 : w - 2, ayp = yOf(curSm);
+      var axp = nowFrac < 1 ? xOf(now) + 4 : w - 2, ayp = yOf(curSm);
       ctx2d.beginPath(); ctx2d.moveTo(axp, ayp); ctx2d.lineTo(axp - 16, ayp - 9); ctx2d.lineTo(axp - 11, ayp); ctx2d.lineTo(axp - 16, ayp + 9); ctx2d.closePath();
       ctx2d.strokeStyle = TH.chart; ctx2d.lineWidth = 2.5; ctx2d.lineJoin = "round"; ctx2d.stroke(); ctx2d.fill();
     }
