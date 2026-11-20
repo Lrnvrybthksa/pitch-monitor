@@ -374,6 +374,29 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <label class="check"><input type="checkbox" id="nm-use" checked> Use the note map as the guide when I sing along</label>
       <p class="small">Select: tap a note to hear it, drag empty space to scroll. Add notes: tap where a note should go. Erase area: drag across notes to delete them. Skip a part: drag across a part (like a sax solo) to remove it and keep it out when you rebuild. Your edits save on this device for this file.</p>
     </div>
+    <div class="builder" id="cv-box" hidden style="display:flex;flex-direction:column;gap:8px">
+      <b>Notes and chords (for instrument tracks)</b>
+      <p class="small">For piano, guitar, pads or anything with chords. Shows every note that is sounding, not just one melody line, and names the chord.</p>
+      <button type="button" class="big" id="cv-go" style="font-size:16px">Map the notes and chords</button>
+      <p class="small" id="cv-msg"></p>
+      <div id="cv-view" hidden style="display:flex;flex-direction:column;gap:8px">
+        <div style="text-align:center"><div id="cv-name" style="font-size:30px;font-weight:800;line-height:1.1">—</div><div class="small" id="cv-notes"></div></div>
+        <canvas id="cv-kb" style="width:100%;height:70px;display:block"></canvas>
+        <button type="button" class="ghost" id="cv-hear">Hear these notes</button>
+        <canvas id="cv-cv" style="width:100%;height:320px;border-radius:10px;touch-action:manipulation;cursor:pointer"></canvas>
+        <input type="range" id="cv-pos" min="0" max="1" step="0.1" value="0" aria-label="Scroll the note view">
+        <div class="row">
+          <label class="fld">Show<select id="cv-zoom"><option value="5">5 seconds</option><option value="10" selected>10 seconds</option><option value="20">20 seconds</option><option value="40">40 seconds</option></select></label>
+          <label class="fld">Chord changes<select id="cv-seg"><option value="auto">When the notes change</option><option value="0.5">Every half second</option><option value="1">Every second</option><option value="2">Every 2 seconds</option></select></label>
+        </div>
+        <div class="row">
+          <label class="fld">Notes to count<select id="cv-sens"><option value="0.55">Only the loudest</option><option value="0.4" selected>Normal</option><option value="0.27">More (quiet notes too)</option></select></label>
+          <label class="fld">Note names<select id="cv-acc"><option value="s">Sharps</option><option value="f">Flats</option></select></label>
+        </div>
+        <label class="check"><input type="checkbox" id="cv-ghost" checked> Hide likely ghost notes (overtones)</label>
+        <p class="small">Tap the map to jump there and see the notes at that moment. Brighter means louder. The strip on top shows the chord names. Each note also rings faintly an octave and a fifth higher, so a faint note there is often an overtone, not a real note. Notes below C2 are not shown, and low notes blur together. A solo instrument or a stem works best; reverb makes notes ring into the next chord.</p>
+      </div>
+    </div>
     <div class="builder" id="duet-box">
       <b>Duet recorder</b>
       <p class="small" id="duet-msg">Record your first voice in any tab, tap Stop, then come back here and use that take as voice 1.</p>
@@ -2292,8 +2315,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
           song.buf = b; song.track = r.track; song.hop = r.hop; song.dur = b.duration; song.offset = 0;
           var pts = [], voicedN = 0;
           r.track.forEach(function (m, i) { pts.push({ t: i * r.hop * 1000 + 40, m: m, g: true, r: null }); if (m != null) voicedN++; });
-          $("song-seek").max = b.duration; $("song-seek").value = 0; $("song-player").hidden = false; $("song-shift").hidden = false;
-          if (!voicedN) { st.textContent = "I couldn't find a clear single voice in that file. A voice-only recording works best."; song.track = null; }
+          $("song-seek").max = b.duration; $("song-seek").value = 0; $("song-player").hidden = false; $("song-shift").hidden = false; cvReset();
+          if (!voicedN) { st.textContent = "I couldn't find a clear single voice in that file. If it's an instrument or chords, use Notes and chords below."; song.track = null; }
           else {
             st.textContent = "Charted " + (label || file.name) + ". The note map below shows the notes it found. Tap Play to follow along, and Start listening to sing with headphones.";
             nmShow(label || file.name);
@@ -2462,6 +2485,177 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   function nmStopNotes() { if (NM.sched) { clearInterval(NM.sched); NM.sched = null; } if (NM.gain) { try { NM.gain.gain.setValueAtTime(0, ac.currentTime); NM.gain.disconnect(); } catch (e) {} NM.gain = null; } }
   function nmNoteAt(sec) { if (!NM.notes.length) return null; for (var i = 0; i < NM.notes.length; i++) { var n = NM.notes[i]; if (sec >= n.t0 && sec < n.t1) return n.m; if (n.t0 > sec) break; } return null; }
+  /* Notes and chords: a note-by-note loudness map (C2 to C7) for tracks with chords, plus a chord name for each stretch. */
+  var CV = { E: null, V: null, nf: 0, hop: 0, lo: 36, hi: 96, segs: [], view0: 0, spp: 10, sel: 0, last: 0, job: 0 };
+  var CV_Q = [["", [0, 4, 7]], ["m", [0, 3, 7]], ["5", [0, 7]], ["7", [0, 4, 7, 10]], ["maj7", [0, 4, 7, 11]], ["m7", [0, 3, 7, 10]], ["m7♭5", [0, 3, 6, 10]], ["dim", [0, 3, 6]], ["dim7", [0, 3, 6, 9]], ["aug", [0, 4, 8]],
+    ["sus2", [0, 2, 7]], ["sus4", [0, 5, 7]], ["7sus4", [0, 5, 7, 10]], ["6", [0, 4, 7, 9]], ["m6", [0, 3, 7, 9]], ["add9", [0, 2, 4, 7]], ["m(add9)", [0, 2, 3, 7]], ["maj9", [0, 2, 4, 7, 11]], ["m9", [0, 2, 3, 7, 10]], ["9", [0, 2, 4, 7, 10]],
+    ["m11", [0, 2, 3, 5, 7, 10]], ["13", [0, 2, 4, 7, 9, 10]], ["m(maj7)", [0, 3, 7, 11]], ["6/9", [0, 2, 4, 7, 9]], ["maj7♯11", [0, 4, 6, 7, 11]]];
+  function cvNames() { return $("cv-acc").value === "f" ? FLAT : SHARP; }
+  function cvReset() { CV.job++; CV.E = null; CV.V = null; CV.segs = []; $("cv-box").hidden = false; $("cv-view").hidden = true; $("cv-go").hidden = false; $("cv-msg").textContent = "Works on any recording. Takes a few seconds."; }
+  function fftMag(re, im) {
+    var n = re.length, i, j = 0, k, len, t;
+    for (i = 1; i < n; i++) { var bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+    for (len = 2; len <= n; len <<= 1) {
+      var ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang), half = len >> 1;
+      for (i = 0; i < n; i += len) { var cr = 1, ci = 0; for (k = 0; k < half; k++) { var a = i + k, b = a + half, xr = re[b] * cr - im[b] * ci, xi = re[b] * ci + im[b] * cr; re[b] = re[a] - xr; im[b] = im[a] - xi; re[a] += xr; im[a] += xi; t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t; } }
+    }
+  }
+  function cvAnalyze() {
+    var b = song.buf; if (!b) return;
+    var job = ++CV.job, D = Math.max(1, Math.round(b.sampleRate / 11025)), sr2 = b.sampleRate / D, ch0 = b.getChannelData(0), ch1 = b.numberOfChannels > 1 ? b.getChannelData(1) : null;
+    var n2 = Math.floor(b.length / D), x = new Float32Array(n2), i, j;
+    for (i = 0; i < n2; i++) { var sum = 0; for (j = 0; j < D; j++) { var q = i * D + j; sum += ch0[q] + (ch1 ? ch1[q] : 0); } x[i] = sum / (D * (ch1 ? 2 : 1)); }
+    var N = 4096, hop = 1024, nf = Math.max(1, Math.floor((n2 - N) / hop) + 1), rows = CV.hi - CV.lo + 1, E = new Float32Array(nf * rows), win = new Float32Array(N), re = new Float32Array(N), im = new Float32Array(N), lo = [], hi = [];
+    for (i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1));
+    for (var r = 0; r < rows; r++) { var f = 440 * Math.pow(2, (CV.lo + r - 69) / 12), bc = f * N / sr2; lo.push(Math.max(1, Math.floor(bc * Math.pow(2, -1 / 24)))); hi.push(Math.max(1, Math.ceil(bc * Math.pow(2, 1 / 24)))); }
+    var fr = 0, kLo = Math.max(2, lo[0] - 1), kHi = Math.min(N / 2 - 2, hi[rows - 1] + 1);
+    function chunk() {
+      if (job !== CV.job) return;
+      var end = Math.min(nf, fr + 120);
+      for (; fr < end; fr++) {
+        var o = fr * hop;
+        for (i = 0; i < N; i++) { re[i] = (x[o + i] || 0) * win[i]; im[i] = 0; }
+        fftMag(re, im);
+        for (i = 0; i < N / 2; i++) re[i] = re[i] * re[i] + im[i] * im[i];
+        /* each spectral peak goes to the one note nearest its exact (interpolated) pitch */
+        for (var k = kLo; k <= kHi; k++) {
+          if (re[k] <= re[k - 1] || re[k] < re[k + 1]) continue;
+          var la = Math.log(re[k - 1] + 1e-12), lb = Math.log(re[k] + 1e-12), lc = Math.log(re[k + 1] + 1e-12), dd = la - 2 * lb + lc, off = dd ? 0.5 * (la - lc) / dd : 0;
+          var mm = Math.round(69 + 12 * Math.log((k + off) * sr2 / N / 440) / Math.LN2) - CV.lo;
+          if (mm < 0 || mm >= rows) continue;
+          var amp = Math.sqrt(re[k]); if (amp > E[fr * rows + mm]) E[fr * rows + mm] = amp;
+        }
+      }
+      $("cv-msg").textContent = "Listening for every note… " + Math.round(fr / nf * 100) + "%";
+      if (fr < nf) { setTimeout(chunk, 0); return; }
+      CV.E = E; CV.nf = nf; CV.hop = hop / sr2; CV.view0 = 0; cvBuild();
+      $("cv-go").hidden = true; $("cv-view").hidden = false; $("cv-msg").textContent = "Done. Tap Play above to follow along, or tap the map to look at one moment.";
+      cvDraw(); cvNow(songTime());
+    }
+    $("cv-msg").textContent = "Listening for every note… 0%"; setTimeout(chunk, 30);
+  }
+  function cvBuild() {
+    var E = CV.E, nf = CV.nf, rows = CV.hi - CV.lo + 1, V = new Float32Array(nf * rows), ghost = $("cv-ghost").checked, f, r, all = [];
+    for (f = 0; f < nf; f++) {
+      var row = Array.prototype.slice.call(E.subarray(f * rows, f * rows + rows));
+      if (ghost) { var orig = row.slice(); for (r = 0; r < rows; r++) [[12, 0.55], [19, 0.4], [24, 0.3], [28, 0.22], [31, 0.18]].forEach(function (h) { if (r + h[0] < rows) row[r + h[0]] = Math.max(0, row[r + h[0]] - h[1] * orig[r]); }); }
+      for (r = 0; r < rows; r++) { V[f * rows + r] = row[r]; if (f % 3 === 0) all.push(row[r]); }
+    }
+    all.sort(function (a, b) { return a - b; });
+    var P = all[Math.floor(all.length * 0.995)] || 1;
+    for (f = 0; f < V.length; f++) V[f] = Math.pow(Math.min(1, V[f] / P), 0.6);
+    CV.V = V; cvSegs();
+  }
+  function cvSegs() {
+    var V = CV.V, nf = CV.nf, rows = CV.hi - CV.lo + 1, mode = $("cv-seg").value, segs = [], f, r, k;
+    function chroma(f0) { var c = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], n = 0; for (var g = Math.max(0, f0 - 1); g <= Math.min(nf - 1, f0 + 1); g++, n++) for (var r3 = 0; r3 < rows; r3++) c[(CV.lo + r3) % 12] += V[g * rows + r3]; return c; }
+    function cos(a, b) { var d = 0, x = 0, y = 0; for (var i = 0; i < 12; i++) { d += a[i] * b[i]; x += a[i] * a[i]; y += b[i] * b[i]; } return x && y ? d / Math.sqrt(x * y) : (x || y ? 0 : 1); }
+    var bounds = [0];
+    if (mode === "auto") {
+      var acc = chroma(0), cnt = 1, minF = Math.max(2, Math.round(0.4 / CV.hop));
+      for (f = 1; f < nf; f++) { var c = chroma(f); if (f - bounds[bounds.length - 1] >= minF && cos(c, acc.map(function (v) { return v / cnt; })) < 0.9) { bounds.push(f); acc = c; cnt = 1; } else { for (k = 0; k < 12; k++) acc[k] += c[k]; cnt++; } }
+    } else { var step = Math.max(1, Math.round(+mode / CV.hop)); for (f = step; f < nf; f += step) bounds.push(f); }
+    bounds.push(nf);
+    var thr = +$("cv-sens").value;
+    for (k = 0; k < bounds.length - 1; k++) {
+      var a = bounds[k], b = bounds[k + 1], avg = [], mx = 0;
+      for (r = 0; r < rows; r++) { var sm = 0; for (f = a; f < b; f++) sm += V[f * rows + r]; avg.push(sm / (b - a)); if (avg[r] > mx) mx = avg[r]; }
+      var notes = []; if (mx > 0.12) for (r = 0; r < rows; r++) if (avg[r] >= thr * mx) notes.push(CV.lo + r);
+      segs.push({ t0: a * CV.hop, t1: b * CV.hop, notes: notes, lvl: avg });
+    }
+    segs.forEach(function (sg) { sg.ch = cvChord(sg.notes); });
+    var merged = []; segs.forEach(function (sg) { var L = merged[merged.length - 1]; if (L && L.ch.key === sg.ch.key) { L.t1 = sg.t1; L.notes = L.notes.length >= sg.notes.length ? L.notes : sg.notes; } else merged.push(sg); });
+    CV.segs = merged;
+  }
+  function cvChord(notes) {
+    if (!notes.length) return { root: -1, q: "", bass: -1, key: "-" };
+    var S = {}, pcs = []; notes.forEach(function (m) { var pc = m % 12; if (!S[pc]) { S[pc] = 1; pcs.push(pc); } });
+    var bass = notes[0] % 12;
+    if (pcs.length === 1) return { root: bass, q: "", bass: bass, single: true, key: "s" + bass };
+    var best = null;
+    for (var root = 0; root < 12; root++) {
+      if (!S[root]) continue;
+      CV_Q.forEach(function (Q) {
+        var T = Q[1].map(function (iv) { return (root + iv) % 12; }), hit = 0, miss = 0, extra = 0;
+        T.forEach(function (pc, ix) { if (S[pc]) hit++; else miss += Q[1][ix] === 7 ? 0.35 : 1; });
+        pcs.forEach(function (pc) { if (T.indexOf(pc) < 0) extra++; });
+        var sc = hit - miss * 0.9 - extra * 0.7 + (root === bass ? 0.6 : 0) - Q[1].length * 0.04;
+        if (!best || sc > best.sc) best = { sc: sc, root: root, q: Q[0] };
+      });
+    }
+    return { root: best.root, q: best.q, bass: bass, key: best.root + best.q + "/" + bass };
+  }
+  function cvLabel(ch) {
+    var nn = cvNames(), sh = song.shift || 0; if (ch.root < 0) return "—";
+    var rn = nn[(ch.root + sh + 120) % 12]; if (ch.single) return rn + " (one note)";
+    return rn + ch.q + (ch.bass !== ch.root ? "/" + nn[(ch.bass + sh + 120) % 12] : "");
+  }
+  function cvSegAt(t) { var S2 = CV.segs; for (var i = 0; i < S2.length; i++) if (t < S2[i].t1) return S2[i]; return S2[S2.length - 1] || null; }
+  function cvCanvas(id) { var cv = $(id), dpr = window.devicePixelRatio || 1, W = cv.clientWidth || 360, H = cv.clientHeight || 300; if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); } var g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); return { g: g, W: W, H: H }; }
+  var CV_L = 34, CV_TOP = 26;
+  function cvDraw() {
+    if (!CV.V) return;
+    var c = cvCanvas("cv-cv"), g = c.g, W = c.W, H = c.H, rows = CV.hi - CV.lo + 1, rh = (H - CV_TOP - 14) / rows, pps = (W - CV_L) / CV.spp, nn = cvNames(), sh = song.shift || 0, t, r;
+    var tNow = songTime(), dur = song.dur || CV.nf * CV.hop;
+    $("cv-pos").max = Math.max(0, dur - CV.spp); $("cv-pos").value = CV.view0;
+    g.fillStyle = TH.bg; g.fillRect(0, 0, W, H);
+    for (r = 0; r < rows; r++) {
+      var m = CV.hi - r, y = CV_TOP + r * rh, blk = [1, 3, 6, 8, 10].indexOf(m % 12) >= 0;
+      g.fillStyle = blk ? rgba(TH.text, 0.04) : rgba(TH.text, 0.09); g.fillRect(CV_L, y, W - CV_L, rh);
+      if (m % 12 === 0 || rh >= 9) { g.fillStyle = m % 12 === 0 ? TH.text : TH.muted; g.font = (m % 12 === 0 ? "700 " : "") + Math.min(10, Math.max(7, rh)) + "px ui-monospace, monospace"; g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(nn[(m + sh + 120) % 12] + (Math.floor((m + sh) / 12) - 1), CV_L - 3, y + rh / 2); }
+    }
+    var f0 = Math.max(0, Math.floor(CV.view0 / CV.hop)), f1 = Math.min(CV.nf - 1, Math.ceil((CV.view0 + CV.spp) / CV.hop)), fw = Math.max(1, CV.hop * pps + 0.5);
+    for (var f = f0; f <= f1; f++) {
+      var x = CV_L + (f * CV.hop - CV.view0) * pps;
+      for (r = 0; r < rows; r++) { var v = CV.V[f * rows + (CV.hi - CV.lo - r)]; if (v < 0.06) continue; g.fillStyle = rgba(GOOD, Math.min(1, v * 1.1)); g.fillRect(x, CV_TOP + r * rh, fw, Math.max(1, rh - 0.5)); }
+    }
+    CV.segs.forEach(function (sg) {
+      if (sg.t1 < CV.view0 || sg.t0 > CV.view0 + CV.spp) return;
+      var xa = Math.max(CV_L, CV_L + (sg.t0 - CV.view0) * pps), xb = Math.min(W, CV_L + (sg.t1 - CV.view0) * pps);
+      g.strokeStyle = rgba(TH.text, 0.25); g.lineWidth = 1; g.beginPath(); g.moveTo(xa + 0.5, 2); g.lineTo(xa + 0.5, H - 14); g.stroke();
+      var lab = cvLabel(sg.ch); if (lab === "—") return;
+      g.fillStyle = TH.text; g.font = "700 12px system-ui, sans-serif"; g.textAlign = "left"; g.textBaseline = "middle";
+      if (g.measureText(lab).width < xb - xa - 4) g.fillText(lab, xa + 3, CV_TOP / 2);
+      else if (xb - xa > 14) g.fillText(lab.slice(0, Math.max(1, Math.floor((xb - xa - 4) / 7))), xa + 3, CV_TOP / 2);
+    });
+    g.fillStyle = TH.muted; g.font = "10px ui-monospace, monospace"; g.textAlign = "center"; g.textBaseline = "alphabetic";
+    var stp = CV.spp > 20 ? 5 : CV.spp > 8 ? 2 : 1;
+    for (t = Math.ceil(CV.view0 / stp) * stp; t <= CV.view0 + CV.spp; t += stp) g.fillText(fmt(t), CV_L + (t - CV.view0) * pps, H - 2);
+    var ph = song.playing ? tNow : CV.sel;
+    if (ph >= CV.view0 && ph <= CV.view0 + CV.spp) { var px = CV_L + (ph - CV.view0) * pps; g.strokeStyle = TH.text; g.lineWidth = 2; g.beginPath(); g.moveTo(px, 0); g.lineTo(px, H - 12); g.stroke(); }
+  }
+  function cvKeys(notes) {
+    var c = cvCanvas("cv-kb"), g = c.g, W = c.W, H = c.H, lo = 36, hi = 96, whites = [], i, sh = song.shift || 0, on = {};
+    notes.forEach(function (m) { on[m + sh] = 1; });
+    for (i = lo; i <= hi; i++) if ([1, 3, 6, 8, 10].indexOf(i % 12) < 0) whites.push(i);
+    var ww = W / whites.length;
+    whites.forEach(function (m, k) { g.fillStyle = on[m] ? GOOD : "#f4f4f4"; g.fillRect(k * ww + 0.5, 0, ww - 1, H); if (m % 12 === 0) { g.fillStyle = on[m] ? "#000" : "#888"; g.font = "8px ui-monospace, monospace"; g.textAlign = "center"; g.fillText("C" + (m / 12 - 1), k * ww + ww / 2, H - 3); } });
+    for (i = lo; i <= hi; i++) if ([1, 3, 6, 8, 10].indexOf(i % 12) >= 0) { var wi = whites.indexOf(i - 1); g.fillStyle = on[i] ? GOOD : "#222"; g.fillRect((wi + 1) * ww - ww * 0.32, 0, ww * 0.64, H * 0.6); if (on[i]) { g.strokeStyle = "#000"; g.lineWidth = 1; g.strokeRect((wi + 1) * ww - ww * 0.32, 0, ww * 0.64, H * 0.6); } }
+  }
+  function cvNow(t) {
+    if (!CV.V) return;
+    var sg = cvSegAt(t), nn = cvNames(), sh = song.shift || 0; CV.cur = sg;
+    $("cv-name").textContent = sg ? cvLabel(sg.ch) : "—";
+    $("cv-notes").textContent = sg && sg.notes.length ? "Notes: " + sg.notes.map(function (m) { return nn[(m + sh + 120) % 12] + (Math.floor((m + sh) / 12) - 1); }).join("  ") + "  ·  " + fmt(sg.t0) + "–" + fmt(sg.t1) : "No clear notes here";
+    cvKeys(sg ? sg.notes : []);
+  }
+  $("cv-go").addEventListener("click", cvAnalyze);
+  $("cv-zoom").addEventListener("change", function (e) { CV.spp = +e.target.value; cvDraw(); });
+  $("cv-pos").addEventListener("input", function (e) { CV.view0 = +e.target.value; cvDraw(); });
+  $("cv-seg").addEventListener("change", function () { if (CV.V) { cvSegs(); cvDraw(); cvNow(song.playing ? songTime() : CV.sel); } });
+  $("cv-sens").addEventListener("change", function () { if (CV.V) { cvSegs(); cvDraw(); cvNow(song.playing ? songTime() : CV.sel); } });
+  $("cv-ghost").addEventListener("change", function () { if (CV.E) { cvBuild(); cvDraw(); cvNow(song.playing ? songTime() : CV.sel); } });
+  $("cv-acc").addEventListener("change", function () { if (CV.V) { cvDraw(); cvNow(song.playing ? songTime() : CV.sel); } });
+  $("cv-cv").addEventListener("click", function (e) {
+    if (!CV.V) return; var r = e.currentTarget.getBoundingClientRect(), x = e.clientX - r.left; if (x < CV_L) return;
+    var t = Math.max(0, Math.min(song.dur, CV.view0 + (x - CV_L) / (r.width - CV_L) * CV.spp)), was = song.playing;
+    CV.sel = t; if (was) songPause(); song.offset = t; $("song-seek").value = t; if (was) songPlay();
+    cvNow(t); cvDraw();
+  });
+  $("cv-hear").addEventListener("click", function () {
+    var sg = CV.cur; if (!sg || !sg.notes.length) return; var sh = song.shift || 0;
+    ensureContext().then(function () { return loadSamples("piano"); }).then(function () { sg.notes.forEach(function (m, i) { synth(ac, master(), "piano", m + sh, ac.currentTime + 0.05 + i * 0.03, 1.6); }); });
+  });
   function nmShow(file) {
     NM.name = file || ""; NM.skips = []; NM.view0 = 0; NM.sel = -1;
     $("nm-box").hidden = false;
@@ -6335,6 +6529,14 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       var stt = songTime();
       if (document.activeElement !== $("song-seek")) $("song-seek").value = stt;
       $("song-time").textContent = fmt(stt) + " / " + fmt(song.dur);
+      if (song.playing && CV.V && !$("cv-view").hidden) {
+        var nowC = performance.now();
+        if (!CV.last || nowC - CV.last > 110) {
+          CV.last = nowC;
+          if (stt < CV.view0 || stt > CV.view0 + CV.spp * 0.85) CV.view0 = Math.max(0, Math.min(Math.max(0, song.dur - CV.spp), stt - CV.spp * 0.15));
+          try { cvDraw(); if (!CV.cur || stt < CV.cur.t0 || stt >= CV.cur.t1) cvNow(stt); } catch (e) {}
+        }
+      }
       if (song.playing && !$("nm-box").hidden && NM.notes.length) {
         var nowMs = performance.now();
         if (!NM.lastDraw || nowMs - NM.lastDraw > 120) {
