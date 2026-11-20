@@ -4595,7 +4595,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     return { chords: out, bad: bad, durs: anyDur ? durs.map(function (d) { return d == null ? GV.style.beats : d; }) : null };
   }
   function ownTonic(key) { return (key > 7 ? 36 : 48) + key; }
-  function ownMidi(deg, key) { var sc = SCALE[GV.prog.mode === "min" ? "minor" : "major"]; return ownTonic(key) + sc[deg % 7] + 12 * Math.floor(deg / 7); }
+  function ownMidi(deg, key) { if (deg >= 1000) return ownTonic(key) + deg - 1100; var sc = SCALE[GV.prog.mode === "min" ? "minor" : "major"]; return ownTonic(key) + sc[deg % 7] + 12 * Math.floor(deg / 7); }
   function ownNotes(list, key) {
     var S = GV.style, ev = list.slice().sort(function (a, b) { return a[0] - b[0]; }), out = [];
     ev.forEach(function (e, i) { if (e[1] < 0) return; out.push({ st: e[0], len: (i + 1 < ev.length ? ev[i + 1][0] : S.steps) - e[0], m: ownMidi(e[1], key) }); });
@@ -4610,36 +4610,105 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function meSec() { return sfSelSec(); }
   function jmSave() { prefs.jm = { bars: JM.bars, own: JM.own }; savePrefs(); }
   /* One melody tap-grid, used twice: for a song section in the Builder and for the loop in the Jam tab. */
+  /* Melody grid options and saved melodies. Notes outside the key are stored as 1100 + half steps from the key's home note, so they still move with the key. */
+  var MEO_DEF = { view: "key", ctr: 3, acc: "auto", lab: "names", oct: 0, chord: true, tap: true };
+  function meoGet(pre) { prefs.meo = prefs.meo || {}; var o = prefs.meo[pre] || {}; for (var k in MEO_DEF) if (o[k] === undefined) o[k] = MEO_DEF[k]; prefs.meo[pre] = o; return o; }
+  var ROMAN_UP = ["I", "II", "III", "IV", "V", "VI", "VII"];
+  function meRows(O, key, chAt) {
+    var sc = SCALE[GV.prog.mode === "min" ? "minor" : "major"], ton = ownTonic(key), rows = [], k, oc = 12 * O.oct;
+    function stored(m) { var s2 = m - ton; if (s2 >= 0 && sc.indexOf(s2 % 12) >= 0) return sc.indexOf(s2 % 12) + 7 * Math.floor(s2 / 12); return 1100 + s2; }
+    function numIn(m, base, bsc) { var r = ((m - base) % 12 + 12) % 12, i2 = bsc.indexOf(r); if (i2 >= 0) return String(i2 + 1); var lo = bsc.indexOf(r - 1); if (lo >= 0) return "♯" + (lo + 1); var hi = bsc.indexOf(r + 1); return hi >= 0 ? "♭" + (hi + 1) : "?"; }
+    if (O.view === "all") {
+      for (k = 24; k >= 0; k--) { var ma = ton + k + oc; rows.push({ m: ma, v: stored(ma), num: numIn(ma, ton, sc), strong: k % 12 === 0, inKey: sc.indexOf(k % 12) >= 0 }); }
+    } else if (O.view === "ctr" || O.view === "bar") {
+      var rs, minor;
+      if (O.view === "ctr") { rs = sc[O.ctr]; var third = (sc[(O.ctr + 2) % 7] - rs + 12) % 12; minor = third === 3; }
+      else { var ch = chAt ? chAt(0) : null; rs = ch ? ((ch.root - key) % 12 + 12) % 12 : 0; minor = ch ? ch.tones.indexOf(3) >= 0 && ch.tones.indexOf(4) < 0 : GV.prog.mode === "min"; }
+      var bsc = SCALE[minor ? "minor" : "major"], base = ton + rs; if (rs > 7) base -= 12;
+      rows.center = { pc: (key + rs) % 12, minor: minor };
+      for (k = 14; k >= 0; k--) { var mc = base + bsc[k % 7] + 12 * Math.floor(k / 7) + oc; rows.push({ m: mc, v: stored(mc), num: numIn(mc, base, bsc), strong: k % 7 === 0, inKey: sc.indexOf(((mc - ton) % 12 + 12) % 12) >= 0 }); }
+    } else {
+      for (k = 14; k >= 0; k--) { var mk = ownMidi(k, key) + oc; rows.push({ m: mk, v: O.oct ? 1100 + mk - ton : k, num: String(k % 7 + 1), strong: k % 7 === 0, inKey: true }); }
+    }
+    return rows;
+  }
+  function meNames(O, key, rows) { if (O.acc === "sharps") return SHARP; if (O.acc === "flats") return FLAT; if (rows && rows.center) return FLAT_KEYS[rows.center.minor ? "minor" : "major"].indexOf((rows.center.pc + xp) % 12) >= 0 ? FLAT : SHARP; return FLAT_KEYS[GV.prog.mode === "min" ? "minor" : "major"].indexOf((key + xp) % 12) >= 0 ? FLAT : SHARP; }
+  function esc(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  var SAVED_MEL = (function () { try { return JSON.parse(localStorage.getItem("pm.melodies") || "[]"); } catch (e) { return []; } })();
+  function melStore() { try { localStorage.setItem("pm.melodies", JSON.stringify(SAVED_MEL)); return true; } catch (e) { return false; } }
+  var melLists = [];
+  function melRefresh() { melLists.forEach(function (f) { f(); }); }
   function mkEditor(pre, st, target, changed) {
-    var geo = null;
+    var geo = null, O = meoGet(pre);
+    /* options box and saved-melody box, built here so both editors get the same controls */
+    var KEYN = function () { var nn = meNames(O, GV.key); return nn; };
+    var box = document.createElement("details"); box.className = "builder"; box.style.margin = "8px 0";
+    box.innerHTML = '<summary><b>Melody options</b></summary>' +
+      '<label class="fld">Notes on the grid<select id="' + pre + '-o-view"><option value="key">In the groove’s key</option><option value="ctr">In another chord’s key</option><option value="bar">In the key of each bar’s chord</option><option value="all">All notes, with sharps and flats</option></select></label>' +
+      '<label class="fld" id="' + pre + '-o-ctrw">Which chord to use as the key<select id="' + pre + '-o-ctr"></select></label>' +
+      '<label class="fld">Note names<select id="' + pre + '-o-acc"><option value="auto">Match the key</option><option value="sharps">Sharps (C♯, F♯)</option><option value="flats">Flats (D♭, G♭)</option></select></label>' +
+      '<label class="fld">Labels<select id="' + pre + '-o-lab"><option value="names">Note names</option><option value="nums">Scale numbers</option><option value="both">Both</option></select></label>' +
+      '<label class="fld">Range<select id="' + pre + '-o-oct"><option value="-1">One octave lower</option><option value="0">Middle</option><option value="1">One octave higher</option></select></label>' +
+      '<label class="check"><input type="checkbox" id="' + pre + '-o-chord"> Light up the chord’s notes</label>' +
+      '<label class="check"><input type="checkbox" id="' + pre + '-o-tap"> Play a note when I tap it</label>' +
+      '<p class="small">Scale numbers count from the home note of the rows you are looking at. In "All notes", ♭ and ♯ show notes outside the key. Notes you placed stay put when you switch views; a note that is not in the current rows is listed under the grid.</p>';
+    $(pre + "-grid").parentNode.insertBefore(box, $(pre + "-grid"));
+    var off = document.createElement("p"); off.className = "small"; off.id = pre + "-off"; $(pre + "-grid").parentNode.insertBefore(off, $(pre + "-grid").nextSibling);
+    var sv = document.createElement("div"); sv.className = "builder"; sv.style.margin = "8px 0";
+    sv.innerHTML = '<b>Save my melody</b><div class="row"><input type="text" id="' + pre + '-sv-name" placeholder="Name it (optional)" style="flex:1"><button type="button" class="ghost" id="' + pre + '-sv-go" style="flex:0 0 auto">Save</button></div>' +
+      '<label class="fld">My saved melodies<select id="' + pre + '-sv-list"></select></label>' +
+      '<div class="row"><button type="button" class="ghost" id="' + pre + '-sv-hear">Hear it</button><button type="button" class="ghost" id="' + pre + '-sv-load">Load it here</button></div>' +
+      '<div class="row"><button type="button" class="ghost" id="' + pre + '-sv-ren">Rename</button><button type="button" class="ghost" id="' + pre + '-sv-del">Delete</button><button type="button" class="ghost" id="' + pre + '-sv-copy">Copy as notes</button></div>' +
+      '<p class="small" id="' + pre + '-sv-msg"></p>';
+    var anchor = $(pre + "-sing-msg"); anchor.parentNode.insertBefore(sv, anchor.nextSibling);
+    function ctrFill() {
+      var sc = SCALE[GV.prog.mode === "min" ? "minor" : "major"], nn = meNames(O, GV.key), sel = $(pre + "-o-ctr"), h = "";
+      for (var d = 1; d < 7; d++) { var th = (sc[(d + 2) % 7] - sc[d] + 12) % 12, fi = (sc[(d + 4) % 7] - sc[d] + 12) % 12, r = ROMAN_UP[d]; r = th === 3 ? r.toLowerCase() : r; if (fi === 6) r += "°"; h += '<option value="' + d + '">' + r + " chord: " + nn[(GV.key + sc[d] + xp) % 12] + (fi === 6 ? " dim" : th === 3 ? " minor" : " major") + "</option>"; }
+      sel.innerHTML = h; sel.value = String(O.ctr);
+    }
+    function optSync() { $(pre + "-o-view").value = O.view; $(pre + "-o-acc").value = O.acc; $(pre + "-o-lab").value = O.lab; $(pre + "-o-oct").value = String(O.oct); $(pre + "-o-chord").checked = O.chord; $(pre + "-o-tap").checked = O.tap; $(pre + "-o-ctrw").hidden = O.view !== "ctr"; }
+    ["view", "ctr", "acc", "lab", "oct"].forEach(function (k) { $(pre + "-o-" + k).addEventListener("change", function (e) { O[k] = k === "ctr" || k === "oct" ? +e.target.value : e.target.value; savePrefs(); optSync(); draw(); }); });
+    ["chord", "tap"].forEach(function (k) { $(pre + "-o-" + k).addEventListener("change", function (e) { O[k] = e.target.checked; savePrefs(); draw(); }); });
+    box.addEventListener("toggle", function () { if (box.open) { ctrFill(); optSync(); } });
+    optSync();
+    function chAtFor(T, bar) { return T.chordAt ? function (stp) { try { return T.chordAt(bar, stp); } catch (e) { return null; } } : null; }
     function draw() {
       var T = target(); if (!T) return;
       st.bar = Math.min(st.bar, T.bars - 1);
-      var S = GV.style, c = sbCanvas(pre + "-grid", 20 + (ME_ROWS + 1) * 17), g = c.g, L = 30, cw = (c.W - L - 2) / S.steps, rh = 17, per = S.steps / S.beats, names = flats ? FLAT : SHARP, i, r;
-      var own = T.map(false), list = own && own[st.bar] ? own[st.bar] : [], key = GV.key;
+      var S = GV.style, key = GV.key, chAt = chAtFor(T, st.bar), rows = meRows(O, key, chAt), nR = rows.length, rh = nR > 18 ? 14 : 17, Hc = 20 + (nR + 1) * rh;
+      $(pre + "-grid").style.height = Hc + "px";
+      var c = sbCanvas(pre + "-grid", Hc), g = c.g, L = O.lab === "both" ? 52 : 34, cw = (c.W - L - 2) / S.steps, per = S.steps / S.beats, names = meNames(O, key, rows), i, r;
+      var own = T.map(false), list = own && own[st.bar] ? own[st.bar] : [];
       $(pre + "-bar").textContent = "Bar " + (st.bar + 1) + " of " + T.bars; T.show(!!own);
-      for (i = 0; i < S.steps; i++) { g.fillStyle = i % per === 0 ? TH.text : TH.muted; g.font = (i % per === 0 ? "700 11px" : "9px") + " ui-monospace, monospace"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(i % per === 0 ? String(i / per + 1) : "·", L + i * cw + cw / 2, 9); }
-      for (r = 0; r <= ME_ROWS; r++) {
-        var deg = ME_ROWS - 1 - r, rest = r === ME_ROWS, y0 = 20 + r * rh, m = rest ? 0 : ownMidi(deg, key);
-        g.fillStyle = TH.muted; g.font = (deg % 7 === 0 && !rest ? "700 " : "") + "10px ui-monospace, monospace"; g.textAlign = "right"; if (!rest && deg % 7 === 0) g.fillStyle = TH.text;
-        g.fillText(rest ? "rest" : names[((m + xp) % 12 + 12) % 12] + (Math.floor((m + xp) / 12) - 1), L - 4, y0 + rh / 2);
+      for (i = 0; i < S.steps; i++) { g.fillStyle = i % per === 0 ? TH.text : TH.muted; g.font = (i % per === 0 ? "700 11px" : "9px") + " ui-monospace, monospace"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(i % per === 0 ? String(i / per + 1) : "·", L + (i + 0.5) * cw, 10); }
+      var chs = []; if (O.chord && chAt) for (i = 0; i < S.steps; i++) { var chh = chAt(i); chs.push(chh ? chh.tones.map(function (x) { return (chh.root + x) % 12; }) : null); }
+      var shown = {};
+      for (r = 0; r <= nR; r++) {
+        var rest = r === nR, R = rest ? null : rows[r], y0 = 20 + r * rh, m = rest ? 0 : R.m;
+        var nm2 = rest ? "" : names[((m + xp) % 12 + 12) % 12] + (Math.floor((m + xp) / 12) - 1), lab = rest ? "rest" : O.lab === "nums" ? R.num : O.lab === "both" ? nm2 + " " + R.num : nm2;
+        g.font = (R && R.strong ? "700 " : "") + (rh < 17 ? "9px" : "10px") + " ui-monospace, monospace"; g.textAlign = "right"; g.fillStyle = R && R.strong ? TH.text : R && !R.inKey ? WARN : TH.muted;
+        g.fillText(lab, L - 4, y0 + rh / 2);
         for (i = 0; i < S.steps; i++) {
-          var on = list.some(function (e) { return e[0] === i && e[1] === (rest ? -1 : deg); });
-          g.globalAlpha = on ? 1 : (deg % 7 === 0 && !rest ? 0.22 : 0.1); g.fillStyle = on ? (rest ? TH.muted : TH.note) : TH.text;
+          var on = list.some(function (e) { if (e[0] !== i) return false; if (rest) return e[1] === -1; return e[1] >= 0 && ownMidi(e[1], key) === m; });
+          if (on && !rest) shown[i] = true;
+          var lit = !rest && chs[i] && chs[i].indexOf(((m % 12) + 12) % 12) >= 0;
+          g.globalAlpha = on ? 1 : lit ? 0.3 : (R && R.strong ? 0.22 : R && !R.inKey ? 0.05 : 0.1); g.fillStyle = on ? (rest ? TH.muted : TH.note) : lit ? GOOD : TH.text;
           g.fillRect(L + i * cw + 1, y0 + 1, cw - 2, rh - 2);
         }
         g.globalAlpha = 1;
       }
-      geo = { L: L, cw: cw, rh: rh };
+      var hidden = list.filter(function (e) { return e[1] >= 0 && !shown[e[0]]; });
+      $(pre + "-off").textContent = hidden.length ? "Not shown in these rows: " + hidden.map(function (e) { var mm = ownMidi(e[1], key); return names[((mm + xp) % 12 + 12) % 12] + (Math.floor((mm + xp) / 12) - 1) + " on step " + (e[0] + 1); }).join(", ") + ". Switch to All notes or change the range to see them." : "";
+      geo = { L: L, cw: cw, rh: rh, rows: rows };
     }
     $(pre + "-grid").addEventListener("click", function (e) {
       var T = target(); if (!T || !geo) return;
-      var r = e.currentTarget.getBoundingClientRect(), col = Math.floor((e.clientX - r.left - geo.L) / geo.cw), row = Math.floor((e.clientY - r.top - 20) / geo.rh);
-      if (col < 0 || col >= GV.style.steps || row < 0 || row > ME_ROWS) return;
-      var deg = row === ME_ROWS ? -1 : ME_ROWS - 1 - row, own = T.map(true);
-      var list = own[st.bar] || (own[st.bar] = []), had = list.filter(function (q) { return q[0] === col && q[1] === deg; }).length;
+      var r = e.currentTarget.getBoundingClientRect(), col = Math.floor((e.clientX - r.left - geo.L) / geo.cw), row = Math.floor((e.clientY - r.top - 20) / geo.rh), nR = geo.rows.length;
+      if (col < 0 || col >= GV.style.steps || row < 0 || row > nR) return;
+      var rest = row === nR, R = rest ? null : geo.rows[row], deg = rest ? -1 : R.v, own = T.map(true), key = GV.key;
+      var list = own[st.bar] || (own[st.bar] = []), had = list.filter(function (q) { return q[0] === col && (rest ? q[1] === -1 : q[1] >= 0 && ownMidi(q[1], key) === R.m); }).length;
       own[st.bar] = list = list.filter(function (q) { return q[0] !== col; });
-      if (!had) { list.push([col, deg]); if (deg >= 0) ensureContext().then(function () { return loadSamples("piano"); }).then(function () { synth(ac, busOf("chBus", 0.3), "piano", ownMidi(deg, GV.key), ac.currentTime + 0.02, 0.5); }); }
+      if (!had) { list.push([col, deg]); if (!rest && O.tap) { var mm = R.m; ensureContext().then(function () { return loadSamples("piano"); }).then(function () { synth(ac, busOf("chBus", 0.3), "piano", mm, ac.currentTime + 0.02, 0.5); }); } }
       changed(); draw();
     });
     $(pre + "-prev").addEventListener("click", function () { st.bar = Math.max(0, st.bar - 1); draw(); });
@@ -4673,7 +4742,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
             var a0 = tRec + (bb * S.steps + s2) * sd, fr = frames.filter(function (f) { return f.t >= a0 && f.t < a0 + sd; }), ok = fr.filter(function (f) { return f.m != null; }).map(function (f) { return f.m; }).sort(function (a, b) { return a - b; }), deg = -1;
             if (fr.length && ok.length >= fr.length * 0.4) {
               var m = ok[Math.floor(ok.length / 2)], best = 99; while (m < tonic - 1) m += 12; while (m > tonic + 25) m -= 12;
-              for (var d = 0; d < ME_ROWS; d++) { var dd = Math.abs(ownMidi(d, GV.key) - m); if (dd < best) { best = dd; deg = d; } }
+              var srows = meRows(O, GV.key, chAtFor(T, st.bar + bb)); m = Math.round(m); var lo2 = srows[srows.length - 1].m, hi2 = srows[0].m; while (m < lo2 - 1) m += 12; while (m > hi2 + 1) m -= 12;
+              srows.forEach(function (R2) { var dd = Math.abs(R2.m - m); if (dd < best) { best = dd; deg = R2.v; } });
             }
             if (deg !== prev && !(deg === -1 && prev === -2)) list.push([s2, deg]);
             prev = deg;
@@ -4685,6 +4755,57 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         else msg.textContent = "I did not hear a clear note. Try again a little louder.";
       }, 20);
     }
+    function melFill() {
+      var sel = $(pre + "-sv-list"), cur = sel.value;
+      sel.innerHTML = SAVED_MEL.length ? SAVED_MEL.map(function (m, i) { return '<option value="' + i + '">' + esc(m.name) + " · " + m.keyName + " · " + m.bars + (m.bars > 1 ? " bars" : " bar") + " · " + m.date + "</option>"; }).reverse().join("") : '<option value="">No saved melodies yet</option>';
+      if (cur && SAVED_MEL[+cur]) sel.value = cur;
+      $(pre + "-sv-msg").textContent = SAVED_MEL.length ? "You have " + SAVED_MEL.length + " saved melod" + (SAVED_MEL.length > 1 ? "ies" : "y") + ". They stay on this device." : "Saved melodies stay on this device.";
+    }
+    melLists.push(melFill); melFill();
+    function picked() { var v = $(pre + "-sv-list").value; return v === "" ? null : SAVED_MEL[+v]; }
+    function fitSteps(list, from) { var to = GV.style.steps; if (!from || from === to) return list.map(function (q) { return q.slice(); }); var seen = {}; return list.map(function (q) { return [Math.min(to - 1, Math.round(q[0] * to / from)), q[1]]; }).filter(function (q) { if (seen[q[0]]) return false; seen[q[0]] = 1; return true; }); }
+    $(pre + "-sv-go").addEventListener("click", function () {
+      var T = target(), own = T && T.map(false), msg = $(pre + "-sv-msg");
+      var has = own && Object.keys(own).some(function (k) { return own[k] && own[k].some(function (q) { return q[1] >= 0; }); });
+      if (!has) { msg.textContent = "Write some notes on the grid first."; return; }
+      var copy = {}; for (var b = 0; b < T.bars; b++) if (own[b]) copy[b] = own[b].map(function (q) { return q.slice(); });
+      var nn = FLAT_KEYS[GV.prog.mode === "min" ? "minor" : "major"].indexOf((GV.key + xp) % 12) >= 0 ? FLAT : SHARP;
+      var d = new Date(), name = $(pre + "-sv-name").value.trim() || ("Melody " + (SAVED_MEL.length + 1));
+      SAVED_MEL.push({ name: name, date: d.toLocaleDateString(), key: GV.key, keyName: nn[(GV.key + xp) % 12] + (GV.prog.mode === "min" ? " minor" : " major"), mode: GV.prog.mode, steps: GV.style.steps, bpm: GV.bpm, style: GV.style.name || "", from: T.label ? T.label() : "", bars: T.bars, own: copy });
+      if (!melStore()) { SAVED_MEL.pop(); msg.textContent = "Could not save: this device's storage is full."; return; }
+      $(pre + "-sv-name").value = ""; melRefresh(); $(pre + "-sv-list").value = String(SAVED_MEL.length - 1);
+      msg.textContent = "Saved \u201c" + name + "\u201d. You have " + SAVED_MEL.length + " saved melod" + (SAVED_MEL.length > 1 ? "ies" : "y") + ".";
+    });
+    $(pre + "-sv-hear").addEventListener("click", function () {
+      var M = picked(); if (!M) return;
+      ensureContext().then(gvLoadMel).then(function () {
+        var t = ac.currentTime + 0.08, bd = gvStepDur() * GV.style.steps;
+        for (var b = 0; b < M.bars; b++) { if (M.own[b]) gvOwnPlay({ own: fitSteps(M.own[b], M.steps), key: M.key }, t + b * bd); }
+      });
+      $(pre + "-sv-msg").textContent = "Playing \u201c" + M.name + "\u201d in " + M.keyName + " at the current tempo.";
+    });
+    $(pre + "-sv-load").addEventListener("click", function () {
+      var M = picked(), T = target(); if (!M || !T) return;
+      var own = {}; for (var b = 0; b < M.bars; b++) if (M.own[b]) own[b] = fitSteps(M.own[b], M.steps);
+      var n = T.load(own, M.bars); st.bar = 0; changed(); draw();
+      $(pre + "-sv-msg").textContent = "Loaded \u201c" + M.name + "\u201d" + (n < M.bars ? " (first " + n + " of " + M.bars + " bars fit here)" : "") + ". It was saved in " + M.keyName + "; it plays in the current key.";
+    });
+    $(pre + "-sv-ren").addEventListener("click", function () {
+      var M = picked(); if (!M) return; var nm3 = $(pre + "-sv-name").value.trim();
+      if (!nm3) { $(pre + "-sv-msg").textContent = "Type the new name in the box above, then tap Rename."; return; }
+      M.name = nm3; melStore(); $(pre + "-sv-name").value = ""; melRefresh();
+    });
+    $(pre + "-sv-del").addEventListener("click", function () {
+      var v = $(pre + "-sv-list").value; if (v === "") return; var sv2 = $(pre + "-sv-del");
+      if (sv2.dataset.sure !== v) { sv2.dataset.sure = v; sv2.textContent = "Tap again to delete"; setTimeout(function () { sv2.dataset.sure = ""; sv2.textContent = "Delete"; }, 3000); return; }
+      sv2.dataset.sure = ""; sv2.textContent = "Delete"; var gone = SAVED_MEL.splice(+v, 1)[0]; melStore(); melRefresh(); $(pre + "-sv-msg").textContent = "Deleted \u201c" + gone.name + "\u201d.";
+    });
+    $(pre + "-sv-copy").addEventListener("click", function () {
+      var M = picked(); if (!M) return; var nn = M.keyName.indexOf("♭") >= 0 || /^F /.test(M.keyName) ? FLAT : SHARP, lines = [M.name + " (" + M.keyName + ", " + M.date + ")"];
+      for (var b = 0; b < M.bars; b++) { var ns = ownNotes(fitSteps(M.own[b] || [], M.steps), M.key).map(function (q) { return nn[(q.m + xp) % 12]; }); lines.push("Bar " + (b + 1) + ": " + (ns.join(" ") || "rest")); }
+      var txt = lines.join("\n"), done = function () { $(pre + "-sv-msg").textContent = "Copied the note names."; };
+      if (navigator.clipboard) navigator.clipboard.writeText(txt).then(done, function () { $(pre + "-sv-msg").textContent = txt; }); else $(pre + "-sv-msg").textContent = txt;
+    });
     $(pre + "-sing").addEventListener("click", function () { singIn(1); });
     $(pre + "-singall").addEventListener("click", function () { singIn(8); });
     return { draw: draw };
@@ -4692,12 +4813,18 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   var ED_B = mkEditor("me", ME, function () {
     var x = meSec(); if (!x) return null;
     return { bars: x.bars, map: function (make) { if (!x.own && make) x.own = {}; return x.own; }, drop: function () { x.own = null; },
+      label: function () { return "Builder: " + sfNames()[Math.min(SF.sel || 0, SF.secs.length - 1)]; },
+      load: function (own, nb) { x.own = {}; var n = Math.min(nb, x.bars); for (var b = 0; b < n; b++) if (own[b]) x.own[b] = own[b]; return n; },
+      chordAt: function (bar, stp) { var si = Math.min(SF.sel || 0, SF.secs.length - 1), ps = gvBuildPlan().filter(function (p) { return p.si === si; }), P = ps[bar]; return P ? chordInfo(P, stp).ch : null; },
       show: function (has) { $("me-sec").textContent = sfNames()[Math.min(SF.sel || 0, SF.secs.length - 1)]; $("me-state").textContent = has ? "This section plays your melody." : "This section uses the preset melody. Tap the grid to write your own."; } };
   }, function () { if (GV.on && GV.song) gvStop(); sbDraw(); });
   function meDraw() { if (mode === "build") ED_B.draw(); }
   var JMS = { bar: 0 };
   var ED_J = mkEditor("jm", JMS, function () {
     return { bars: JM.bars, map: function () { return JM.own; }, drop: function () { JM.own = {}; },
+      label: function () { return "Jam: " + (GV.style.name || "groove"); },
+      load: function (own, nb) { var ok = [1, 2, 4, 8].filter(function (v) { return v >= nb; })[0] || 8; JM.bars = ok; $("jm-len").value = String(ok); JM.own = own; jmSave(); return Math.min(nb, 8); },
+      chordAt: function (bar, stp) { return chordInfo({ bars: GV.prog.bars, bi: bar, key: GV.key }, stp).ch; },
       show: function () { var n = Object.keys(JM.own).filter(function (k) { return JM.own[k] && JM.own[k].length; }).length; $("jm-state").textContent = GV.mel === "mine" ? "The groove plays your melody, looping every " + JM.bars + " bar" + (JM.bars > 1 ? "s" : "") + "." : (n ? "Choose “My own melody” in the Melody section menu to hear it with the groove." : "Tap the grid to write a melody. It loops with the groove."); } };
   }, function () { jmSave(); if ($("gv-mel").value !== "mine") { $("gv-mel").value = "mine"; gvApply(""); } });
   function jmDraw() { if (mode === "jam") ED_J.draw(); }
