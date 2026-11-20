@@ -512,6 +512,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     <label class="fld">Search grooves (try: slow, dance, waltz, no drums, piano, 90)<input type="text" id="gv-q" autocomplete="off" autocapitalize="off" placeholder="Search"></label>
     <p class="small" id="gv-q-msg"></p>
     <div class="row">
+      <label class="fld">Artist or style<select id="gv-art"></select></label>
+      <label class="fld" id="gv-era-w">Album or era<select id="gv-era"></select></label>
+    </div>
+    <div class="row">
       <label class="fld">Groove<select id="gv-style"></select></label>
       <label class="fld">Chords<select id="gv-prog"></select></label>
     </div>
@@ -4160,9 +4164,70 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   });
   [G_ON].forEach(function (g) { FAM_OF[g] = "bal"; }); [DL1, DL2, DL3].forEach(function (g) { FAM_OF[g] = "epop"; }); [JG1, JG2, JG3, JG4, JG5].forEach(function (g) { FAM_OF[g] = "jg"; });
   SHELVES.splice(5, 0, ["jgall", "Juan Gabriel: overview and eras", [G_JG, JG1, JG2, JG3, JG4, JG5]]);
+  /* ---------- Camilo Sesto style by album: his first five solo albums. Original grooves in the general feel of each record, not transcriptions. ---------- */
+  var CS1 = "Camilo Sesto style: Algo de mí (1971)", CS2 = "Camilo Sesto style: Sólo un hombre (1972)", CS3 = "Camilo Sesto style: Algo más (1973)", CS4 = "Camilo Sesto style: Camilo (1974)", CS5 = "Camilo Sesto style: Amor libre (1975)";
+  [CS1, CS2, CS3, CS4, CS5].forEach(function (g) { G_NOTE[g] = " In the feel of that album, not a copy of a song."; FAM_OF[g] = "cs"; });
+  var SHUF = [[0, "r"], [3, "5"], [6, "r"], [9, "5"]], WALK8 = [[0, "r"], [2, "3"], [4, "5"], [6, "6"]];
+  /* Algo de mí: early singles era, pop with a beat-group feel, strings and a young voice */
+  G(CS1, "Sixties beat-pop", 120, { steps: 8, k: [0, 4], s: [2, 6], h: ALL8, b: WALK8, c: each(OFF8, 1), cv: "s:elec", c2: P8, cv2: "s:organ", bv: EB, prog: "50s", mel: "answer", by: "elec" }, "A bright beat-group groove: walking bass, guitar on the off-beats and an organ wash.");
+  G(CS1, "Teen ballad with strings", 72, { steps: 8, k: [0, 5], s2: [2, 6], h: ALL8, b: BAL8, c: A8, arp: true, cv: "s:piano", c2: P8, cv2: "strings", bv: EB, prog: "50s", mel: "sustain", by: "strings" }, "Piano arpeggios and soft strings under a tender first-love melody.");
+  G(CS1, "Summer-song pop", 112, { steps: 8, k: [0, 3, 4], s: [2, 6], h: ALL8, b: MID8, c: STRUM8, cv: "s:guitar", c2: P8, cv2: "strings", bv: EB, prog: "pop", mel: "step", by: "flute" }, "Strummed guitar and a flute hook, the sunny radio sound of the early seventies.");
+  G(CS1, "Gentle shuffle", 96, { steps: 12, k: [0, 6], s: [3, 9], h: [0, 2, 3, 5, 6, 8, 9, 11], b: SHUF, c: [[0, 2], [3, 2], [6, 2], [9, 2]], cv: "s:piano", c2: [[0, 12]], cv2: "strings", bv: EB, prog: "1-4-5", mel: "answer", by: "strings" }, "A swinging shuffle with piano chords and a string answer.");
+  G(CS1, "Folk-pop guitar", 100, { steps: 8, k: [0, 4], s2: [2, 6], b: [[0, "r"], [4, "5"]], c: STRUM8, cv: "s:guitar", c2: P8, cv2: "s:harp", bv: EB, prog: "pop", mel: "step", by: "flute" }, "Acoustic strumming with harp-like picking, light and singable.");
+  G(CS1, "Waltz serenade (3/4)", 100, { beats: 3, steps: 6, k: [0], s2: [2, 4], b: B1, c: A6, arp: true, cv: "s:nylon", c2: [[0, 6]], cv2: "strings", bv: EB, prog: "ranch", mel: "sustain", by: "strings" }, "Nylon guitar in three with strings, like a serenade.");
+  G(CS1, "Minor-key lament", 68, { steps: 8, k: [0], s2: [4], h: [0, 2, 4, 6], b: B1, c: A8, arp: true, cv: "s:piano", c2: P8, cv2: "strings", bv: EB, prog: "m-sad", mel: "sustain", by: "strings" }, "Bare piano and strings in a minor key.");
+  G(CS1, "Organ soul ballad", 76, { steps: 12, k: [0, 6], s: [3, 9], h: ALL12, b: TRI_B, c: [[0, 12]], cv: "s:organ", c2: A12, cv2: "s:piano", bv: EB, prog: "50s", mel: "sustain", by: "elec" }, "Held organ chords over slow triplet piano, a little gospel in it.");
+  G(CS1, "Up-tempo twist", 132, { steps: 8, k: [0, 4], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: each(OFF8, 1), cv: "s:piano", bv: EB, prog: "1-4-5", mel: "answer", by: "tenorsax" }, "Pounding piano and a sax answering each line.");
+  G(CS1, "Chorus with backing vocals feel", 88, { steps: 8, k: [0, 5], s: [2, 6], h: ALL8, b: BAL8, c: H8, cv: "s:piano", c2: P8, cv2: "pad", bv: EB, prog: "1376", mel: "sustain", by: "strings" }, "Half-note piano with a soft pad standing in for the backing choir.");
+  /* Sólo un hombre: produced in London, orchestral pop with a rock edge */
+  G(CS2, "London orchestral pop", 96, { steps: 8, k: [0, 4], s: [2, 6], h: ALL8, b: MID8, c: Q8, cv: "s:piano", c2: P8, cv2: "strings", bv: EB, prog: "1625", mel: "fanfare", by: "trumpets" }, "Piano on every beat, strings and a trumpet fanfare, big studio pop.");
+  G(CS2, "Rock ballad with fuzz guitar", 80, { steps: 8, k: [0, 3, 4], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: P8, cv: "power", c2: A8, cv2: "s:piano", bv: EB, prog: "m-epic", mel: "sustain", by: "elec" }, "A driving minor ballad with distorted guitar under the piano.");
+  G(CS2, "Soft-rock love song", 76, { steps: 8, k: [0, 5], s: [2, 6], h: ALL8, b: BOL8, c: H8, cv: "s:rhodes", c2: P8, cv2: "strings", bv: EB, prog: "1364", mel: "step", by: "flute" }, "Electric piano, strings and a flute, warm and unhurried.");
+  G(CS2, "Brass-band pop march", 118, { steps: 8, k: [0, 4], s: [2, 4, 6], h: ALL8, b: [[0, "r"], [4, "5"]], c: each([0, 4], 2), cv: "brass", c2: P8, cv2: "strings", bv: EB, prog: "1-4-5", mel: "fanfare", by: "brass" }, "A proud march feel with brass stabs and strings.");
+  G(CS2, "Six-eight strings ballad", 58, { steps: 12, k: [0, 6], s2: [3, 9], h: ALL12, b: TRI_B, c: A12, arp: true, cv: "s:piano", c2: [[0, 12]], cv2: "strings", bv: EB, prog: "1376", mel: "sustain", by: "strings" }, "Slow triplets with strings that swell at the end of each line.");
+  G(CS2, "Wild-guitar pop-rock", 126, { steps: 8, k: [0, 3, 4], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: STRUM8, cv: "s:elec", c2: P8, cv2: "s:organ", bv: EB, prog: "m1-4-5", mel: "answer", by: "elec" }, "Fast and urgent, guitar strums and lead guitar answers over organ.");
+  G(CS2, "Harpsichord-style chamber pop", 88, { steps: 8, k: [0, 4], s2: [2, 6], b: [[0, "r"], [4, "5"]], c: A8, arp: true, cv: "s:harp", c2: P8, cv2: "strings", bv: EB, prog: "canon", mel: "step", by: "flute" }, "Plucked arpeggios like a harpsichord, strings and flute.");
+  G(CS2, "Quiet confession", 64, { steps: 8, k: [0], s2: [4], h: [0, 2, 4, 6], b: B1, c: A8, arp: true, cv: "s:nylon", c2: P8, cv2: "strings", bv: EB, prog: "m-rom", mel: "sustain", by: "strings" }, "Nylon guitar alone with a little string pad, very intimate.");
+  G(CS2, "Big minor chorus", 74, { steps: 8, k: [0, 3, 4, 7], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: A8, arp: true, cv: "s:piano", c2: P8, cv2: "strings", bv: EB, prog: "m-v", mel: "sustain", by: "strings" }, "Everything up for the chorus, in a minor key.");
+  G(CS2, "Pop bolero", 86, { steps: 8, p: ALL8, pv: "shake", s2: [3, 6], b: BOL8, c: A8, arp: true, cv: "s:piano", c2: P8, cv2: "strings", bv: EB, prog: "bolero", mel: "answer", by: "strings" }, "A bolero pulse with piano and strings, pop style.");
+  /* Algo más: festival ballads, folk colors and singer-songwriter moments */
+  G(CS3, "Festival ballad", 70, { steps: 8, k: [0, 5], s2: [2, 6], h: ALL8, b: BAL8, c: A8, arp: true, cv: "s:piano", c2: P8, cv2: "strings", bv: EB, prog: "1376", mel: "sustain", by: "strings" }, "The song-contest ballad: piano, strings and a long build.");
+  G(CS3, "Latin American folk song", 92, { beats: 3, steps: 6, k: [0], s2: [3], b: [[0, "r"], [3, "5"]], c: [[0, 1], [2, 1], [3, 1], [5, 1]], cv: "s:nylon", c2: [[0, 6]], cv2: "s:harp", bv: EB, prog: "m-rom", mel: "answer", by: "flute" }, "Nylon guitar and harp in a folk three, with a flute answering.");
+  G(CS3, "Protest-song strum", 104, { steps: 8, k: [0, 4], s2: [2, 6], b: [[0, "r"], [4, "5"]], c: STRUM8, cv: "s:guitar", bv: EB, prog: "m-pop", mel: "step", by: "flute" }, "Just a strong acoustic strum and bass, words first.");
+  G(CS3, "Orchestral pop waltz", 104, { beats: 3, steps: 6, k: [0], s2: [2, 4], b: B1, c: A6, arp: true, cv: "s:piano", c2: [[0, 6]], cv2: "strings", bv: EB, prog: "50s", mel: "sustain", by: "strings" }, "A sweeping piano and strings waltz.");
+  G(CS3, "Mid-tempo heartbreak", 92, { steps: 8, k: [0, 3, 4], s: [2, 6], h: ALL8, b: MID8, c: MIDC, cv: "s:piano", c2: P8, cv2: "strings", bv: EB, prog: "m1-4-5", mel: "step", by: "strings" }, "A steady minor groove with piano pushing every bar.");
+  G(CS3, "Organ and choir hymn", 66, { steps: 8, k: [0], s2: [4], b: B1, c: P8, cv: "s:organ", c2: H8, cv2: "pad", bv: EB, prog: "1-4-5", mel: "sustain", by: "strings" }, "Held organ and a choir-like pad, slow and solemn.");
+  G(CS3, "Bright pop single", 116, { steps: 8, k: [0, 4], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: each(OFF8, 1), cv: "s:elec", c2: P8, cv2: "strings", bv: EB, prog: "pop", mel: "fanfare", by: "trumpets" }, "Guitar chops, strings and a trumpet hook, made for the radio.");
+  G(CS3, "Soft bossa ballad", 84, { steps: 8, p: [0, 3, 6], pv: "rim", b: [[0, "r"], [3, "5"], [4, "5"], [7, "r"]], c: [[0, 2], [3, 1], [5, 2]], cv: "s:nylon", c2: P8, cv2: "strings", bv: EB, prog: "1625", mel: "sustain", by: "flute" }, "A gentle bossa pulse with nylon guitar and flute.");
+  G(CS3, "Dramatic spoken-verse build", 62, { steps: 8, k: [0], s2: [4], b: B1, c: H8, cv: "s:piano", c2: P8, cv2: "strings", bv: EB, prog: "m-epic", mel: "sustain", by: "strings" }, "Sparse piano for a half-spoken verse, waiting for the strings.");
+  G(CS3, "Sing-along chorus", 96, { steps: 8, k: [0, 4], s: [2, 6], h: ALL8, b: MID8, c: STRUM8, cv: "s:guitar", c2: P8, cv2: "strings", bv: EB, prog: "pop", mel: "step", by: "strings" }, "Strummed guitar and strings for a chorus a crowd can join.");
+  /* Camilo: the big breakthrough, dramatic orchestral ballads and pleading high choruses */
+  G(CS4, "Pleading orchestral ballad", 68, { steps: 8, k: [0, 5], s: [2, 6], h: ALL8, b: BAL8, c: A8, arp: true, cv: "s:piano", c2: P8, cv2: "strings", bv: EB, prog: "m-sad", mel: "sustain", by: "strings" }, "Piano arpeggios and soaring strings for a desperate, high chorus.");
+  G(CS4, "Slow-burn crescendo", 72, { steps: 8, k: [0, 3, 4], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: Q8, cv: "s:piano", c2: P8, cv2: "strings", bv: EB, prog: "1376", mel: "sustain", by: "strings" }, "Starts small and keeps climbing, pounding piano at the top.");
+  G(CS4, "Seductive mid-tempo", 90, { steps: 8, k: [0, 3, 4], s: [2, 6], h: ALL8, b: BOL8, c: MIDC, cv: "s:rhodes", c2: P8, cv2: "strings", bv: EB, prog: "m1-4-5", mel: "step", by: "altosax" }, "A slinky minor groove with electric piano and sax.");
+  G(CS4, "Triplet power ballad", 60, { steps: 12, k: [0, 6], s: [3, 9], h: ALL12, b: TRI_B, c: A12, arp: true, cv: "s:piano", c2: [[0, 12]], cv2: "strings", bv: EB, prog: "50s", mel: "sustain", by: "strings" }, "Rolling piano triplets that build under a long held note.");
+  G(CS4, "Strings and timpani drama", 76, { steps: 8, k: [0, 7], s2: [4], h: [0, 2, 4, 6], b: B1, c: H8, cv: "strings", c2: A8, cv2: "s:piano", bv: UB, prog: "m-epic", mel: "fanfare", by: "brass" }, "Big string chords, deep bass and brass, like a film score.");
+  G(CS4, "Pop-rock with brass", 112, { steps: 8, k: [0, 4], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: each(OFF8, 1), cv: "s:elec", c2: P8, cv2: "brass", bv: EB, prog: "1-4-5", mel: "fanfare", by: "trumpets" }, "Up-tempo with guitar chops and brass hits.");
+  G(CS4, "Tender piano verse", 66, { steps: 8, k: [0], s2: [4], h: [0, 2, 4, 6], b: B1, c: A8, arp: true, cv: "s:piano", bv: EB, prog: "1364", mel: "answer", by: "flute" }, "Just piano and a flute for the quiet verse.");
+  G(CS4, "Minor waltz with strings", 90, { beats: 3, steps: 6, k: [0], s2: [2, 4], b: B1, c: A6, arp: true, cv: "s:piano", c2: [[0, 6]], cv2: "strings", bv: EB, prog: "m-rom", mel: "sustain", by: "strings" }, "A dark waltz, piano and strings in three.");
+  G(CS4, "Disco-tinged ballad", 104, { k: [0, 8], s: BK, h: OFFH, b: OCT16, c: CHOPS, cv: "s:elec", c2: PAD16, cv2: "strings", bv: EB, prog: "m-pop", mel: "sustain", by: "strings" }, "A ballad that starts to dance: octave bass, guitar chops, strings.");
+  G(CS4, "Final chorus key-change feel", 78, { steps: 8, k: [0, 3, 4, 7], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: A8, arp: true, cv: "s:piano", c2: P8, cv2: "strings", bv: EB, prog: "50s", mel: "sustain", by: "both" }, "Full band, strings and trumpets for the last, highest chorus.");
+  /* Amor libre: bolder arrangements, Mediterranean colors and a rock-opera edge */
+  G(CS5, "Mediterranean ballad", 84, { steps: 8, k: [0, 4], s2: [2, 6], b: BOL8, c: A8, arp: true, cv: "s:nylon", c2: P8, cv2: "strings", bv: EB, prog: "m-v", mel: "answer", by: "flute" }, "Picked strings with a Greek-island flavor, minor key and a flute.");
+  G(CS5, "Greek-style dance build", 104, { beats: 2, steps: 8, k: [0, 4], s: [2, 6], b: [[0, "r"], [4, "5"]], c: each(OFF8, 1), cv: "s:nylon", c2: P8, cv2: "strings", bv: EB, prog: "m-v", mel: "step", by: "strings" }, "A two-beat dance with fast picked chords; speed it up as it goes.");
+  G(CS5, "Rock-opera ballad", 88, { steps: 8, k: [0, 3, 4], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: P8, cv: "power", c2: P8, cv2: "s:organ", bv: EB, prog: "m-epic", mel: "sustain", by: "elec" }, "Distorted guitar and organ, theatrical and heavy.");
+  G(CS5, "Free-spirit pop", 108, { steps: 8, k: [0, 4], s: [2, 6], h: ALL8, b: MID8, c: STRUM8, cv: "s:guitar", c2: P8, cv2: "strings", bv: EB, prog: "pop", mel: "step", by: "flute" }, "An open, airy pop groove with strummed guitar and strings.");
+  G(CS5, "Funky seventies groove", 100, { k: [0, 6, 10], s: BK, h: ALL16, b: BSYNC, c: CHOPS, cv: "s:elec", c2: PAD16, cv2: "strings", bv: EB, prog: "m1-4-5", mel: "answer", by: "brass" }, "Syncopated bass, guitar chops and brass answers.");
+  G(CS5, "Strings-only intro ballad", 64, { steps: 8, k: [], b: B1, c: P8, cv: "strings", c2: A8, cv2: "s:harp", bv: UB, prog: "1376", mel: "sustain", by: "strings" }, "No drums: held strings and harp, for an intro or a quiet verse.");
+  G(CS5, "Big romantic anthem", 74, { steps: 8, k: [0, 3, 4, 7], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: A8, arp: true, cv: "s:piano", c2: P8, cv2: "strings", bv: EB, prog: "50s", mel: "sustain", by: "strings" }, "Piano, drums and strings all in for a big love anthem.");
+  G(CS5, "Six-eight confession", 56, { steps: 12, k: [0, 6], s2: [3, 9], h: ALL12, b: TRI_B, c: A12, arp: true, cv: "s:rhodes", c2: [[0, 12]], cv2: "strings", bv: EB, prog: "m-sad", mel: "sustain", by: "strings" }, "Slow triplets on electric piano with strings.");
+  G(CS5, "Pop-rock with organ", 120, { steps: 8, k: [0, 3, 4], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: each(OFF8, 1), cv: "s:organ", c2: P8, cv2: "power", bv: EB, prog: "1-4-5", mel: "answer", by: "elec" }, "Organ chops and guitar, fast and loud.");
+  G(CS5, "Acoustic farewell", 72, { steps: 8, k: [0, 5], s2: [4], b: [[0, "r"], [5, "5"]], c: STRUM8, cv: "s:guitar", c2: P8, cv2: "strings", bv: EB, prog: "m-rom", mel: "sustain", by: "flute" }, "Strummed guitar, strings and flute to close the album.");
+  SHELVES.forEach(function (x) { if (x[0] === "balart" && x[2].indexOf(CS1) < 0) x[2].push(CS1, CS2, CS3, CS4, CS5); });
+  SHELVES.splice(6, 0, ["csall", "Camilo Sesto: overview and first five albums", [G_CS, CS1, CS2, CS3, CS4, CS5]]);
   SHELVES.push(["popdiv", "Olivia Newton-John and Dua Lipa", [G_ON, DL1, DL2, DL3]]);
 
-  var GROUP_ORDER = ["Regional Mexican", "Modern regional Mexican", "Grupera", G_BU, G_TE, "Ballads", "R&B", G_JG, JG1, JG2, JG3, JG4, JG5, G_CS, G_JJ, LO_PH, LO_ME, LO_SP, LO_VI, LO_SI, G_MA, G_NR, G_DP, G_IN, G_AL, G_RH, "Electro-pop", G_ON, DL1, DL2, DL3, "Jazz", "Rock", "Metal", "Basics", "Kick drum"];
+  var GROUP_ORDER = ["Regional Mexican", "Modern regional Mexican", "Grupera", G_BU, G_TE, "Ballads", "R&B", G_JG, JG1, JG2, JG3, JG4, JG5, G_CS, CS1, CS2, CS3, CS4, CS5, G_JJ, LO_PH, LO_ME, LO_SP, LO_VI, LO_SI, G_MA, G_NR, G_DP, G_IN, G_AL, G_RH, "Electro-pop", G_ON, DL1, DL2, DL3, "Jazz", "Rock", "Metal", "Basics", "Kick drum"];
   /* ---------- song form builder ---------- */
   var SEC_NAMES = { intro: "Intro", verse: "Verse", pre: "Pre-chorus", chorus: "Chorus", inter: "Interlude", bridge: "Bridge", solo: "Solo", outro: "Outro" };
   var FORMS = [
@@ -4184,7 +4249,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     sierreno: "sierreno", tumbado: "sierreno", tumbado44: "sierreno", electro: "sierreno", bolero: "bolero", swing: "aaba", jballad: "aaba", bossa: "aaba", blues: "blues", shufflerock: "blues",
     slowjam: "rnb", neosoul: "rnb", rnb90: "rnb" };
   var FORM_GROUP = { "Ballads": "balada", "Grupera": "balada", "Dream and indie pop": "pop", "Electro-pop": "pop", "Lorde style: Pure Heroine era": "pop", "Lorde style: Melodrama era": "pop", "Lorde style: Solar Power era": "pop", "Lorde style: Virgin era": "pop", "The Mar\u00EDas style": "pop", "Not for Radio style": "balada", "Rock": "rock", "Metal": "rock", "Kick drum": "rock", "Basics": "rock" };
-  [G_BU, G_TE, G_JG, G_CS].forEach(function (g) { FORM_GROUP[g] = "balada"; }); FORM_GROUP[G_JJ] = "bolero"; FORM_GROUP[LO_SI] = "pop"; FORM_GROUP[G_AL] = "pop"; FORM_GROUP[G_RH] = "rock"; FORM_GROUP[G_DP] = "pop"; FORM_GROUP[G_IN] = "pop";
+  [G_BU, G_TE, G_JG, G_CS, CS1, CS2, CS3, CS4, CS5].forEach(function (g) { FORM_GROUP[g] = "balada"; }); FORM_GROUP[G_JJ] = "bolero"; FORM_GROUP[LO_SI] = "pop"; FORM_GROUP[G_AL] = "pop"; FORM_GROUP[G_RH] = "rock"; FORM_GROUP[G_DP] = "pop"; FORM_GROUP[G_IN] = "pop";
   var SF = { on: !!(prefs.sf && prefs.sf.on), form: "auto", secs: [], shift: 0, same: false, cur: -1 };
   function sfFormId() { return SF.form !== "auto" ? SF.form : FORM_OF[GV.style.id] || FORM_GROUP[GV.style.group] || "pop"; }
   function sfLoad() {
@@ -4802,7 +4867,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function songApply(name, sg) {
     gvStop();
     if (GV.shelf !== "all") { GV.shelf = "all"; $("gv-shelf").value = "all"; prefs.shelf = "all"; savePrefs(); gvFill(); }
-    $("gv-style").value = sg.gv.style; gvApply("style");
+    gvPick(sg.gv.style); gvApply("style");
     $("gv-scale").value = sg.gv.scale; gvProgFill(sg.gv.scale, sg.gv.prog); $("gv-prog").value = sg.gv.prog; $("gv-key").value = sg.gv.key; $("gv-bpm").value = sg.gv.bpm;
     $("gv-mel").value = sg.gv.mel; $("gv-by").value = sg.gv.by; $("gv-cv").value = sg.gv.cv || "auto"; $("gv-bv").value = sg.gv.bv || "auto"; GV.bline = sg.gv.bl || "auto"; GV.crhy = sg.gv.cr || "auto";
     gvApply("");
@@ -4899,18 +4964,18 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (!prefs.favs) prefs.favs = {};
     if (prefs.favs[GV.style.id]) delete prefs.favs[GV.style.id]; else prefs.favs[GV.style.id] = 1;
     savePrefs(); favShow();
-    if (GV.shelf === "fav") { var before = GV.style.id; gvFill(); if (GV.style.id !== before) { $("gv-style").value = GV.style.id; gvApply("style"); } }
+    if (GV.shelf === "fav") { var before = GV.style.id; gvFill(); if (GV.style.id !== before) { gvPick(GV.style.id); gvApply("style"); } }
   });
   $("gv-rand").addEventListener("click", function () {
-    var opts = $("gv-style").options, pick; if (opts.length < 2) return;
-    do { pick = opts[Math.floor(Math.random() * opts.length)].value; } while (pick === GV.style.id);
-    $("gv-style").value = pick; gvApply("style");
+    var ids = GV.listed || [], pick; if (ids.length < 2) return;
+    do { pick = ids[Math.floor(Math.random() * ids.length)]; } while (pick === GV.style.id);
+    gvPick(pick); gvApply("style");
   });
   $("gv-shelf").value = GV.shelf;
   $("gv-shelf").addEventListener("change", function (e) {
     GV.shelf = e.target.value; prefs.shelf = GV.shelf; savePrefs();
     var before = GV.style.id; gvFill();
-    if (GV.style.id !== before) { $("gv-style").value = GV.style.id; gvApply("style"); }
+    if (GV.style.id !== before) { gvPick(GV.style.id); gvApply("style"); }
   });
   function mixShow() { Object.keys(MIX).forEach(function (k) { $("mix-" + k).value = MIX[k]; $("mix-" + k + "-v").textContent = MIX[k] + "%"; if (GV["tk_" + k]) GV["tk_" + k].gain.value = MIX[k] / 100; }); }
   Object.keys(MIX).forEach(function (k) {
@@ -5240,8 +5305,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   $("gv-q").addEventListener("input", function (e) {
     GV.q = e.target.value; var before = GV.style.id; gvFill();
-    var n = $("gv-style").options.length, hit = STYLES.some(styleMatch); $("gv-q-msg").textContent = GV.q.trim() ? (hit && n < STYLES.length ? n + " groove" + (n > 1 ? "s" : "") + " match in this shelf" : hit ? "" : "Nothing matches. Showing everything in this shelf.") : "";
-    if (GV.style.id !== before) { $("gv-style").value = GV.style.id; gvApply("style"); }
+    var n = (GV.listed || []).length, hit = STYLES.some(styleMatch); $("gv-q-msg").textContent = GV.q.trim() ? (hit && n < STYLES.length ? n + " groove" + (n > 1 ? "s" : "") + " match in this shelf" : hit ? "" : "Nothing matches. Showing everything in this shelf.") : "";
+    if (GV.style.id !== before) { gvPick(GV.style.id); gvApply("style"); }
   });
   $("gv-like").addEventListener("click", function () {
     var S = GV.style, best = null, bs = 1e9, drums = !!(S.k || S.s);
@@ -5253,7 +5318,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (!best) return;
     GV.q = ""; $("gv-q").value = ""; $("gv-q-msg").textContent = "Similar feel, from “" + best.group + "”.";
     if (GV.shelf !== "all") { GV.shelf = "all"; $("gv-shelf").value = "all"; prefs.shelf = "all"; savePrefs(); }
-    gvFill(); $("gv-style").value = best.id; gvApply("style");
+    gvFill(); gvPick(best.id); gvApply("style");
   });
   var taps = [];
   $("gv-tap").addEventListener("click", function () {
@@ -5357,7 +5422,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     var st = styleByName(nm); if (!st) { goTab("jam"); return; }
     goTab("jam"); if (GV.on || GV.ending) gvStop();
     GV.q = ""; $("gv-q").value = ""; if (GV.shelf !== "all") { GV.shelf = "all"; $("gv-shelf").value = "all"; prefs.shelf = "all"; savePrefs(); }
-    gvFill(); $("gv-style").value = st.id; gvApply("style");
+    gvFill(); gvPick(st.id); gvApply("style");
     var pg = progId && PROGS.filter(function (x) { return x.id === progId; })[0];
     if (pg) { $("gv-scale").value = pg.mode; gvProgFill(pg.mode, pg.id); $("gv-prog").value = pg.id; gvApply(""); }
     if (formId) learnPreset(formId); else window.scrollTo(0, 0);
@@ -6395,11 +6460,15 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     function inShelf(st) { return inShelf0(st) && (!anyQ || styleMatch(st)); }
     groups = GROUP_ORDER.filter(function (g) { return STYLES.some(function (st) { return st.group === g && inShelf(st); }); });
     if (!inShelf(GV.style)) GV.style = STYLES.filter(function (st) { return st.group === groups[0] && inShelf(st); })[0] || GV.style;
-    groups.forEach(function (g) {
-      var og = document.createElement("optgroup"); og.label = g;
-      STYLES.forEach(function (s) { if (s.group !== g || !inShelf(s)) return; var o = document.createElement("option"); o.value = s.id; o.textContent = s.name; og.appendChild(o); });
-      ss.appendChild(og);
-    });
+    /* three short lists instead of one long one: artist or style, then album or era, then the grooves in it */
+    GV.listed = STYLES.filter(inShelf).map(function (st) { return st.id; });
+    var arts = [], artN = {}; groups.forEach(function (g) { var a = gvArtOf(g); if (!artN[a]) { artN[a] = 0; arts.push(a); } artN[a]++; });
+    var curArt = gvArtOf(GV.style.group), as = $("gv-art"), es = $("gv-era");
+    as.innerHTML = arts.map(function (a) { return '<option value="' + a.replace(/"/g, "&quot;") + '">' + a + (artN[a] > 1 ? " (" + artN[a] + " albums or eras)" : "") + "</option>"; }).join(""); as.value = curArt;
+    var eras = groups.filter(function (g) { return gvArtOf(g) === curArt; });
+    es.innerHTML = eras.map(function (g) { var n2 = STYLES.filter(function (st) { return st.group === g && inShelf(st); }).length; return '<option value="' + g.replace(/"/g, "&quot;") + '">' + gvEraOf(g) + " · " + n2 + "</option>"; }).join(""); es.value = GV.style.group;
+    $("gv-era-w").hidden = eras.length < 2;
+    STYLES.forEach(function (s) { if (s.group !== GV.style.group || !inShelf(s)) return; var o = document.createElement("option"); o.value = s.id; o.textContent = s.name; ss.appendChild(o); });
     for (var pc = 0; pc < 12; pc++) { var o = document.createElement("option"); o.value = pc; o.textContent = KEY_MAJ[(pc + xp) % 12]; ks.appendChild(o); }
     gvMelFill(GV.style);
     MEL_BY.forEach(function (x) { var o = document.createElement("option"); o.value = x[0]; o.textContent = x[1]; bs.appendChild(o); });
@@ -6409,6 +6478,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     ss.value = GV.style.id; ks.value = GV.key; ms.value = GV.mel; bs.value = GV.by;
     $("gv-scale").value = GV.prog.mode; gvProgFill(GV.prog.mode, GV.prog.id);
   }
+  function gvArtOf(g) { var i = g.indexOf(" style"), c = g.indexOf(":"); if (c > 0 && (i < 0 || c < i)) return g.slice(0, c); if (i > 0) return g.slice(0, i); return g; }
+  function gvEraOf(g) { var c = g.indexOf(": "); return c > 0 ? g.slice(c + 2) : g.indexOf(" style") > 0 ? "Overview (general feel)" : g; }
+  function gvPick(id) { var S = STYLES.filter(function (st) { return st.id === id; })[0]; if (S && S !== GV.style) { GV.style = S; gvFill(); } $("gv-style").value = id; }
+  function gvGoGroup(g) { var shown = GV.listed || []; var S = STYLES.filter(function (st) { return st.group === g && shown.indexOf(st.id) >= 0; })[0]; if (!S) return; GV.style = S; gvFill(); $("gv-style").value = S.id; gvApply("style"); }
   function gvLoadMel() {
     if (!ac) return Promise.resolve();
     var VV = gvVoices(), need = voiceSets(VV.cv).concat(voiceSets(VV.bv), voiceSets(GV.style.cv2));
@@ -6448,6 +6521,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     GV.mel = g0.mel || GV.style.mel || "none"; GV.by = g0.by || GV.style.by || "strings";
   })();
   $("gv-style").addEventListener("change", function () { gvApply("style"); });
+  $("gv-art").addEventListener("change", function (e) { var a = e.target.value, shown = GV.listed || [], S = STYLES.filter(function (st) { return gvArtOf(st.group) === a && shown.indexOf(st.id) >= 0; }); if (!S.length) return; var gs = GROUP_ORDER.filter(function (g) { return S.some(function (st) { return st.group === g; }); }); gvGoGroup(gs[0] || S[0].group); });
+  $("gv-era").addEventListener("change", function (e) { gvGoGroup(e.target.value); });
   $("gv-scale").addEventListener("change", function () { gvApply("scale"); });
   ["gv-prog", "gv-key", "gv-mel", "gv-by", "gv-cv", "gv-bv"].forEach(function (id) { $(id).addEventListener("change", function () { gvApply(""); }); });
   $("gv-bpm").addEventListener("input", function () { gvApply(""); });
