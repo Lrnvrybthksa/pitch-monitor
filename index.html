@@ -356,7 +356,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       </div>
       <div class="row">
         <label class="fld" style="flex:1 1 120px">Show<select id="nm-zoom"><option value="4">4 seconds</option><option value="8" selected>8 seconds</option><option value="16">16 seconds</option><option value="32">32 seconds</option><option value="90">90 seconds</option></select></label>
-        <label class="fld" style="flex:1 1 140px">Play back<select id="nm-play"><option value="both">Recording and notes</option><option value="orig">Recording only</option><option value="notes">Notes only</option></select></label>
+        <label class="fld" style="flex:1 1 140px">Play back<select id="nm-play"><option value="orig">Recording only</option><option value="both">Recording and notes</option><option value="notes">Notes only</option></select></label>
         <label class="fld" style="flex:1 1 140px">Note sound<select id="nm-snd"></select></label>
       </div>
       <b class="small">Clean up</b>
@@ -804,7 +804,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <a class="ghost" id="rv-audio-dl" download="pitch-take.webm" style="display:flex;align-items:center;justify-content:center;text-decoration:none;min-height:46px">Download audio</a>
     </div>
     <audio id="rv-audio" preload="auto" hidden></audio>
-    <button type="button" class="ghost" id="rv-wide">Save a wide picture of the whole take</button>
+    <button type="button" class="ghost" id="rv-wide">Save the whole take as a picture (in rows)</button>
     <label class="fld" id="rv-pos-wrap" hidden><span id="rv-pos-lbl">Scroll through the take</span><input type="range" id="rv-pos" min="0" max="1" step="0.5" value="0"></label>
     <div id="rv-out" hidden style="display:flex;flex-direction:column;gap:10px">
       <div style="overflow-x:auto;border-radius:10px"><img id="rv-img" alt="Picture of the pitch chart" style="width:100%;border-radius:10px;border:2px solid var(--line);display:block"></div>
@@ -2227,13 +2227,16 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   function songPlay() {
     if (!song.buf) return;
+    if (!running) audioMode("playback");
+    try { if (ac && ac.state !== "running") ac.resume(); } catch (e) {}
+    setTimeout(function () { if (song.playing && ac && ac.state !== "running") $("song-status").textContent = "Sound is blocked. Tap Pause, then Play again. On iPhone, also check the silent switch."; }, 800);
     ensureContext().then(function () {
       if (song.offset >= song.dur - 0.1) song.offset = 0;
       var n = ac.createBufferSource(); n.buffer = song.playBuf || song.buf; n.playbackRate.value = song.rate; n.connect(master());
       n.onended = function () { if (song.node === n && song.playing) { song.playing = false; song.offset = 0; $("song-play").textContent = "Play"; } };
       if (!$("nm-box").hidden && NM.play === "notes") { n.disconnect(); }
       n.start(0, song.offset * song.rate); song.node = n; song.startAt = ac.currentTime; song.playing = true;
-      if (!$("nm-box").hidden) nmStartNotes();
+      if (!$("nm-box").hidden) { try { nmStartNotes(); } catch (e) {} }
       $("song-play").textContent = "Pause";
     });
   }
@@ -2307,7 +2310,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     e.target.value = "";
   });
   /* ---------- note map: turn the pitch line of an audio file into note blocks you can see, hear and edit ---------- */
-  var NM = { notes: [], skips: [], view0: 0, spp: 8, sel: -1, tool: "select", undo: [], drag: null, on: true, play: "both", gain: null, name: "", lo: 40, hi: 84, minLen: 0.12, conf: 0 };
+  var NM = { notes: [], skips: [], view0: 0, spp: 8, sel: -1, tool: "select", undo: [], drag: null, on: true, play: "orig", gain: null, sched: null, next: 0, name: "", lo: 40, hi: 84, minLen: 0.12, conf: 0 };
   function nmSegment(track, hop) {
     var out = [], cur = null, gap = 0, i;
     function close() { if (cur) { var ms = cur.ms.slice().sort(function (a, b) { return a - b; }); var med = ms[ms.length >> 1]; out.push({ t0: cur.t0, t1: cur.t1, m: Math.round(med), raw: med }); } cur = null; }
@@ -2441,12 +2444,23 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   $("nm-play").addEventListener("change", function (e) { NM.play = e.target.value; if (song.playing) { songPause(); songPlay(); } });
   /* note playback: notes go through their own gain node so Pause can silence them at once */
   function nmStartNotes() {
+    nmStopNotes();
     if (NM.play === "orig" || !NM.notes.length) return;
     var gnode = ac.createGain(); gnode.gain.value = 0.9; gnode.connect(master()); NM.gain = gnode;
-    var t0 = ac.currentTime + 0.03, off = song.offset, inst = $("nm-snd").value;
-    NM.notes.forEach(function (n) { if (n.t1 <= off || n.t0 - off > 600) return; var st = Math.max(0, n.t0 - off) / song.rate; synth(ac, gnode, inst, n.m + song.shift, t0 + st, Math.max(0.08, (n.t1 - Math.max(n.t0, off)) / song.rate)); });
+    var inst = $("nm-snd").value, base = ac.currentTime + 0.05, off = song.offset, rate = song.rate;
+    NM.next = 0; while (NM.next < NM.notes.length && NM.notes[NM.next].t1 <= off) NM.next++;
+    loadSamples(inst).then(null, function () {});
+    function tick() {
+      if (NM.gain !== gnode) return;
+      var horizon = off + (ac.currentTime - base + 1.2) * rate;
+      while (NM.next < NM.notes.length && NM.notes[NM.next].t0 < horizon) {
+        var n = NM.notes[NM.next++], st = Math.max(n.t0, off);
+        try { synth(ac, gnode, inst, n.m + song.shift, base + (st - off) / rate, Math.max(0.08, (n.t1 - st) / rate)); } catch (e) {}
+      }
+    }
+    tick(); NM.sched = setInterval(tick, 250);
   }
-  function nmStopNotes() { if (NM.gain) { try { NM.gain.gain.setValueAtTime(0, ac.currentTime); NM.gain.disconnect(); } catch (e) {} NM.gain = null; } }
+  function nmStopNotes() { if (NM.sched) { clearInterval(NM.sched); NM.sched = null; } if (NM.gain) { try { NM.gain.gain.setValueAtTime(0, ac.currentTime); NM.gain.disconnect(); } catch (e) {} NM.gain = null; } }
   function nmNoteAt(sec) { if (!NM.notes.length) return null; for (var i = 0; i < NM.notes.length; i++) { var n = NM.notes[i]; if (sec >= n.t0 && sec < n.t1) return n.m; if (n.t0 > sec) break; } return null; }
   function nmShow(file) {
     NM.name = file || ""; NM.skips = []; NM.view0 = 0; NM.sel = -1;
@@ -2612,16 +2626,16 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     c.save(); c.beginPath(); c.rect(gut, 0, w - gut, ph); c.clip();
     var P = rv.pts, a, b;
     c.lineCap = "round";
-    c.strokeStyle = rgba(GOOD, 0.3); c.lineWidth = Math.max(4 * k, rowH * 0.8);
+    c.strokeStyle = rgba(TH.note, 0.35); c.lineWidth = Math.max(4 * k, rowH * 0.8);
     for (i = 1; i < P.length; i++) {
       a = P[i - 1]; b = P[i];
       if (a.r == null || b.r == null || Math.abs(a.r - b.r) > 1 || b.t - a.t > 300 || b.t / 1000 < t0 || a.t / 1000 > t1) continue;
       c.beginPath(); c.moveTo(x(a.t / 1000), y(a.r)); c.lineTo(x(b.t / 1000), y(b.r)); c.stroke();
     }
-    c.lineWidth = 3 * k;
+    c.lineWidth = Math.max(3 * k, Math.min(rowH * 0.45, 7 * k)); c.lineJoin = "round";
     for (i = 1; i < P.length; i++) {
       a = P[i - 1]; b = P[i];
-      if (a.m == null || b.m == null || b.t - a.t > 200 || b.t / 1000 < t0 || a.t / 1000 > t1) continue;
+      if (a.m == null || b.m == null || b.t - a.t > 350 || Math.abs(a.m - b.m) > 4 || b.t / 1000 < t0 || a.t / 1000 > t1) continue;
       c.strokeStyle = b.g ? GOOD : WARN;
       c.beginPath(); c.moveTo(x(a.t / 1000), y(a.m)); c.lineTo(x(b.t / 1000), y(b.m)); c.stroke();
     }
@@ -2658,6 +2672,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (vo < 5) return;
     var vlo = 1e9, vhi = -1e9;
     pts.forEach(function (p) { if (p.m != null) { vlo = Math.min(vlo, p.m); vhi = Math.max(vhi, p.m); } });
+    var allm = []; pts.forEach(function (p) { if (p.m != null) allm.push(p.m); if (p.r != null) allm.push(p.r); }); allm.sort(function (a, b) { return a - b; });
+    if (allm.length > 40) { lo = Math.max(lo, allm[Math.floor(allm.length * 0.02)]); hi = Math.min(hi, allm[Math.floor(allm.length * 0.98)]); }
     lo = Math.floor(lo) - 1; hi = Math.ceil(hi) + 1;
     while (hi - lo < 11) { hi++; if (hi - lo < 11) lo--; }
     takeClear();
@@ -2665,7 +2681,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     $("rv-title").textContent = title;
     $("rv-info").textContent = fmt(rv.dur) + (isTake ? " · " + Math.round(gd / vo * 100) + "% on pitch" : "") + " · " + (Math.round(vlo) === Math.round(vhi) ? noteLabel(vlo) : noteLabel(vlo) + " to " + noteLabel(vhi));
     $("rv-foot").textContent = isTake ? "Tap the chart to jump to a moment. This take and its audio are erased when you start listening again." : "This is the chart of your audio file. It is replaced by your take when you stop listening.";
-    $("rv-zoom").value = "0"; $("rv-pos").value = 0; $("rv-out").hidden = true;
+    $("rv-zoom").value = rv.dur > 45 ? "30" : "0"; $("rv-pos").value = 0; $("rv-out").hidden = true;
     $("review").hidden = false; rvRender();
   }
   function hideReview() { rv = null; takeClear(); $("review").hidden = true; $("rv-out").hidden = true; }
@@ -2676,8 +2692,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   $("rv-wide").addEventListener("click", function () { rvShot(true); });
   function rvShot(wide) {
     if (!rv) return;
+    if (wide) { rvRows(); return; }
     var wn = wide ? [0, rv.dur] : rvWindow(), W = wide ? clamp(Math.round(rv.dur * 44) + 160, 1200, 12000) : 1200, H = 780, cv = document.createElement("canvas"), c = cv.getContext("2d");
-    $("rv-img").style.width = wide ? "auto" : "100%"; $("rv-img").style.height = wide ? "300px" : "auto"; $("rv-img").style.maxWidth = wide ? "none" : "100%";
+    $("rv-img").style.width = "100%"; $("rv-img").style.height = "auto"; $("rv-img").style.maxWidth = "100%";
     cv.width = W; cv.height = H;
     c.fillStyle = TH.bg; c.fillRect(0, 0, W, H);
     c.textBaseline = "alphabetic"; c.fillStyle = TH.text; c.font = "700 34px system-ui, -apple-system, 'Segoe UI', sans-serif";
@@ -2685,6 +2702,32 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     c.fillStyle = TH.muted; c.font = "22px system-ui, -apple-system, 'Segoe UI', sans-serif";
     c.fillText(rv.title + " · " + fmt(wn[0]) + " to " + fmt(wn[1]) + " · " + $("rv-info").textContent.split(" · ").slice(1).join(" · ") + " · " + new Date().toLocaleDateString(), 40, 94);
     c.save(); c.translate(40, 120); drawReview(c, W - 80, H - 150, wn[0], wn[1], 2); c.restore();
+    cv.toBlob(function (blob) {
+      if (!blob) return;
+      if (rvUrl) { try { URL.revokeObjectURL(rvUrl); } catch (e) {} }
+      rvBlob = blob; rvUrl = URL.createObjectURL(blob);
+      $("rv-img").src = rvUrl; $("rv-dl").href = rvUrl; $("rv-out").hidden = false;
+      var canShare = false;
+      try { canShare = !!(navigator.canShare && navigator.canShare({ files: [new File([blob], "pitch-take.png", { type: "image/png" })] })); } catch (e) {}
+      $("rv-share").hidden = !canShare;
+    }, "image/png");
+  }
+  /* The whole take as rows, like sheet music: about 20 seconds per row, stacked down the page. */
+  function rvRows() {
+    var per = rv.dur <= 30 ? Math.max(5, Math.ceil(rv.dur)) : 20, n = Math.ceil(rv.dur / per), W = 1200, notes = rv.hi - rv.lo + 1;
+    var rowH = clamp(notes * 22, 260, 520), gap = 46, top = 130, H = top + n * (rowH + gap) + 40, cv = document.createElement("canvas"), c = cv.getContext("2d");
+    if (H > 30000) { per = Math.ceil(rv.dur / Math.floor((30000 - top) / (rowH + gap))); n = Math.ceil(rv.dur / per); H = top + n * (rowH + gap) + 40; }
+    cv.width = W; cv.height = H;
+    c.fillStyle = TH.bg; c.fillRect(0, 0, W, H);
+    c.textBaseline = "alphabetic"; c.fillStyle = TH.text; c.font = "700 34px system-ui, -apple-system, 'Segoe UI', sans-serif"; c.fillText("Ricardo’s Pitchy App", 40, 58);
+    c.fillStyle = TH.muted; c.font = "22px system-ui, -apple-system, 'Segoe UI', sans-serif";
+    c.fillText(rv.title + " · " + $("rv-info").textContent + " · " + new Date().toLocaleDateString(), 40, 94);
+    for (var r = 0; r < n; r++) {
+      var a = r * per, b = Math.min(rv.dur, a + per), y0 = top + r * (rowH + gap);
+      c.fillStyle = TH.text; c.font = "600 20px system-ui, sans-serif"; c.fillText(fmt(a) + " – " + fmt(b), 40, y0 - 10);
+      c.save(); c.translate(40, y0); drawReview(c, (W - 80) * (b - a) / per, rowH, a, b, 2); c.restore();
+    }
+    $("rv-img").style.width = "100%"; $("rv-img").style.height = "auto"; $("rv-img").style.maxWidth = "100%";
     cv.toBlob(function (blob) {
       if (!blob) return;
       if (rvUrl) { try { URL.revokeObjectURL(rvUrl); } catch (e) {} }
@@ -6165,6 +6208,14 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       var stt = songTime();
       if (document.activeElement !== $("song-seek")) $("song-seek").value = stt;
       $("song-time").textContent = fmt(stt) + " / " + fmt(song.dur);
+      if (song.playing && !$("nm-box").hidden && NM.notes.length) {
+        var nowMs = performance.now();
+        if (!NM.lastDraw || nowMs - NM.lastDraw > 120) {
+          NM.lastDraw = nowMs;
+          if (!NM.drag && (stt < NM.view0 || stt > NM.view0 + NM.spp * 0.85)) NM.view0 = Math.max(0, Math.min(Math.max(0, song.dur - NM.spp), stt - NM.spp * 0.15));
+          try { nmDraw(); } catch (e) {}
+        }
+      }
       if (mode === "song" && song.track && !running) {
         var fmN = song.playing ? trackAt(stt) : null;
         if (fmN != null) {
