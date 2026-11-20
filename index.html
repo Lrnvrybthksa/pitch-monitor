@@ -371,6 +371,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         <button type="button" class="ghost" id="nm-clearskip">Clear skipped parts</button>
       </div>
       <label class="check"><input type="checkbox" id="nm-line" checked> Show the raw pitch line behind the notes</label>
+      <div class="row"><button type="button" class="ghost" id="nm-shot">Save a picture of this view</button><button type="button" class="ghost" id="nm-shotall">Save the whole map as a picture</button></div>
+      <p class="small" id="nm-out-msg">Pictures name every note on the left and on each note, with times, so you can send them to an AI model or a teacher.</p>
+      <div id="nm-out" hidden><img id="nm-img" alt="Picture of the note map" style="width:100%;border-radius:8px;display:block"><div class="row"><a class="ghost" id="nm-dl" download="note-map.png" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Download the picture</a><button type="button" class="ghost" id="nm-share" hidden>Share the picture</button></div></div>
       <label class="check"><input type="checkbox" id="nm-use" checked> Use the note map as the guide when I sing along</label>
       <p class="small">Select: tap a note to hear it, drag empty space to scroll. Add notes: tap where a note should go. Erase area: drag across notes to delete them. Skip a part: drag across a part (like a sax solo) to remove it and keep it out when you rebuild. Your edits save on this device for this file.</p>
     </div>
@@ -2393,6 +2396,57 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function nmCanvas() { var cv = $("nm-cv"), dpr = window.devicePixelRatio || 1, W = cv.clientWidth || 360, H = cv.clientHeight || 280; if (cv.width !== Math.round(W * dpr)) { cv.width = W * dpr; cv.height = H * dpr; } var g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); return { g: g, W: W, H: H }; }
   var NM_L = 34;
   function nmGeo() { var c = nmCanvas(), r = nmRows(), rows = r.hi - r.lo + 1, rh = (c.H - 18) / rows, pps = (c.W - NM_L) / NM.spp; return { c: c, r: r, rh: rh, pps: pps, x: function (t) { return NM_L + (t - NM.view0) * pps; }, t: function (x) { return NM.view0 + (x - NM_L) / pps; }, y: function (m) { return 4 + (r.hi - m) * rh; }, m: function (y) { return Math.round(r.hi - (y - 4) / rh + 0.5 - 0.5); } }; }
+  function nmPaint(g, X, Y, W, H, t0, t1, lo, hi, k) {
+    var rows = hi - lo + 1, L = 46 * k, rh = (H - 16 * k) / rows, pps = (W - L) / (t1 - t0), xOf = function (t) { return X + L + (t - t0) * pps; }, yOf = function (m) { return Y + (hi - m) * rh; };
+    g.fillStyle = TH.chart; g.fillRect(X, Y, W, H);
+    for (var m = lo; m <= hi; m++) {
+      var y = yOf(m), pc = ((m % 12) + 12) % 12, blk = [1, 3, 6, 8, 10].indexOf(pc) >= 0;
+      g.fillStyle = blk ? TH.rowB : TH.rowA; g.fillRect(X + L, y, W - L, rh - 0.5);
+      if (pc === 0) { g.fillStyle = rgba(TH.text, 0.25); g.fillRect(X + L, y + rh - 1, W - L, 1); }
+      g.fillStyle = pc === 0 ? TH.text : TH.muted; g.font = (pc === 0 ? "700 " : "") + Math.max(8, Math.min(12 * k, rh * 0.8)) + "px system-ui, sans-serif"; g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(noteLabel(m), X + L - 4 * k, y + rh / 2);
+    }
+    var span = t1 - t0, step = span > 30 ? 5 : span > 12 ? 2 : 1;
+    g.strokeStyle = TH.grid; g.lineWidth = 1; g.fillStyle = TH.muted; g.font = Math.round(10 * k) + "px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "bottom";
+    for (var s2 = Math.ceil(t0 / step) * step; s2 <= t1 + 0.001; s2 += step) { var xs = xOf(s2); g.beginPath(); g.moveTo(xs, Y); g.lineTo(xs, Y + H - 16 * k); g.stroke(); g.fillText(fmt(s2), xs, Y + H - 1); }
+    NM.skips.forEach(function (sk) { if (sk[1] < t0 || sk[0] > t1) return; g.fillStyle = rgba(TH.text, 0.12); g.fillRect(Math.max(X + L, xOf(sk[0])), Y, Math.min(xOf(sk[1]), X + W) - Math.max(X + L, xOf(sk[0])), H - 16 * k); });
+    if (song.track && $("nm-line").checked) {
+      g.strokeStyle = rgba(TH.text, 0.5); g.lineWidth = 1.5 * k; g.beginPath(); var pen = false;
+      var i0 = Math.max(0, Math.floor(t0 / song.hop)), i1 = Math.min(song.track.length - 1, Math.ceil(t1 / song.hop));
+      for (var i = i0; i <= i1; i++) { var v = song.track[i]; if (v == null || v < lo - 0.5 || v > hi + 0.5) { pen = false; continue; } if (pen && Math.abs(v - song.track[i - 1]) > 1.5) pen = false; var px = xOf(i * song.hop), py = yOf(v) + rh / 2; if (pen) g.lineTo(px, py); else { g.moveTo(px, py); pen = true; } }
+      g.stroke();
+    }
+    NM.notes.forEach(function (n) {
+      if (n.t1 < t0 || n.t0 > t1 || n.m < lo || n.m > hi) return;
+      var x0 = Math.max(X + L, xOf(n.t0)), x1 = Math.min(X + W, xOf(n.t1)), y = yOf(n.m);
+      g.fillStyle = TH.note; g.fillRect(x0, y + 1, Math.max(2, x1 - x0), Math.max(3, rh - 2));
+      g.font = "600 " + Math.max(8, Math.min(12 * k, rh - 2)) + "px system-ui, sans-serif";
+      if (x1 - x0 > g.measureText(noteLabel(n.m)).width + 6) { g.fillStyle = TH.noteInk; g.textAlign = "left"; g.textBaseline = "middle"; g.fillText(noteLabel(n.m), x0 + 3, y + rh / 2); }
+    });
+  }
+  function nmShot(whole) {
+    if (!NM.notes.length) { $("nm-out-msg").textContent = "There are no notes on the map yet."; return; }
+    var dur = song.dur, t0 = whole ? 0 : NM.view0, t1 = whole ? dur : Math.min(dur, NM.view0 + NM.spp), lo = 999, hi = -999;
+    NM.notes.forEach(function (n) { if (n.t1 >= t0 && n.t0 <= t1) { lo = Math.min(lo, n.m); hi = Math.max(hi, n.m); } });
+    if (hi < lo) { var R0 = nmRows(); lo = R0.lo; hi = R0.hi; }
+    lo -= 1; hi += 1; while (hi - lo < 11) { hi++; if (hi - lo < 11) lo--; }
+    var rows = hi - lo + 1, per = whole ? 15 : t1 - t0, n = whole ? Math.max(1, Math.ceil(dur / per)) : 1, W = 1400, k = 1.6, rowH = rows * 20 + 26, gap = 46, top = 120;
+    if (W * (top + n * (rowH + gap)) > 15e6) { n = Math.max(1, Math.floor((15e6 / W - top) / (rowH + gap))); per = Math.ceil(dur / n); n = Math.ceil(dur / per); }
+    var H = top + n * (rowH + gap) + 10, cv = document.createElement("canvas"), g = cv.getContext("2d"); cv.width = W; cv.height = H;
+    g.fillStyle = TH.bg; g.fillRect(0, 0, W, H);
+    g.fillStyle = TH.text; g.font = "700 34px system-ui, sans-serif"; g.textAlign = "left"; g.textBaseline = "alphabetic"; g.fillText("Note map · " + (NM.name || "Recording"), 30, 52);
+    g.fillStyle = TH.muted; g.font = "21px system-ui, sans-serif"; g.fillText(fmt(t0) + "–" + fmt(t1) + " · notes " + noteLabel(lo + 1) + " to " + noteLabel(hi - 1) + " · blocks are the notes, the thin line is the raw pitch", 30, 88);
+    for (var r = 0; r < n; r++) { var a = t0 + r * per, b = Math.min(t1, a + per), y0 = top + r * (rowH + gap); nmPaint(g, 20, y0, (W - 40) * (whole ? (b - a) / per : 1), rowH, a, b, lo, hi, k); }
+    cv.toBlob(function (blob) {
+      if (!blob) { $("nm-out-msg").textContent = "That picture was too big for this device. Try a shorter view."; return; }
+      if (NM.url) { try { URL.revokeObjectURL(NM.url); } catch (e) {} }
+      NM.blob = blob; NM.url = URL.createObjectURL(blob); $("nm-img").src = NM.url; $("nm-dl").href = NM.url; $("nm-out").hidden = false;
+      var ok = false; try { ok = !!(navigator.canShare && navigator.canShare({ files: [new File([blob], "note-map.png", { type: "image/png" })] })); } catch (e) {}
+      $("nm-share").hidden = !ok; $("nm-out-msg").textContent = "Picture ready below. Download or share it.";
+    }, "image/png");
+  }
+  $("nm-shot").addEventListener("click", function () { nmShot(false); });
+  $("nm-shotall").addEventListener("click", function () { nmShot(true); });
+  $("nm-share").addEventListener("click", function () { if (NM.blob) try { navigator.share({ files: [new File([NM.blob], "note-map.png", { type: "image/png" })], title: "Note map" }).catch(function () {}); } catch (e) {} });
   function nmDraw() {
     if ($("nm-box").hidden) return;
     var G = nmGeo(), g = G.c.g, W = G.c.W, H = G.c.H, r = G.r, now = songTime();
@@ -2626,7 +2680,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   var CV_L = 34, CV_TOP = 26;
   /* Paint the map for t0..t1 and notes lo..hi into a box; used for the screen and for pictures. */
   function cvPaint(g, X, Y, W, H, t0, t1, lo, hi, every, k) {
-    var rows = hi - lo + 1, all = CV.hi - CV.lo + 1, L = (every ? 40 : 30) * k, top = 26 * k, rh = (H - top - 14 * k) / rows, pps = (W - L) / (t1 - t0), nn = cvNames(), sh = song.shift || 0, r, t;
+    var rows = hi - lo + 1, all = CV.hi - CV.lo + 1, L = (every ? 40 : 30) * k, top = 36 * k, rh = (H - top - 14 * k) / rows, pps = (W - L) / (t1 - t0), nn = cvNames(), sh = song.shift || 0, r, t;
     g.fillStyle = TH.bg; g.fillRect(X, Y, W, H);
     for (r = 0; r < rows; r++) {
       var m = hi - r, y = Y + top + r * rh, blk = [1, 3, 6, 8, 10].indexOf(m % 12) >= 0;
@@ -2639,14 +2693,19 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       var x = X + L + (f * CV.hop - t0) * pps; if (x + fw > X + W) fw = Math.max(0, X + W - x);
       for (r = 0; r < rows; r++) { var mi = hi - r - CV.lo; if (mi < 0 || mi >= all) continue; var v = CV.V[f * all + mi]; if (v < 0.06) continue; g.fillStyle = rgba(GOOD, Math.min(1, v * 1.1)); g.fillRect(x, Y + top + r * rh, fw, Math.max(1, rh - 0.5)); }
     }
-    CV.segs.forEach(function (sg) {
-      if (sg.t1 < t0 || sg.t0 > t1) return;
-      var xa = Math.max(X + L, X + L + (sg.t0 - t0) * pps), xb = Math.min(X + W, X + L + (sg.t1 - t0) * pps);
-      g.strokeStyle = rgba(TH.text, 0.25); g.lineWidth = 1; g.beginPath(); g.moveTo(xa + 0.5, Y + 2); g.lineTo(xa + 0.5, Y + H - 14 * k); g.stroke();
+    /* chord names on top, with a line down through the map at each change; a long name may run into a following stretch with no name */
+    var vis = CV.segs.filter(function (sg) { return sg.t1 >= t0 && sg.t0 <= t1; }), fs = Math.round(16 * k);
+    g.font = "800 " + fs + "px system-ui, sans-serif"; g.textAlign = "left"; g.textBaseline = "middle";
+    var lastEnd = -1;
+    vis.forEach(function (sg, ix) {
+      var xa = Math.max(X + L, X + L + (sg.t0 - t0) * pps);
+      g.strokeStyle = rgba(TH.text, 0.35); g.lineWidth = 1.5; g.beginPath(); g.moveTo(xa + 0.5, Y + 3); g.lineTo(xa + 0.5, Y + H - 14 * k); g.stroke();
       var lab = cvLabel(sg.ch); if (lab === "—") return;
-      g.fillStyle = TH.text; g.font = "700 " + Math.round(12 * k) + "px system-ui, sans-serif"; g.textAlign = "left"; g.textBaseline = "middle";
-      if (g.measureText(lab).width < xb - xa - 4) g.fillText(lab, xa + 3 * k, Y + top / 2);
-      else if (xb - xa > 14 * k) g.fillText(lab.slice(0, Math.max(1, Math.floor((xb - xa - 4) / (7 * k)))), xa + 3 * k, Y + top / 2);
+      var nx = X + W; for (var q = ix + 1; q < vis.length; q++) if (cvLabel(vis[q].ch) !== "—") { nx = X + L + (vis[q].t0 - t0) * pps; break; }
+      var room = nx - xa - 6 * k, tx = Math.max(xa + 4 * k, lastEnd + 4 * k), wd = g.measureText(lab).width;
+      g.fillStyle = TH.text;
+      if (wd <= nx - tx - 4 * k) { g.fillText(lab, tx, Y + top / 2); lastEnd = tx + wd; }
+      else if (room > fs) { var cut = lab; while (cut.length > 1 && g.measureText(cut + "…").width > room) cut = cut.slice(0, -1); g.fillText(cut + "…", xa + 4 * k, Y + top / 2); lastEnd = xa + room; }
     });
     g.fillStyle = TH.muted; g.font = Math.round(10 * k) + "px ui-monospace, monospace"; g.textAlign = "center"; g.textBaseline = "alphabetic";
     var span = t1 - t0, stp = span > 20 ? 5 : span > 8 ? 2 : 1;
