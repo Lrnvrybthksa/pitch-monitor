@@ -6240,7 +6240,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     }
     ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx2d.clearRect(0, 0, w, h);
-    var now = performance.now(), gl = gliding(), sp = songPath(), nowFrac = gl || sp ? 0.5 : 1, span = gl ? 16 : 12;
+    var now = performance.now(), gl = gliding(), sp = songPath(), nowFrac = 0.5, span = gl ? 16 : 12;
     while (history.length && now - history[0].t > WINDOW + 500) history.shift();
     var ref = modeRef(now);
     var spT = null;
