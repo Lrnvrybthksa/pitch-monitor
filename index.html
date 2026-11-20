@@ -382,7 +382,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <p class="small" id="cv-msg"></p>
       <div id="cv-view" hidden style="display:flex;flex-direction:column;gap:8px">
         <div style="text-align:center"><div id="cv-name" style="font-size:30px;font-weight:800;line-height:1.1">—</div><div class="small" id="cv-notes"></div></div>
+        <label class="fld">Show the notes on<select id="cv-inst"><option value="piano">Piano</option><option value="guitar">Guitar</option><option value="bass">Bass guitar</option></select></label>
         <canvas id="cv-kb" style="width:100%;height:70px;display:block"></canvas>
+        <p class="small" id="cv-inst-msg"></p>
         <button type="button" class="ghost" id="cv-hear">Hear these notes</button>
         <canvas id="cv-cv" style="width:100%;height:320px;border-radius:10px;touch-action:manipulation;cursor:pointer"></canvas>
         <input type="range" id="cv-pos" min="0" max="1" step="0.1" value="0" aria-label="Scroll the note view">
@@ -395,6 +397,11 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
           <label class="fld">Note names<select id="cv-acc"><option value="s">Sharps</option><option value="f">Flats</option></select></label>
         </div>
         <label class="check"><input type="checkbox" id="cv-ghost" checked> Hide likely ghost notes (overtones)</label>
+        <label class="check"><input type="checkbox" id="cv-all" checked> Name every note on the left (taller chart)</label>
+        <div class="row"><button type="button" class="ghost" id="cv-shot">Save a picture of this view</button><button type="button" class="ghost" id="cv-shotall">Save the whole track as a picture</button></div>
+        <button type="button" class="ghost" id="cv-txt">Copy the chord list as text</button>
+        <p class="small" id="cv-out-msg">Pictures name every note and show the chords and times, so you can send them to an AI model or a teacher. The chord list text pairs well with them.</p>
+        <div id="cv-out" hidden><img id="cv-img" alt="Picture of the note and chord map" style="width:100%;border-radius:8px;display:block"><div class="row"><a class="ghost" id="cv-dl" download="notes-and-chords.png" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Download the picture</a><button type="button" class="ghost" id="cv-share" hidden>Share the picture</button></div></div>
         <p class="small">Tap the map to jump there and see the notes at that moment. Brighter means louder. The strip on top shows the chord names. Each note also rings faintly an octave and a fifth higher, so a faint note there is often an overtone, not a real note. Notes below C2 show only in Bass mode, and very low notes blur together and land a moment late. A solo instrument or a stem works best; reverb makes notes ring into the next chord.</p>
       </div>
     </div>
@@ -2316,7 +2323,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
           song.buf = b; song.track = r.track; song.hop = r.hop; song.dur = b.duration; song.offset = 0;
           var pts = [], voicedN = 0;
           r.track.forEach(function (m, i) { pts.push({ t: i * r.hop * 1000 + 40, m: m, g: true, r: null }); if (m != null) voicedN++; });
-          $("song-seek").max = b.duration; $("song-seek").value = 0; $("song-player").hidden = false; $("song-shift").hidden = false; cvReset();
+          $("song-seek").max = b.duration; $("song-seek").value = 0; $("song-player").hidden = false; $("song-shift").hidden = false; cvReset(); CV.name = label || file.name;
           if (!voicedN) { st.textContent = "I couldn't find a clear single voice in that file. If it's an instrument or chords, use Notes and chords below."; song.track = null; }
           else {
             st.textContent = "Charted " + (label || file.name) + ". The note map below shows the notes it found. Tap Play to follow along, and Start listening to sing with headphones.";
@@ -2617,38 +2624,111 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function cvSegAt(t) { var S2 = CV.segs; for (var i = 0; i < S2.length; i++) if (t < S2[i].t1) return S2[i]; return S2[S2.length - 1] || null; }
   function cvCanvas(id) { var cv = $(id), dpr = window.devicePixelRatio || 1, W = cv.clientWidth || 360, H = cv.clientHeight || 300; if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); } var g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); return { g: g, W: W, H: H }; }
   var CV_L = 34, CV_TOP = 26;
-  function cvDraw() {
-    if (!CV.V) return;
-    var c = cvCanvas("cv-cv"), g = c.g, W = c.W, H = c.H, rows = CV.hi - CV.lo + 1, rh = (H - CV_TOP - 14) / rows, pps = (W - CV_L) / CV.spp, nn = cvNames(), sh = song.shift || 0, t, r;
-    var tNow = songTime(), dur = song.dur || CV.nf * CV.hop;
-    $("cv-pos").max = Math.max(0, dur - CV.spp); $("cv-pos").value = CV.view0;
-    g.fillStyle = TH.bg; g.fillRect(0, 0, W, H);
+  /* Paint the map for t0..t1 and notes lo..hi into a box; used for the screen and for pictures. */
+  function cvPaint(g, X, Y, W, H, t0, t1, lo, hi, every, k) {
+    var rows = hi - lo + 1, all = CV.hi - CV.lo + 1, L = (every ? 40 : 30) * k, top = 26 * k, rh = (H - top - 14 * k) / rows, pps = (W - L) / (t1 - t0), nn = cvNames(), sh = song.shift || 0, r, t;
+    g.fillStyle = TH.bg; g.fillRect(X, Y, W, H);
     for (r = 0; r < rows; r++) {
-      var m = CV.hi - r, y = CV_TOP + r * rh, blk = [1, 3, 6, 8, 10].indexOf(m % 12) >= 0;
-      g.fillStyle = blk ? rgba(TH.text, 0.04) : rgba(TH.text, 0.09); g.fillRect(CV_L, y, W - CV_L, rh);
-      if (m % 12 === 0 || rh >= 9) { g.fillStyle = m % 12 === 0 ? TH.text : TH.muted; g.font = (m % 12 === 0 ? "700 " : "") + Math.min(10, Math.max(7, rh)) + "px ui-monospace, monospace"; g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(nn[(m + sh + 120) % 12] + (Math.floor((m + sh) / 12) - 1), CV_L - 3, y + rh / 2); }
+      var m = hi - r, y = Y + top + r * rh, blk = [1, 3, 6, 8, 10].indexOf(m % 12) >= 0;
+      g.fillStyle = blk ? rgba(TH.text, 0.04) : rgba(TH.text, 0.09); g.fillRect(X + L, y, W - L, rh);
+      if (m % 12 === 0) { g.fillStyle = rgba(TH.text, 0.25); g.fillRect(X + L, y + rh - 1, W - L, 1); }
+      if (every || m % 12 === 0) { g.fillStyle = m % 12 === 0 ? TH.text : blk ? TH.muted : rgba(TH.text, 0.8); g.font = (m % 12 === 0 ? "700 " : "") + Math.max(7, Math.min(11 * k, rh * 0.85)) + "px ui-monospace, monospace"; g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(nn[(m + sh + 120) % 12] + (Math.floor((m + sh) / 12) - 1), X + L - 3 * k, y + rh / 2); }
     }
-    var f0 = Math.max(0, Math.floor(CV.view0 / CV.hop)), f1 = Math.min(CV.nf - 1, Math.ceil((CV.view0 + CV.spp) / CV.hop)), fw = Math.max(1, CV.hop * pps + 0.5);
+    var f0 = Math.max(0, Math.floor(t0 / CV.hop)), f1 = Math.min(CV.nf - 1, Math.ceil(t1 / CV.hop)), fw = Math.max(1, CV.hop * pps + 0.5);
     for (var f = f0; f <= f1; f++) {
-      var x = CV_L + (f * CV.hop - CV.view0) * pps;
-      for (r = 0; r < rows; r++) { var v = CV.V[f * rows + (CV.hi - CV.lo - r)]; if (v < 0.06) continue; g.fillStyle = rgba(GOOD, Math.min(1, v * 1.1)); g.fillRect(x, CV_TOP + r * rh, fw, Math.max(1, rh - 0.5)); }
+      var x = X + L + (f * CV.hop - t0) * pps; if (x + fw > X + W) fw = Math.max(0, X + W - x);
+      for (r = 0; r < rows; r++) { var mi = hi - r - CV.lo; if (mi < 0 || mi >= all) continue; var v = CV.V[f * all + mi]; if (v < 0.06) continue; g.fillStyle = rgba(GOOD, Math.min(1, v * 1.1)); g.fillRect(x, Y + top + r * rh, fw, Math.max(1, rh - 0.5)); }
     }
     CV.segs.forEach(function (sg) {
-      if (sg.t1 < CV.view0 || sg.t0 > CV.view0 + CV.spp) return;
-      var xa = Math.max(CV_L, CV_L + (sg.t0 - CV.view0) * pps), xb = Math.min(W, CV_L + (sg.t1 - CV.view0) * pps);
-      g.strokeStyle = rgba(TH.text, 0.25); g.lineWidth = 1; g.beginPath(); g.moveTo(xa + 0.5, 2); g.lineTo(xa + 0.5, H - 14); g.stroke();
+      if (sg.t1 < t0 || sg.t0 > t1) return;
+      var xa = Math.max(X + L, X + L + (sg.t0 - t0) * pps), xb = Math.min(X + W, X + L + (sg.t1 - t0) * pps);
+      g.strokeStyle = rgba(TH.text, 0.25); g.lineWidth = 1; g.beginPath(); g.moveTo(xa + 0.5, Y + 2); g.lineTo(xa + 0.5, Y + H - 14 * k); g.stroke();
       var lab = cvLabel(sg.ch); if (lab === "—") return;
-      g.fillStyle = TH.text; g.font = "700 12px system-ui, sans-serif"; g.textAlign = "left"; g.textBaseline = "middle";
-      if (g.measureText(lab).width < xb - xa - 4) g.fillText(lab, xa + 3, CV_TOP / 2);
-      else if (xb - xa > 14) g.fillText(lab.slice(0, Math.max(1, Math.floor((xb - xa - 4) / 7))), xa + 3, CV_TOP / 2);
+      g.fillStyle = TH.text; g.font = "700 " + Math.round(12 * k) + "px system-ui, sans-serif"; g.textAlign = "left"; g.textBaseline = "middle";
+      if (g.measureText(lab).width < xb - xa - 4) g.fillText(lab, xa + 3 * k, Y + top / 2);
+      else if (xb - xa > 14 * k) g.fillText(lab.slice(0, Math.max(1, Math.floor((xb - xa - 4) / (7 * k)))), xa + 3 * k, Y + top / 2);
     });
-    g.fillStyle = TH.muted; g.font = "10px ui-monospace, monospace"; g.textAlign = "center"; g.textBaseline = "alphabetic";
-    var stp = CV.spp > 20 ? 5 : CV.spp > 8 ? 2 : 1;
-    for (t = Math.ceil(CV.view0 / stp) * stp; t <= CV.view0 + CV.spp; t += stp) g.fillText(fmt(t), CV_L + (t - CV.view0) * pps, H - 2);
-    var ph = song.playing ? tNow : CV.sel;
-    if (ph >= CV.view0 && ph <= CV.view0 + CV.spp) { var px = CV_L + (ph - CV.view0) * pps; g.strokeStyle = TH.text; g.lineWidth = 2; g.beginPath(); g.moveTo(px, 0); g.lineTo(px, H - 12); g.stroke(); }
+    g.fillStyle = TH.muted; g.font = Math.round(10 * k) + "px ui-monospace, monospace"; g.textAlign = "center"; g.textBaseline = "alphabetic";
+    var span = t1 - t0, stp = span > 20 ? 5 : span > 8 ? 2 : 1;
+    for (t = Math.ceil(t0 / stp) * stp; t <= t1 + 0.001; t += stp) g.fillText(fmt(t), X + L + (t - t0) * pps, Y + H - 2 * k);
+    return { L: L, pps: pps };
+  }
+  function cvDraw() {
+    if (!CV.V) return;
+    var every = $("cv-all").checked, rows = CV.hi - CV.lo + 1;
+    $("cv-cv").style.height = (every ? rows * 11 + 44 : CV.lo < 36 ? 380 : 320) + "px";
+    var c = cvCanvas("cv-cv"), g = c.g, W = c.W, H = c.H, dur = song.dur || CV.nf * CV.hop;
+    $("cv-pos").max = Math.max(0, dur - CV.spp); $("cv-pos").value = CV.view0;
+    var P = cvPaint(g, 0, 0, W, H, CV.view0, CV.view0 + CV.spp, CV.lo, CV.hi, every, 1); CV_L = P.L;
+    var ph = song.playing ? songTime() : CV.sel;
+    if (ph >= CV.view0 && ph <= CV.view0 + CV.spp) { var px = P.L + (ph - CV.view0) * P.pps; g.strokeStyle = TH.text; g.lineWidth = 2; g.beginPath(); g.moveTo(px, 0); g.lineTo(px, H - 12); g.stroke(); }
+  }
+  function cvUsed(t0, t1) {
+    var all = CV.hi - CV.lo + 1, f0 = Math.max(0, Math.floor(t0 / CV.hop)), f1 = Math.min(CV.nf - 1, Math.ceil(t1 / CV.hop)), lo = 999, hi = -1;
+    for (var f = f0; f <= f1; f++) for (var r = 0; r < all; r++) if (CV.V[f * all + r] > 0.22) { lo = Math.min(lo, r); hi = Math.max(hi, r); }
+    if (hi < 0) return { lo: CV.lo, hi: CV.hi };
+    lo = Math.max(CV.lo, CV.lo + lo - 1); hi = Math.min(CV.hi, CV.lo + hi + 1);
+    while (hi - lo < 12) { if (hi < CV.hi) hi++; if (hi - lo < 12 && lo > CV.lo) lo--; if (lo === CV.lo && hi === CV.hi) break; }
+    return { lo: lo, hi: hi };
+  }
+  function cvShot(whole) {
+    if (!CV.V) return;
+    var dur = song.dur || CV.nf * CV.hop, t0 = whole ? 0 : CV.view0, t1 = whole ? dur : Math.min(dur, CV.view0 + CV.spp), U = cvUsed(t0, t1), rows = U.hi - U.lo + 1;
+    var per = whole ? 15 : t1 - t0, n = whole ? Math.ceil(dur / per) : 1, W = 1400, k = 1.6, rowH = rows * 15 + 70, gap = 50, top = 120;
+    if (W * (top + n * (rowH + gap)) > 15e6) { n = Math.max(1, Math.floor((15e6 / W - top) / (rowH + gap))); per = Math.ceil(dur / n); n = Math.ceil(dur / per); }
+    var H = top + n * (rowH + gap) + 20, cv = document.createElement("canvas"), g = cv.getContext("2d"); cv.width = W; cv.height = H;
+    g.fillStyle = TH.bg; g.fillRect(0, 0, W, H);
+    g.fillStyle = TH.text; g.font = "700 34px system-ui, sans-serif"; g.textAlign = "left"; g.textBaseline = "alphabetic"; g.fillText("Notes and chords · " + (CV.name || "Recording"), 30, 52);
+    g.fillStyle = TH.muted; g.font = "21px system-ui, sans-serif";
+    g.fillText(fmt(t0) + "–" + fmt(t1) + " · notes " + cvNoteName(U.lo) + " to " + cvNoteName(U.hi) + " · brighter = louder · chord names on top" + ((song.shift || 0) ? " · transposed " + (song.shift > 0 ? "+" : "") + song.shift : ""), 30, 88);
+    for (var r = 0; r < n; r++) {
+      var a = t0 + r * per, b = Math.min(t1, a + per), y0 = top + r * (rowH + gap);
+      cvPaint(g, 20, y0, (W - 40) * (whole ? (b - a) / per : 1), rowH, a, b, U.lo, U.hi, true, k);
+    }
+    cv.toBlob(function (blob) {
+      if (!blob) { $("cv-out-msg").textContent = "That picture was too big for this device. Try a shorter view."; return; }
+      if (CV.url) { try { URL.revokeObjectURL(CV.url); } catch (e) {} }
+      CV.blob = blob; CV.url = URL.createObjectURL(blob); $("cv-img").src = CV.url; $("cv-dl").href = CV.url; $("cv-out").hidden = false;
+      var ok = false; try { ok = !!(navigator.canShare && navigator.canShare({ files: [new File([blob], "notes-and-chords.png", { type: "image/png" })] })); } catch (e) {}
+      $("cv-share").hidden = !ok; $("cv-out-msg").textContent = "Picture ready below. Download or share it.";
+    }, "image/png");
+  }
+  function cvNoteName(m) { var sh = song.shift || 0; return cvNames()[(m + sh + 120) % 12] + (Math.floor((m + sh) / 12) - 1); }
+  function cvText() {
+    var lines = ["Notes and chords: " + (CV.name || "Recording") + ((song.shift || 0) ? " (transposed " + song.shift + ")" : ""), "Time, chord, notes from low to high"];
+    CV.segs.forEach(function (sg) { if (sg.notes.length) lines.push(fmt(sg.t0) + "–" + fmt(sg.t1) + "  " + cvLabel(sg.ch) + "  " + sg.notes.map(cvNoteName).join(" ")); });
+    return lines.join("\n");
+  }
+  function cvShape(ch) { if (!ch || ch.root < 0) return null; var Q = CV_Q.filter(function (q) { return q[0] === ch.q; })[0]; return { root: ch.root, tones: ch.single ? [0] : (Q ? Q[1] : [0, 4, 7]).slice().sort(function (a, b) { return a - b; }) }; }
+  function cvNeck(g, X, Y, W, H, tun, frets, notes, bass, k) {
+    var n = tun.length, L = X + 22 * k, R = X + W - 4, T = Y + 16 * k, B = Y + H - 14 * k, sg = (B - T) / (n - 1), fw = (R - L) / (frets + 1), nn = cvNames(), on = {}, out = 0, i, s2, f;
+    notes.forEach(function (m) { on[m] = 1; if (m < tun[0] || m > tun[n - 1] + frets) out++; });
+    g.fillStyle = TH.muted; g.font = Math.round(9 * k) + "px ui-monospace, monospace"; g.textAlign = "center"; g.textBaseline = "middle";
+    for (f = 0; f <= frets; f++) { if ([3, 5, 7, 9, 12, 15].indexOf(f) >= 0) g.fillText(String(f), L + (f + 0.5) * fw, Y + 7 * k); g.strokeStyle = f === 0 ? TH.text : rgba(TH.text, 0.3); g.lineWidth = f === 0 ? 3 : 1; g.beginPath(); g.moveTo(L + (f + 1) * fw, T - 4); g.lineTo(L + (f + 1) * fw, B + 4); g.stroke(); }
+    for (s2 = 0; s2 < n; s2++) { var yy = B - s2 * sg; g.strokeStyle = rgba(TH.text, 0.55); g.lineWidth = 1 + (n - s2) * 0.25; g.beginPath(); g.moveTo(L, yy); g.lineTo(R, yy); g.stroke(); g.fillStyle = TH.muted; g.textAlign = "right"; g.fillText(nn[tun[s2] % 12], L - 5, yy); g.textAlign = "center"; }
+    var rad = Math.min(fw, sg) * 0.36;
+    for (s2 = 0; s2 < n; s2++) for (f = 0; f <= frets; f++) {
+      var m = tun[s2] + f; if (!on[m]) continue;
+      var cx = L + (f + 0.5) * fw, cy = B - s2 * sg, isB = m === bass;
+      g.globalAlpha = isB || notes.length < 2 ? 1 : 0.8; g.fillStyle = isB ? WARN : GOOD; g.beginPath(); g.arc(cx, cy, rad, 0, 7); g.fill(); g.globalAlpha = 1;
+      g.fillStyle = "#000"; g.font = "700 " + Math.round(rad * 1.05) + "px system-ui, sans-serif"; g.fillText(nn[(m + 120) % 12], cx, cy + 0.5);
+    }
+    return out;
   }
   function cvKeys(notes) {
+    var inst = $("cv-inst").value;
+    if (inst !== "piano") {
+      $("cv-kb").style.height = inst === "guitar" ? "170px" : "120px";
+      var cc = cvCanvas("cv-kb"), sh2 = song.shift || 0, ns = notes.map(function (m) { return m + sh2; }), out;
+      if (inst === "guitar") {
+        var nw = cc.W * 0.72; out = cvNeck(cc.g, 0, 0, nw, cc.H, [40, 45, 50, 55, 59, 64], 15, ns, ns[0], 1);
+        var shp = cvShape(CV.cur && CV.cur.ch); cc.g.fillStyle = TH.muted; cc.g.font = "10px system-ui, sans-serif"; cc.g.textAlign = "center"; cc.g.fillText("Easy shape", nw + (cc.W - nw) / 2, 8);
+        if (shp) { var sh3 = { root: (shp.root + sh2 + 120) % 12, tones: shp.tones }; miniGuitar(cc.g, nw + 4, 16, cc.W - nw - 8, cc.H - 20, sh3, { ink: TH.text, mut: TH.muted, dot: GOOD }); }
+      } else out = cvNeck(cc.g, 0, 0, cc.W, cc.H, [28, 33, 38, 43], 15, ns.filter(function (m) { return m <= 58; }), ns[0], 1);
+      $("cv-inst-msg").textContent = (inst === "guitar" ? "Every place each exact note can be played (frets 0–15). The lowest note is in the warning color. The easy shape is the usual chord shape for the chord name." : "Bass notes up to the 15th fret. The lowest note, usually the one to play, is in the warning color.") + (out ? " " + out + " note" + (out > 1 ? "s are" : " is") + " out of range for this instrument." : "");
+      return;
+    }
+    $("cv-kb").style.height = "70px"; $("cv-inst-msg").textContent = "";
     var c = cvCanvas("cv-kb"), g = c.g, W = c.W, H = c.H, lo = CV.lo, hi = 96, whites = [], i, sh = song.shift || 0, on = {};
     notes.forEach(function (m) { on[m + sh] = 1; });
     for (i = lo; i <= hi; i++) if ([1, 3, 6, 8, 10].indexOf(i % 12) < 0) whites.push(i);
@@ -2664,6 +2744,15 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     cvKeys(sg ? sg.notes : []);
   }
   $("cv-go").addEventListener("click", cvAnalyze);
+  $("cv-inst").addEventListener("change", function () { if (CV.V) cvKeys(CV.cur ? CV.cur.notes : []); });
+  $("cv-all").addEventListener("change", function () { cvDraw(); });
+  $("cv-shot").addEventListener("click", function () { cvShot(false); });
+  $("cv-shotall").addEventListener("click", function () { cvShot(true); });
+  $("cv-share").addEventListener("click", function () { if (CV.blob) try { navigator.share({ files: [new File([CV.blob], "notes-and-chords.png", { type: "image/png" })], title: "Notes and chords" }).catch(function () {}); } catch (e) {} });
+  $("cv-txt").addEventListener("click", function () {
+    if (!CV.V) return; var txt = cvText(), done = function () { $("cv-out-msg").textContent = "Copied the chord list. Paste it next to the picture."; };
+    if (navigator.clipboard) navigator.clipboard.writeText(txt).then(done, function () { $("cv-out-msg").textContent = txt; }); else $("cv-out-msg").textContent = txt;
+  });
   $("cv-zoom").addEventListener("change", function (e) { CV.spp = +e.target.value; cvDraw(); });
   $("cv-pos").addEventListener("input", function (e) { CV.view0 = +e.target.value; cvDraw(); });
   $("cv-seg").addEventListener("change", function () { if (CV.V) { cvSegs(); cvDraw(); cvNow(song.playing ? songTime() : CV.sel); } });
