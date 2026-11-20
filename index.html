@@ -6335,30 +6335,15 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       ctx2d.strokeStyle = "rgba(238,241,246,.5)"; ctx2d.lineWidth = 1;
       ctx2d.beginPath(); ctx2d.moveTo(xOf(now), 0); ctx2d.lineTo(xOf(now), h); ctx2d.stroke();
     }
-    /* Sung line: lightly smoothed, and never joined across a jump of more than about a whole step or a gap. */
-    ctx2d.lineWidth = 3.5; ctx2d.lineCap = "round"; ctx2d.lineJoin = "round";
-    var hs = [], hn = history.length;
-    for (var i = 0; i < hn; i++) {
-      var hp = history[i];
-      if (hp.midi == null) { hs.push(null); continue; }
-      var sum = hp.midi * 2, cnt = 2;
-      for (var dj = -2; dj <= 2; dj++) {
-        if (!dj) continue; var hq = history[i + dj];
-        if (hq && hq.midi != null && Math.abs(hq.t - hp.t) < 120 && Math.abs(hq.midi - hp.midi) < 0.8) { sum += hq.midi; cnt++; }
-      }
-      hs.push(sum / cnt);
-    }
-    var runCol = null;
-    for (var i = 1; i < hn; i++) {
+    ctx2d.lineWidth = 4; ctx2d.lineCap = "round";
+    for (var i = 1; i < history.length; i++) {
       var p = history[i - 1], q = history[i];
-      if (hs[i - 1] == null || hs[i] == null || q.t - p.t > 200 || Math.abs(q.midi - p.midi) > 1.2) { if (runCol) { ctx2d.stroke(); runCol = null; } continue; }
+      if (p.midi == null || q.midi == null || q.t - p.t > 200) continue;
       var x1 = xOf(p.t), x2 = xOf(q.t);
       if (x2 < 34) continue;
-      var col = q.plain ? TH.note : q.good ? GOOD : WARN;
-      if (col !== runCol) { if (runCol) ctx2d.stroke(); ctx2d.strokeStyle = col; ctx2d.beginPath(); ctx2d.moveTo(x1, yOf(hs[i - 1])); runCol = col; }
-      ctx2d.lineTo(x2, yOf(hs[i]));
+      ctx2d.strokeStyle = q.plain ? TH.note : q.good ? GOOD : WARN;
+      ctx2d.beginPath(); ctx2d.moveTo(x1, yOf(p.midi)); ctx2d.lineTo(x2, yOf(q.midi)); ctx2d.stroke();
     }
-    if (runCol) ctx2d.stroke();
     if (full && hasPitch) {
       ctx2d.fillStyle = curGood ? GOOD : WARN;
       var axp = sp ? xOf(now) + 4 : w - 2, ayp = yOf(curSm);
