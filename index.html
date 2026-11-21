@@ -520,6 +520,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <label class="fld">Chords<select id="gv-prog"></select></label>
     </div>
     <button type="button" class="big" id="gv-play">Play groove</button>
+    <button type="button" class="ghost" id="gv-meltog" aria-pressed="true" style="margin-top:6px">Melody: On</button>
     <div class="row">
       <button type="button" class="ghost" id="gv-fill">Play a fill</button>
       <button type="button" class="ghost" id="gv-end">Finish with an ending</button>
@@ -6742,7 +6743,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     GV.style = S; GV.prog = PROGS.filter(function (pg) { return pg.id === $("gv-prog").value; })[0] || PROGS[0];
     if (from === "style") $("gv-kit").value = "auto";
     GV.kit = $("gv-kit").value; GV.kitNow = GV.kit === "auto" ? (S.kit === "e" ? "e" : "ac") : GV.kit;
-    GV.key = +$("gv-key").value; GV.bpm = +$("gv-bpm").value; GV.mel = $("gv-mel").value; GV.by = $("gv-by").value; GV.cvo = $("gv-cv").value; GV.bvo = $("gv-bv").value; if (typeof blFill === "function") blFill(); if (typeof crFill === "function" && CRHY) crFill(); if (typeof cdRender === "function" && $("cd-list")) cdRender();
+    GV.key = +$("gv-key").value; GV.bpm = +$("gv-bpm").value; GV.mel = prefs.melOff ? "none" : $("gv-mel").value; GV.by = $("gv-by").value; GV.cvo = $("gv-cv").value; GV.bvo = $("gv-bv").value; if (typeof blFill === "function") blFill(); if (typeof crFill === "function" && CRHY) crFill(); if (typeof cdRender === "function" && $("cd-list")) cdRender();
     $("gv-bpm-lbl").textContent = "Tempo " + GV.bpm + " bpm"; $("gv-tip").textContent = S.tip;
     var dots = $("gv-beats"); dots.innerHTML = ""; for (var i = 0; i < S.beats; i++) dots.appendChild(document.createElement("i"));
     if ((from === "style" || from === "scale") && GV.on && !GV.song) { GV.step = 0; GV.bar = 0; GV.arp = 0; }
@@ -6762,6 +6763,18 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     GV.mel = g0.mel || GV.style.mel || "none"; GV.by = g0.by || GV.style.by || "strings";
   })();
   $("gv-style").addEventListener("change", function () { gvApply("style"); });
+  /* One tap to hear the groove without its melody (to write your own over it), and one tap to bring it back. */
+  function melTogShow() { var off = !!prefs.melOff, b = $("gv-meltog"); b.textContent = off ? "Melody: Off (tap to turn on)" : "Melody: On (tap to turn off)"; b.setAttribute("aria-pressed", off ? "false" : "true"); b.style.opacity = off ? "0.75" : "1"; }
+  $("gv-meltog").addEventListener("click", function () {
+    prefs.melOff = !prefs.melOff; savePrefs();
+    if (!prefs.melOff && $("gv-mel").value === "none") {
+      var opts = Array.prototype.map.call($("gv-mel").options, function (o) { return o.value; }), fm = famMel(GV.style);
+      $("gv-mel").value = fm !== "none" ? fm : prefs.melLast && opts.indexOf(prefs.melLast) >= 0 ? prefs.melLast : (opts.filter(function (v) { return v !== "none" && v !== "mine"; })[0] || "none");
+    }
+    gvApply(""); melTogShow(); if (!prefs.melOff && ac) gvLoadMel();
+  });
+  melTogShow();
+  $("gv-mel").addEventListener("change", function (e) { var v = e.target.value; if (v !== "none" && v !== "mine") { prefs.melLast = v; } if (v !== "none" && prefs.melOff) { prefs.melOff = false; savePrefs(); gvApply(""); } melTogShow(); });
   $("gv-art").addEventListener("change", function (e) { var a = e.target.value, shown = GV.listed || [], S = STYLES.filter(function (st) { return gvArtOf(st.group) === a && shown.indexOf(st.id) >= 0; }); if (!S.length) return; var gs = GROUP_ORDER.filter(function (g) { return S.some(function (st) { return st.group === g; }); }); gvGoGroup(gs[0] || S[0].group); });
   $("gv-era").addEventListener("change", function (e) { gvGoGroup(e.target.value); });
   $("gv-scale").addEventListener("change", function () { gvApply("scale"); });
