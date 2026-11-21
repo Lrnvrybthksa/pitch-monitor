@@ -525,6 +525,36 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <button type="button" class="ghost" id="gv-end">Finish with an ending</button>
     </div>
     <div class="row">
+      <label class="fld">Fill<select id="gv-filltype"></select></label>
+      <label class="fld">Ending<select id="gv-endtype"></select></label>
+    </div>
+    <div class="row">
+      <button type="button" class="ghost" id="gv-break">Stop, then crash back in</button>
+      <button type="button" class="ghost" id="gv-build">Build up</button>
+      <select id="gv-bld-n" aria-label="Build-up length" style="flex:0 0 auto"><option value="2">2 bars</option><option value="4">4 bars</option></select>
+    </div>
+    <label class="fld">Intro when I press Play<select id="gv-intro"><option value="0">None, start right away</option><option value="c">Count-in clicks</option><option value="1">1-bar intro</option><option value="2">2-bar intro</option><option value="4">4-bar intro</option></select></label>
+    <div class="builder" id="gv-kc" style="display:flex;flex-direction:column;gap:6px;margin:6px 0">
+      <b>Key change</b>
+      <div class="row" style="align-items:center">
+        <button type="button" class="ghost" id="gv-kc-dn" aria-label="Lower key" style="flex:0 0 52px;font-size:20px">◀</button>
+        <div id="gv-kc-key" style="flex:1;text-align:center;font-size:26px;font-weight:800">E</div>
+        <button type="button" class="ghost" id="gv-kc-up" aria-label="Higher key" style="flex:0 0 52px;font-size:20px">▶</button>
+      </div>
+      <div class="row">
+        <label class="fld">When<select id="gv-kc-when"><option value="bar">At the next bar</option><option value="prog">At the end of the chord progression</option></select></label>
+      </div>
+      <label class="check"><input type="checkbox" id="gv-kc-lead" checked> Lead-in chord and fill before the new key</label>
+      <button type="button" class="big" id="gv-kc-go" style="font-size:16px">Change key</button>
+      <div class="row" style="flex-wrap:wrap">
+        <button type="button" class="ghost" data-kc="1">Up a half step</button><button type="button" class="ghost" data-kc="2">Up a whole step</button>
+        <button type="button" class="ghost" data-kc="5">Up a fourth</button><button type="button" class="ghost" data-kc="7">Up a fifth</button>
+        <button type="button" class="ghost" data-kc="rel">To the relative minor or major</button><button type="button" class="ghost" data-kc="home">Back to the starting key</button>
+      </div>
+      <p class="small" id="gv-kc-msg">Pick a key with the arrows, then tap Change key. The quick buttons change right away. It lands on the beat at the next bar or at the end of the progression.</p>
+    </div>
+    <p class="small" id="gv-fx-msg"></p>
+    <div class="row">
       <label class="fld">Key<select id="gv-key"></select></label>
       <label class="fld">Scale<select id="gv-scale"><option value="maj">Major</option><option value="min">Minor</option></select></label>
     </div>
@@ -3255,6 +3285,13 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function dHat(t, v) { if (!drumHit("hat", t, v)) dNoise(t, v * 0.3, 0.045, "highpass", 7000); }
   function dRim(t, v) { if (drumHit("rim", t, v)) return; dTone(t, v * 0.4, 1700, 1700, 0.035, "triangle"); dNoise(t, v * 0.2, 0.03, "bandpass", 2500, 2); }
   function dShake(t, v) { if (!drumHit("shaker", t, v)) dNoise(t, v * 0.28, 0.07, "bandpass", 5200, 1); }
+  function dClap(t, v) { dNoise(t, v * 0.5, 0.03, "bandpass", 1500, 1.2); dNoise(t + 0.012, v * 0.45, 0.03, "bandpass", 1500, 1.2); dNoise(t + 0.024, v * 0.55, 0.14, "bandpass", 1400, 0.9); }
+  function dRiser(t, dur, v) {
+    var s2 = nz(), f = ac.createBiquadFilter(), g = ac.createGain(); f.type = "bandpass"; f.Q.value = 1.4;
+    f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(7000, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + dur); g.gain.linearRampToValueAtTime(0, t + dur + 0.05);
+    s2.loop = true; s2.connect(f); f.connect(g); g.connect(trk("drums")); s2.start(t); s2.stop(t + dur + 0.08);
+  }
   function dCrash(t, v) { if (!drumHit("crash", t, v)) dNoise(t, 0.4 * v, 1.3, "highpass", 5500); }
   function gBass(t, midi, dur, voice) {
     if (voice === "guitarron") { synth(ac, busOf("baBus", 0.7), "contrabass", midi, t, Math.max(0.3, dur)); synth(ac, busOf("baBus", 0.7), "contrabass", midi + 12, t, Math.max(0.3, dur)); return; }
@@ -3336,8 +3373,25 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     GV.ck = P.key;
     if (st === 0 || CI.ci !== GV.lastCi) GV.marks.push({ t: t, ch: ch, key: P.key });
     GV.lastCi = CI.ci;
-    var ek = GV.kitNow === "e", MU = P.mute || {};
-    if (!MU.d) {
+    var ek = GV.kitNow === "e", MU = P.mute || {}, half = S.steps / 2, fk = fxFill(P), hasDr = !!(S.k || S.s || S.s2 || S.p);
+    if (P.lead != null && st >= S.steps - S.steps / S.beats) ch = chordOf(GV.prog.mode === "min" && P.leadMode !== "maj" ? "V7" : "V7", P.lead);
+    if (P.brk) MU = { d: 1, b: 1, c: 1, m: 1 };
+    if (fk === "bass") MU = { d: 1, c: 1, m: 1 };
+    if (fk === "drop") MU = { d: 1, b: 1, m: 1 };
+    if (fk === "conga") MU = { c: MU.c, m: 1, b: MU.b, d: MU.d, perc: 1 };
+    if ((fk === "crash" || fk === "stabs") && st >= half) {
+      if (st === half || (fk === "stabs" && st === half + S.steps / 4)) { var hb = 48 + ch.root; if (hb > 57) hb -= 12; gChord(t, ch.tones.map(function (x) { return hb + x; }), 0.18, gvVoices().cv); var hb0 = 36 + ch.root; if (hb0 > 44) hb0 -= 12; gBass(t, hb0, 0.2, gvVoices().bv); if (ek) dTone(t, 0.95, 105, 40, 0.5); else dKick(t, 0.9); dCrash(t, fk === "crash" ? 1 : 0.7); }
+      MU = { d: 1, b: 1, c: 1, m: 1 };
+    }
+    if (P.build) {
+      var bg = (P.build.i + st / S.steps) / P.build.n, per2 = S.steps / S.beats, every = bg < 0.5 ? per2 : bg < 0.8 ? per2 / 2 : 1;
+      if (st % per2 === 0) { if (ek) dTone(t, 0.8, 105, 40, 0.45); else dKick(t, 0.8); }
+      if (st % Math.max(1, Math.round(every)) === 0) { if (ek) dClap(t, 0.25 + 0.6 * bg); else dSnare(t, 0.25 + 0.6 * bg); }
+      if (P.build.i === P.build.n - 1 && st === 0) dRiser(t, S.steps * sd, 0.35);
+      MU = { d: 1, b: MU.b, c: MU.c, m: MU.m };
+    }
+    if (MU.perc) { if (S.p && S.p.indexOf(st) >= 0) dShake(t, 0.9); if (S.s2 && S.s2.indexOf(st) >= 0) dRim(t, 0.7); if (st % 2 === 0) dTone(t, 0.35, 330, 300, 0.15, "sine"); if (st % 4 === 3) dTone(t, 0.3, 220, 200, 0.15, "sine"); }
+    if (!MU.d && !MU.perc) {
     if (S.k && S.k.indexOf(st) >= 0) { if (ek) dTone(t, 0.95, 105, 40, 0.5); else dKick(t, 0.9); }
     if (S.s && S.s.indexOf(st) >= 0) { if (ek) { dNoise(t, 0.5, 0.03, "bandpass", 1500, 1.2); dNoise(t + 0.012, 0.45, 0.03, "bandpass", 1500, 1.2); dNoise(t + 0.024, 0.55, 0.14, "bandpass", 1400, 0.9); } else dSnare(t, 0.8); }
     if (S.s2 && S.s2.indexOf(st) >= 0) { if (!(S.p && S.pv === "shake" && drumHit("conga", t, 0.8))) dRim(t, 0.7); }
@@ -3363,7 +3417,16 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (S.c2 && !MU.c) for (i = 0; i < S.c2.length; i++) if (S.c2[i][0] === st) gChord(t, notes, S.c2[i][1] * sd, S.cv2);
     if (st === 0 && P.own && !MU.m) gvOwnPlay(P, t);
     if (st === 0 && P.mel && !MU.m) gvMelody(P.bi, t, ch, P.mel);
-    if (P.fill && !MU.d && st >= S.steps / 2 && (S.k || S.s || S.s2 || S.p)) {
+    if (fk === "drop" && st === half) dRiser(t, half * sd, 0.3);
+    if (fk && fk !== "auto" && fk !== "drop" && fk !== "bass" && fk !== "crash" && fk !== "stabs" && fk !== "conga" && !MU.d && st >= half && hasDr) {
+      var fr2 = (st - half) / half, v2 = 0.4 + 0.5 * fr2;
+      if (fk === "roll") { dSnare(t, v2); dSnare(t + sd / 2, v2 * 0.85); }
+      else if (fk === "toms") { if (acKit()) drumHit(fr2 < 0.5 ? "htom" : "ltom", t, 0.7 + 0.3 * fr2); else dTone(t, 0.6 + 0.3 * fr2, 270 - 160 * fr2, 140 - 80 * fr2, 0.22); }
+      else if (fk === "claps") { dClap(t, v2); if (fr2 >= 0.5) dClap(t + sd / 2, v2 * 0.8); }
+      else if (fk === "timbal") { dTone(t, 0.45 + 0.3 * fr2, 950 - 350 * fr2, 760 - 250 * fr2, 0.12, "triangle"); if (fr2 >= 0.5) dTone(t + sd / 2, 0.4 + 0.3 * fr2, 900 - 350 * fr2, 720 - 250 * fr2, 0.1, "triangle"); }
+      else if (fk === "riser") { if (st === half) dRiser(t, half * sd, 0.35); if (fr2 >= 0.5) { if (ek) dClap(t, v2); else dSnare(t, v2); } }
+    }
+    if (fk === "auto" && !MU.d && st >= S.steps / 2 && (S.k || S.s || S.s2 || S.p)) {
       var fr = (st - S.steps / 2) / (S.steps / 2);
       if (!ek && S.cv === "power" && acKit()) drumHit(fr < 0.5 ? "htom" : "ltom", t, 0.7 + 0.3 * fr);
       else if (ek || S.cv === "power") dTone(t, 0.55 + 0.3 * fr, 250 - 110 * fr, 120 - 50 * fr, 0.2);
@@ -3380,6 +3443,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         gvFinal(GV.t); GV.on = false; GV.ending = true; clearInterval(GV.timer);
         GV.endTimer = setTimeout(function () { gvStop(); songEnded(); }, Math.max(600, (GV.t - ac.currentTime) * 1000 + 2200)); return;
       }
+      if (GV.step === 0 && GV.kc && GV.bar >= GV.kc.bar) kcCommit();
+      if (fxIsEndBar()) { if (GV.endKind === "slow") { if (GV.rate0 == null) GV.rate0 = GV.rate || 1; GV.rate = GV.rate0 * (1 - 0.45 * GV.step / GV.style.steps); } }
       if (GV.step === 0 && GV.song) {
         var psi = GV.plan[Math.min(GV.bar, GV.plan.length - 1)].si;
         if (SF.loop && GV.curSi != null && psi !== GV.curSi && GV.curSi < SF.secs.length) { GV.bar = sbFirst(GV.plan, GV.curSi); psi = GV.curSi; }
@@ -3393,6 +3458,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function gvStop() {
     if (!GV.on && !GV.ending) return;
     if (GV.song && typeof plogSave === "function") plogSave();
+    if (GV.rate0 != null) { GV.rate = GV.rate0; GV.rate0 = null; } GV.kc = null; GV.fxb = {}; GV.endKind = null; clearTimeout(GV.fadeTimer); if (GV.bus) { try { GV.bus.gain.cancelScheduledValues(ac.currentTime); GV.bus.gain.setValueAtTime(0.7, ac.currentTime); } catch (e) {} } kcShow();
     GV.on = false; GV.ending = false; clearInterval(GV.timer); clearTimeout(GV.endTimer); GV.marks = []; GV.shown = ""; GV.endBar = null; GV.fillBar = null; GV.ck = null; GV.song = false; if (typeof PA !== "undefined" && PA.on) setTimeout(function () { PA.si = null; plShow(); }, 0);
     $("gv-play").textContent = SF.on ? "Play the song" : "Play groove"; $("gv-play").classList.remove("stop"); gvChips(-1);
     SF.cur = -1; SB.now = null; sbScoreShow(); $("sb-play").textContent = "Play the song"; $("sb-play").classList.remove("stop"); sfRender(); $("sf-now").textContent = "Ready"; GV.nowCh = null; csDraw(); sbDraw(); gvGridIdle();
@@ -3401,6 +3467,14 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     ensureContext().then(gvLoadMel).then(function () {
       GV.song = SF.on; GV.plan = SF.on ? gvBuildPlan() : null; GV.endBar = null; GV.fillBar = null; GV.ending = false; clearTimeout(GV.endTimer);
       GV.on = true; GV.step = 0; GV.bar = GV.song && si > 0 ? sbFirst(GV.plan, si) : 0; GV.curSi = null; SB.now = null; SB.trail = []; SB.score = {}; SB.melBar = -1; sbScoreShow(); GV.arp = 0; GV.marks = []; GV.t = ac.currentTime + 0.1;
+      GV.key0 = GV.key; GV.mode0 = GV.prog.mode; GV.fxb = {}; GV.kc = null; GV.intro = 0; GV.endKind = null;
+      var iv = $("gv-intro").value;
+      if (!GV.song && iv !== "0" && iv !== "c") GV.intro = +iv;
+      if (!GV.song && iv === "c") {
+        var cb2 = 60 / (GV.bpm * (GV.rate || 1));
+        for (var c2 = 0; c2 < GV.style.beats; c2++) { dRim(GV.t + c2 * cb2, c2 === 0 ? 1 : 0.7); GV.marks.push({ t: GV.t + c2 * cb2, count: c2 + 1 }); }
+        GV.t += GV.style.beats * cb2;
+      }
       if (GV.song && SF.count) {
         var cbd = 60 / (GV.bpm * (GV.rate || 1));
         for (var ci = 0; ci < GV.style.beats; ci++) { dRim(GV.t + ci * cbd, ci === 0 ? 1 : 0.7); GV.marks.push({ t: GV.t + ci * cbd, count: ci + 1 }); }
@@ -4551,8 +4625,14 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   function gvPlan(bar) {
     if (GV.song && GV.plan) return GV.plan[Math.min(bar, GV.plan.length - 1)];
-    if (GV.endBar != null && bar >= GV.endBar) return { si: -1, bi: 0, bars: ["V7"], key: GV.key, mel: null, fill: true };
-    return { si: -1, bi: bar, bars: GV.prog.bars, key: GV.key, mel: GV.mel !== "none" && GV.mel !== "mine" ? GV.mel : null, own: GV.mel === "mine" ? (JM.own[bar % JM.bars] || []) : null, fill: GV.fillBar === bar };
+    var kk = GV.kc && bar >= GV.kc.bar ? GV.kc.key : GV.key;
+    if (GV.endBar != null && bar >= GV.endBar) return { si: -1, bi: 0, bars: [GV.prog.mode === "min" ? "V7" : "V7"], key: kk, mel: null, fill: GV.endKind === "held" ? "roll" : true };
+    var intro = GV.intro || 0, P = { si: -1, bi: bar - intro, bars: GV.prog.bars, key: kk, mel: GV.mel !== "none" && GV.mel !== "mine" ? GV.mel : null, own: GV.mel === "mine" ? (JM.own[(bar - intro) % JM.bars] || []) : null, fill: GV.fillBar === bar ? (GV.fillType || "auto") : false };
+    if (bar < intro) { P.bars = [GV.prog.bars[0]]; P.bi = 0; P.mel = null; P.own = null; P.mute = bar < intro - 1 ? { d: 1, m: 1 } : { m: 1 }; if (bar === intro - 1) P.fill = "auto"; }
+    if (intro && bar === intro) P.crash = true;
+    if (GV.kc) { if (bar === GV.kc.bar - 1 && GV.kc.lead) { P.lead = GV.kc.key; P.fill = P.fill || "auto"; } if (bar === GV.kc.bar) P.crash = true; }
+    var fx = GV.fxb && GV.fxb[bar]; if (fx) for (var fk2 in fx) P[fk2] = fx[fk2];
+    return P;
   }
   function gvDone(bar) { return GV.song ? bar >= GV.plan.length : (GV.endBar != null && bar > GV.endBar); }
   function gvFinal(t) {
@@ -4564,7 +4644,14 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       if (S.b) gBass(tt, b0, long ? 1.4 : 0.2, VV.bv);
       if (S.k || S.s) { if (GV.kitNow === "e") dTone(tt, 0.95, 105, 40, 0.5); else dKick(tt, 0.9); }
     }
-    if (S.beats === 2) { hit(t, false); hit(t + 30 / (GV.bpm * (GV.rate || 1)), true); if (S.k || S.s || S.p) dSnare(t + 30 / (GV.bpm * (GV.rate || 1)), 0.8); }
+    var ek2 = GV.endKind || "simple", bt = 60 / (GV.bpm * (GV.rate || 1)), dr = !!(S.k || S.s || S.p);
+    function hitL(tt, d) { gChord(tt, notes, d, VV.cv === "charchetas" ? "s:horn" : VV.cv); if (S.c2) gChord(tt, notes, d, S.cv2); gBass(tt, b0, Math.min(d, 2), VV.bv); if (dr) { if (GV.kitNow === "e") dTone(tt, 0.95, 105, 40, 0.5); else dKick(tt, 0.9); } }
+    if (ek2 === "held" || ek2 === "slow") { hitL(t, 3); if (dr) dCrash(t, 1); }
+    else if (ek2 === "chacha") { hitL(t, 0.15); hitL(t + bt / 2, 0.15); hitL(t + bt, 1.4); if (dr) { dSnare(t, 0.7); dSnare(t + bt / 2, 0.7); dCrash(t + bt, 1); } }
+    else if (ek2 === "mariachi") { hitL(t, 0.2); hitL(t + bt, 0.15); hitL(t + bt * 1.5, 1.8); if (dr) { dSnare(t + bt, 0.7); dCrash(t + bt * 1.5, 1); } }
+    else if (ek2 === "cut") { gChord(t, notes, 2.6, "pad"); gBass(t, b0, 0.15, VV.bv); if (dr) { if (GV.kitNow === "e") dTone(t, 0.95, 105, 40, 0.5); else dKick(t, 0.9); } }
+    else if (ek2 === "stab") { for (var e3 = 0; e3 < 4; e3++) gChord(t + e3 * bt / 2, notes, 0.14, VV.cv === "pad" ? "s:epfm" : VV.cv, false); gBass(t, b0, 0.3, VV.bv); if (dr) { dCrash(t, 1); if (GV.kitNow === "e") dTone(t, 0.95, 105, 40, 0.5); else dKick(t, 0.9); } }
+    else if (S.beats === 2) { hit(t, false); hit(t + 30 / (GV.bpm * (GV.rate || 1)), true); if (S.k || S.s || S.p) dSnare(t + 30 / (GV.bpm * (GV.rate || 1)), 0.8); }
     else { hit(t, true); if (S.k || S.s) dCrash(t, 1); }
     (MEL_VOICES[GV.by] || []).forEach(function (v) { if (GV.song && secMel("intro")) synth(ac, GV.melBus || busOf("chBus", 0.3), v[0], degNote(ch, v[2] === 0 ? 0 : 2, v[1]), t + (S.beats === 2 ? 30 / GV.bpm : 0), 1.4); });
     GV.marks.push({ t: t, final: true, name: chordName(ch, key) });
@@ -4579,12 +4666,114 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   });
   $("sf-del").addEventListener("click", function () { if (GV.on || SF.secs.length < 2) return; SF.secs.pop(); SF.sel = Math.min(SF.sel || 0, SF.secs.length - 1); sfRender(); });
   $("sf-reset").addEventListener("click", function () { if (GV.on || GV.ending) gvStop(); sfLoad(); });
-  $("gv-fill").addEventListener("click", function () { if (GV.on && !GV.song) GV.fillBar = GV.step < GV.style.steps / 2 ? GV.bar : GV.bar + 1; });
+  $("gv-fill").addEventListener("click", function () {
+    if (!GV.on) return; var b = GV.step < GV.style.steps / 2 ? GV.bar : GV.bar + 1;
+    if (GV.song) fxAt(b, { fill: GV.fillType || "auto" }); else GV.fillBar = b;
+  });
   $("gv-end").addEventListener("click", function () {
     if (!GV.on) return;
+    GV.endKind = fxEnd();
+    if (GV.endKind === "fade") { fxFade(); return; }
     if (GV.song) { var cur = GV.plan[Math.min(GV.bar, GV.plan.length - 1)]; GV.plan = GV.plan.slice(0, GV.bar + 1).concat([{ si: SF.secs.length, bi: 0, n: 1, bars: ["V7"], key: cur.key, mel: null, fill: true, name: "Ending" }]); }
     else GV.endBar = GV.bar + 1;
   });
+  /* ---------- fills, endings, breaks, build-ups, intros and key changes. Each lands on a bar line, scheduled ahead so it stays in time. ---------- */
+  var FILLS = [["auto", "Auto"], ["roll", "Snare roll"], ["toms", "Tom run down"], ["crash", "Crash and pause"], ["stabs", "Hits on 3 and 4"], ["bass", "Bass only for a bar"], ["drop", "Drop out with a riser (Lorde style)"], ["claps", "Clap build (electronic)"], ["riser", "Riser and snare (dance pop)"], ["timbal", "Timbal fill (grupera, cumbia)"], ["conga", "Percussion break (cumbia)"]];
+  var ENDS = [["auto", "Auto"], ["held", "Big held chord"], ["slow", "Slow down to a stop"], ["fade", "Fade out"], ["chacha", "Cha-cha-chá (grupera, cumbia)"], ["mariachi", "Mariachi ending"], ["cut", "Cut to silence (Lorde style)"], ["stab", "Stab with echoes (dance pop)"], ["simple", "Simple (the original)"]];
+  function fxGenre(S) {
+    var g = S.group || "", f = FAM_OF[g] || "";
+    if (/^Lorde/.test(g)) return { fill: "drop", end: "cut" };
+    if (/Dua Lipa|Electro-pop/.test(g) || f === "epop") return { fill: "riser", end: "stab" };
+    if (/Bukis|Temerarios|Grupera/.test(g) || S.p === GUIRO16) return { fill: "timbal", end: "chacha" };
+    if (/Juan Gabriel|Regional Mexican/.test(g) || (S.beats === 2 && S.steps === 4)) return { fill: "roll", end: "mariachi" };
+    if (/Metal|Rock|Radiohead/.test(g)) return { fill: "toms", end: "held" };
+    if (/Jazz/.test(g)) return { fill: "roll", end: "held" };
+    if (/Dream|Indie|Marías|Not for Radio|Alvvays/.test(g)) return { fill: "drop", end: "slow" };
+    return { fill: "toms", end: "held" };
+  }
+  function fxName(L, id) { return (L.filter(function (x) { return x[0] === id; })[0] || ["", id])[1]; }
+  function fxFill(P) { var f = P.fill; if (!f) return null; if (f === true || f === "auto") { var gk = fxGenre(GV.style).fill; return gk; } return f; }
+  function fxEnd() { var v = $("gv-endtype").value; return v === "auto" ? fxGenre(GV.style).end : v; }
+  function fxLabels() {
+    var G2 = fxGenre(GV.style), fs = $("gv-filltype"), es = $("gv-endtype"), fv = fs.value || prefs.fillType || "auto", ev = es.value || prefs.endType || "auto";
+    fs.innerHTML = FILLS.map(function (x) { return '<option value="' + x[0] + '">' + (x[0] === "auto" ? "Auto: " + fxName(FILLS, G2.fill) : x[1]) + "</option>"; }).join(""); fs.value = fv;
+    es.innerHTML = ENDS.map(function (x) { return '<option value="' + x[0] + '">' + (x[0] === "auto" ? "Auto: " + fxName(ENDS, G2.end) : x[1]) + "</option>"; }).join(""); es.value = ev;
+    GV.fillType = fs.value;
+  }
+  $("gv-filltype").addEventListener("change", function (e) { GV.fillType = e.target.value; prefs.fillType = e.target.value; savePrefs(); });
+  $("gv-endtype").addEventListener("change", function (e) { prefs.endType = e.target.value; savePrefs(); });
+  $("gv-intro").value = prefs.intro || "0"; $("gv-intro").addEventListener("change", function (e) { prefs.intro = e.target.value; savePrefs(); });
+  function fxAt(bar, props) {
+    if (GV.song) { if (!GV.plan[bar]) return false; var o = {}, k; for (k in GV.plan[bar]) o[k] = GV.plan[bar][k]; for (k in props) o[k] = props[k]; GV.plan[bar] = o; return true; }
+    GV.fxb = GV.fxb || {}; var c = GV.fxb[bar] || (GV.fxb[bar] = {}); for (var k2 in props) c[k2] = props[k2]; return true;
+  }
+  function fxIsEndBar() { if (GV.song) { var e = GV.plan[Math.min(GV.bar, GV.plan.length - 1)]; return !!e && e.name === "Ending"; } return GV.endBar != null && GV.bar >= GV.endBar; }
+  function fxFade() {
+    var bars = 4, dur = bars * GV.style.steps * gvStepDur(), now = ac.currentTime, b = gvBus();
+    b.gain.cancelScheduledValues(now); b.gain.setValueAtTime(b.gain.value, now); b.gain.linearRampToValueAtTime(0.0001, now + dur);
+    $("gv-fx-msg").textContent = "Fading out over " + bars + " bars…";
+    clearTimeout(GV.fadeTimer); GV.fadeTimer = setTimeout(function () { gvStop(); $("gv-fx-msg").textContent = ""; }, dur * 1000 + 150);
+  }
+  $("gv-break").addEventListener("click", function () {
+    if (!GV.on) { $("gv-fx-msg").textContent = "Start the groove first."; return; }
+    var b = GV.bar + 1; fxAt(b, { brk: true, fill: false }); fxAt(b + 1, { crash: true }); $("gv-fx-msg").textContent = "Everything stops for one bar, then crashes back in.";
+  });
+  $("gv-build").addEventListener("click", function () {
+    if (!GV.on) { $("gv-fx-msg").textContent = "Start the groove first."; return; }
+    var n = +$("gv-bld-n").value, b = GV.bar + 1;
+    for (var i = 0; i < n; i++) fxAt(b + i, { build: { i: i, n: n }, fill: false });
+    fxAt(b + n, { crash: true }); $("gv-fx-msg").textContent = "Building up over " + n + " bars, then crashing back in.";
+  });
+  /* key change */
+  var KC = { key: null, mode: null };
+  function kcName(k, m) { return KEY_MAJ[(k + xp + 120) % 12] + (m === "min" ? " minor" : ""); }
+  function kcShow() {
+    if (KC.key == null) { KC.key = GV.key; KC.mode = GV.prog.mode; }
+    $("gv-kc-key").textContent = kcName(KC.key, KC.mode);
+  }
+  function kcNextBar() {
+    var b = GV.bar + 1;
+    if ($("gv-kc-when").value === "prog") {
+      if (GV.song) { for (var i = GV.bar + 1; i < GV.plan.length; i++) if (GV.plan[i].bi === 0) return i; return GV.bar + 1; }
+      var len = GV.prog.bars.length, off = GV.intro || 0; while (((b - off) % len + len) % len !== 0) b++;
+    }
+    return b;
+  }
+  function kcFire(key, mode) {
+    key = ((key % 12) + 12) % 12; mode = mode || GV.prog.mode;
+    if (!GV.on) {
+      GV.key = key; $("gv-key").value = key;
+      if (mode !== GV.prog.mode) { $("gv-scale").value = mode; gvApply("scale"); } else gvApply("");
+      KC.key = key; KC.mode = mode; kcShow(); $("gv-kc-msg").textContent = "Key set to " + kcName(key, mode) + ". Press Play to hear it."; return;
+    }
+    var b = kcNextBar(), lead = $("gv-kc-lead").checked;
+    if (GV.song) {
+      var base = GV.plan[Math.min(b, GV.plan.length - 1)].key, d = key - base;
+      for (var i = b; i < GV.plan.length; i++) fxAt(i, { key: ((GV.plan[i].key + d) % 12 + 12) % 12 });
+      if (lead && b > 0) fxAt(b - 1, { lead: key, fill: GV.plan[b - 1].fill || "auto" }); fxAt(b, { crash: true });
+    } else GV.kc = { bar: b, key: key, mode: mode, lead: lead };
+    KC.key = key; KC.mode = mode; kcShow();
+    $("gv-kc-msg").textContent = "Changing to " + kcName(key, mode) + " in " + (b - GV.bar) + " bar" + (b - GV.bar > 1 ? "s" : "") + (lead ? ", with a lead-in chord." : ".");
+  }
+  function kcCommit() {
+    var k = GV.kc; GV.kc = null; GV.key = k.key; $("gv-key").value = k.key;
+    if (k.mode && k.mode !== GV.prog.mode) { $("gv-scale").value = k.mode; gvProgFill(k.mode, GV.style.prog); GV.prog = PROGS.filter(function (pg) { return pg.id === $("gv-prog").value; })[0] || GV.prog; }
+    setTimeout(function () { $("gv-kc-msg").textContent = "Now in " + kcName(k.key, k.mode || GV.prog.mode) + "."; }, Math.max(0, (GV.t - ac.currentTime) * 1000));
+  }
+  $("gv-kc-up").addEventListener("click", function () { kcShow(); KC.key = (KC.key + 1) % 12; kcShow(); });
+  $("gv-kc-dn").addEventListener("click", function () { kcShow(); KC.key = (KC.key + 11) % 12; kcShow(); });
+  $("gv-kc-go").addEventListener("click", function () { kcShow(); kcFire(KC.key, KC.mode); });
+  document.querySelectorAll("[data-kc]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var v = b.getAttribute("data-kc"), cur = GV.kc ? GV.kc.key : GV.key, m = GV.kc ? GV.kc.mode : GV.prog.mode;
+      if (v === "home") { kcFire(GV.key0 != null ? GV.key0 : cur, GV.mode0 || m); return; }
+      if (v === "rel") { if (m === "min") kcFire(cur + 3, "maj"); else kcFire(cur + 9, "min"); return; }
+      kcFire(cur + +v, m);
+    });
+  });
+  $("gv-key").addEventListener("change", function () { if (!GV.on) { KC.key = null; kcShow(); } });
+  $("gv-scale").addEventListener("change", function () { if (!GV.on) { KC.key = null; kcShow(); } });
+  fxLabels(); kcShow();
   /* ---------- chord shapes (worked out from each instrument's tuning) ---------- */
   var CS_INST = [
     { id: "guitar", name: "Guitar", tun: [40, 45, 50, 55, 59, 64], snd: "guitar", bass: true },
@@ -6744,7 +6933,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (from === "style") $("gv-kit").value = "auto";
     GV.kit = $("gv-kit").value; GV.kitNow = GV.kit === "auto" ? (S.kit === "e" ? "e" : "ac") : GV.kit;
     GV.key = +$("gv-key").value; GV.bpm = +$("gv-bpm").value; GV.mel = prefs.melOff ? "none" : $("gv-mel").value; GV.by = $("gv-by").value; GV.cvo = $("gv-cv").value; GV.bvo = $("gv-bv").value; if (typeof blFill === "function") blFill(); if (typeof crFill === "function" && CRHY) crFill(); if (typeof cdRender === "function" && $("cd-list")) cdRender();
-    $("gv-bpm-lbl").textContent = "Tempo " + GV.bpm + " bpm"; $("gv-tip").textContent = S.tip;
+    $("gv-bpm-lbl").textContent = "Tempo " + GV.bpm + " bpm"; $("gv-tip").textContent = S.tip; if (typeof fxLabels === "function") fxLabels();
     var dots = $("gv-beats"); dots.innerHTML = ""; for (var i = 0; i < S.beats; i++) dots.appendChild(document.createElement("i"));
     if ((from === "style" || from === "scale") && GV.on && !GV.song) { GV.step = 0; GV.bar = 0; GV.arp = 0; }
     if (GV.song && from !== "") gvStop();
