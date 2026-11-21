@@ -4224,10 +4224,251 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   G(CS5, "Pop-rock with organ", 120, { steps: 8, k: [0, 3, 4], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: each(OFF8, 1), cv: "s:organ", c2: P8, cv2: "power", bv: EB, prog: "1-4-5", mel: "answer", by: "elec" }, "Organ chops and guitar, fast and loud.");
   G(CS5, "Acoustic farewell", 72, { steps: 8, k: [0, 5], s2: [4], b: [[0, "r"], [5, "5"]], c: STRUM8, cv: "s:guitar", c2: P8, cv2: "strings", bv: EB, prog: "m-rom", mel: "sustain", by: "flute" }, "Strummed guitar, strings and flute to close the album.");
   SHELVES.forEach(function (x) { if (x[0] === "balart" && x[2].indexOf(CS1) < 0) x[2].push(CS1, CS2, CS3, CS4, CS5); });
-  SHELVES.splice(6, 0, ["csall", "Camilo Sesto: overview and first five albums", [G_CS, CS1, CS2, CS3, CS4, CS5]]);
+  SHELVES.splice(6, 0, ["csall", "Camilo Sesto: overview and albums", [G_CS, CS1, CS2, CS3, CS4, CS5]]);
+  /* ---------- round five: more albums. Original grooves in the general feel of each album or song, not transcriptions or copies. ---------- */
+  function mergeO(a, b) { var o = {}, k; for (k in a) o[k] = a[k]; for (k in b || {}) o[k] = b[k]; return o; }
+  var PRE = {
+    bal8: { steps: 8, k: [0, 5], s2: [2, 6], h: ALL8, b: BAL8, c: A8, arp: true, c2: P8, cv2: "strings", bv: EB, mel: "sustain" },
+    trip: { steps: 12, k: [0, 6], s: [3, 9], h: ALL12, b: TRI_B, c: A12, arp: true, c2: [[0, 12]], cv2: "strings", bv: EB, mel: "sustain" },
+    waltz: { beats: 3, steps: 6, k: [0], s2: [2, 4], b: B1, c: A6, arp: true, c2: [[0, 6]], cv2: "strings", bv: EB, mel: "sustain" },
+    mid: { steps: 8, k: [0, 3, 4], s: [2, 6], h: ALL8, b: MID8, c: MIDC, c2: P8, cv2: "strings", bv: EB, mel: "step" },
+    rock: { steps: 8, k: [0, 3, 4], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: each(OFF8, 1), c2: P8, cv2: "s:organ", bv: EB, mel: "answer" },
+    big: { steps: 8, k: [0, 3, 4, 7], s: [2, 6], h: ALL8, b: each(ALL8, "r"), c: A8, arp: true, c2: P8, cv2: "strings", bv: EB, mel: "sustain" },
+    soft: { steps: 8, k: [0], s2: [4], h: [0, 2, 4, 6], b: B1, c: A8, arp: true, c2: P8, cv2: "strings", bv: EB, mel: "sustain" },
+    cumb: { kit: E, k: [0, 8], s: BK, p: GUIRO16, pv: "shake", b: CUMB_B, c: CUMB_C, bv: EB, mel: "step" },
+    bol: { steps: 8, p: ALL8, pv: "shake", s2: [3, 6], b: BOL8, c: A8, arp: true, c2: P8, cv2: "strings", bv: EB, mel: "answer" },
+    polka: { beats: 2, steps: 4, k: [0, 2], s: [1, 3], b: [[0, "r"], [2, "5"]], c: each([1, 3], 1), bv: EB, mel: "answer" },
+    disco: { k: K4, s: BK, h: OFFH, b: OCT16, c: CHOPS, c2: PAD16, cv2: "strings", bv: EB, mel: "step" },
+    strum: { steps: 8, k: [0, 4], s2: [2, 6], b: [[0, "r"], [4, "5"]], c: STRUM8, c2: P8, cv2: "strings", bv: EB, mel: "step" },
+    synbal: { steps: 8, kit: E, k: [0, 5], s: [2, 6], h: ALL8, b: BAL8, c: A8, arp: true, c2: P8, cv2: "pad", bv: EB, mel: "sustain" },
+    syn68: { steps: 12, kit: E, k: [0, 6], s: [3, 9], h: ALL12, b: TRI_B, c: A12, arp: true, c2: [[0, 12]], cv2: "pad", bv: EB, mel: "sustain" },
+    lsyn: { kit: E, k: [0, 8], s: BK, b: [[0, "r"], [8, "r"]], c: HALF, c2: PAD16, cv2: "pad", bv: SUB, mel: "sustain" },
+    lsparse: { kit: E, k: [0], s2: [8], b: B1, c: HALF, bv: SUB, mel: "sustain" },
+    lpiano: { steps: 8, k: [0], s2: [4], b: B1, c: A8, arp: true, bv: EB, mel: "sustain" },
+    l68: { steps: 12, b: [[0, "r"], [6, "5"]], c: A12, arp: true, bv: EB, mel: "sustain" },
+    lgtr: { steps: 8, b: B1, c: A8, arp: true, bv: UB, mel: "answer" },
+    lstrum: { steps: 8, k: [0, 5], s2: [4], b: [[0, "r"], [5, "5"]], c: STRUM8, bv: UB, mel: "step" },
+    ldance: { kit: E, k: K4, s: BK, h: OFFH, b: B8, c: CHOPS, c2: PAD16, cv2: "pad", bv: SUB, mel: "step" },
+    lbrass: { kit: E, k: [0, 6, 8], s: BK, h: EV16, b: BSYNC, c: [[0, 2], [6, 2], [11, 2]], bv: SUB, mel: "step" },
+    lgroove: { kit: E, k: [0, 6, 10], s: BK, h: ALL16, b: BSYNC, c: CHOPS, c2: PAD16, cv2: "pad", bv: SUB, mel: "answer" }
+  };
+  function GT(g, name, bpm, pre, prog, cv, by, desc, ext) { G(g, name, bpm, mergeO(mergeO(PRE[pre], { prog: prog, cv: cv, by: by }), ext), desc); }
+  /* Camilo Sesto, albums six to ten (the Jesucristo Superstar cast album is left out) */
+  var CS6 = "Camilo Sesto style: Memorias (1976)", CS7 = "Camilo Sesto style: Rasgos (1977)", CS8 = "Camilo Sesto style: Entre amigos (1977)", CS9 = "Camilo Sesto style: Sentimientos (1978)", CS10 = "Camilo Sesto style: Horas de amor (1979)";
+  GT(CS6, "Reflective piano ballad", 66, "soft", "1364", "s:piano", "strings", "Quiet piano and strings, thinking back.");
+  GT(CS6, "Light pop with flute", 108, "strum", "pop", "s:guitar", "flute", "Bright strummed guitar and a flute hook.");
+  GT(CS6, "Dramatic strings ballad", 70, "bal8", "m-sad", "s:piano", "strings", "Minor-key piano arpeggios with strings that rise to a cry.");
+  GT(CS6, "Seventies rock song", 124, "rock", "m1-4-5", "s:elec", "elec", "Guitar, organ and a driving eighth-note bass.");
+  GT(CS6, "Six-eight memory", 58, "trip", "50s", "s:piano", "strings", "Slow piano triplets under long strings.");
+  GT(CS6, "Waltz of the past", 96, "waltz", "m-rom", "s:piano", "strings", "A wistful minor waltz.");
+  GT(CS6, "Mid-tempo with brass", 100, "mid", "1-4-5", "s:piano", "trumpets", "Steady piano groove with trumpet answers.", { mel: "fanfare" });
+  GT(CS6, "Theatrical rock ballad", 84, "big", "m-epic", "power", "elec", "Heavy guitar and pounding piano, very theatrical.");
+  GT(CS6, "Acoustic confession", 70, "strum", "m-rom", "s:nylon", "flute", "Nylon guitar strum and flute, close and personal.", { k: [0], s2: [4] });
+  GT(CS6, "Grand finale", 76, "big", "1376", "s:piano", "both", "Strings and trumpets for the closing chorus.");
+  GT(CS7, "Pleading love ballad", 68, "bal8", "50s", "s:piano", "strings", "Piano and strings building to a high, pleading chorus.");
+  GT(CS7, "Wind-in-your-sails pop", 112, "mid", "pop", "s:elec", "strings", "An uplifting mid-tempo with guitar and strings.");
+  GT(CS7, "Gentle mi-buen-amor ballad", 72, "soft", "1625", "s:rhodes", "flute", "Electric piano and flute, tender and warm.");
+  GT(CS7, "Disco-pop strings", 118, "disco", "m-pop", "s:elec", "strings", "Four-on-the-floor with a string line.");
+  GT(CS7, "Triplet heartbreak", 60, "trip", "m-sad", "s:piano", "strings", "Minor triplets that swell with each line.");
+  GT(CS7, "Bolero with strings", 84, "bol", "bolero", "s:nylon", "strings", "A bolero pulse with nylon guitar and strings.");
+  GT(CS7, "Soft-rock ballad", 78, "bal8", "1364", "s:elec", "elec", "Clean electric guitar arpeggios and a soft band.");
+  GT(CS7, "Pop waltz", 104, "waltz", "1-4-5", "s:piano", "strings", "A bright piano waltz.");
+  GT(CS7, "Brass-driven pop", 116, "rock", "1-4-5", "brass", "trumpets", "Brass chops and drums, up-tempo.", { mel: "fanfare" });
+  GT(CS7, "Strings intro to big chorus", 70, "big", "1376", "strings", "strings", "Held strings, then everything comes in.");
+  GT(CS8, "Friends-around-the-piano ballad", 70, "soft", "50s", "s:piano", "strings", "Warm piano with soft strings, like a sing-along with friends.");
+  GT(CS8, "Easy mid-tempo", 96, "mid", "1364", "s:rhodes", "flute", "Relaxed electric piano and a flute line.");
+  GT(CS8, "Guitar sing-along", 104, "strum", "pop", "s:guitar", "strings", "Strummed guitar for a chorus everyone joins.");
+  GT(CS8, "Minor romance", 72, "bal8", "m-rom", "s:piano", "strings", "A minor ballad with piano and strings.");
+  GT(CS8, "Seventies soul-pop", 100, "lgroove", "1625", "s:rhodes", "brass", "Syncopated bass, electric piano and brass.", { kit: undefined, bv: EB, cv2: "strings" });
+  GT(CS8, "Slow six-eight duet", 56, "trip", "1376", "s:piano", "strings", "Triplets for two voices trading lines.");
+  GT(CS8, "Bossa interlude", 86, "bal8", "1625", "s:nylon", "flute", "A soft bossa feel with nylon guitar.", { k: [], s2: [], h: [], p: [0, 3, 6], pv: "rim", b: [[0, "r"], [3, "5"], [4, "5"], [7, "r"]], c: [[0, 2], [3, 1], [5, 2]], arp: false });
+  GT(CS8, "Country-tinged ballad", 76, "strum", "1-4-5", "s:guitar", "strings", "Acoustic strum and strings with a country lilt.", { k: [0, 5], s2: [4] });
+  GT(CS8, "Pop-rock with organ", 120, "rock", "1-4-5", "s:organ", "elec", "Organ and guitar, loud and happy.");
+  GT(CS8, "Last song of the night", 64, "soft", "1364", "s:piano", "strings", "Piano and strings, slow and fond.");
+  GT(CS9, "Huge opening ballad", 68, "big", "m-sad", "s:piano", "strings", "Piano, drums and strings at full drama from the first chorus.");
+  GT(CS9, "Living-and-dying-of-love build", 72, "bal8", "1376", "s:piano", "strings", "A slow build to a long held note.");
+  GT(CS9, "Late-seventies disco ballad", 108, "disco", "m-pop", "s:elec", "strings", "Octave bass and strings, a ballad you can dance to.");
+  GT(CS9, "Triplet power ballad", 60, "trip", "50s", "s:piano", "strings", "Rolling piano triplets under soaring strings.");
+  GT(CS9, "Tender verse", 64, "soft", "1364", "s:rhodes", "flute", "Electric piano and flute, very soft.");
+  GT(CS9, "Brass and strings anthem", 76, "big", "1-4-5", "s:piano", "both", "Strings and trumpets together for a big chorus.");
+  GT(CS9, "Minor waltz", 92, "waltz", "m-rom", "s:piano", "strings", "A dark waltz in three.");
+  GT(CS9, "Seductive mid-tempo", 92, "mid", "m1-4-5", "s:rhodes", "altosax", "A slinky minor groove with sax.");
+  GT(CS9, "Acoustic guitar ballad", 72, "strum", "pop", "s:guitar", "strings", "Strummed guitar with strings behind.", { k: [0, 5], s2: [4] });
+  GT(CS9, "Final key-change chorus", 78, "big", "50s", "s:piano", "strings", "Everything up for the highest, last chorus.");
+  GT(CS10, "Hours-of-love slow jam", 70, "bal8", "1625", "s:rhodes", "strings", "Soft electric piano, strings and a slow beat.");
+  GT(CS10, "Disco strings", 120, "disco", "m-pop", "s:elec", "strings", "A late-seventies dance beat with a string line.");
+  GT(CS10, "Orchestral heartbreak", 66, "bal8", "m-sad", "s:piano", "strings", "Piano arpeggios and strings in a minor key.");
+  GT(CS10, "Funky ballad", 92, "lgroove", "1625", "s:rhodes", "brass", "Syncopated bass, electric piano and brass answers.", { bv: EB, cv2: "strings" });
+  GT(CS10, "Six-eight serenade", 58, "trip", "1376", "s:piano", "strings", "Slow triplets for a love song.");
+  GT(CS10, "Sax ballad", 72, "bal8", "1364", "s:rhodes", "altosax", "Electric piano with a sax carrying the tune.");
+  GT(CS10, "Up-tempo pop-rock", 122, "rock", "1-4-5", "s:elec", "trumpets", "Guitar chops and trumpets, bright and fast.");
+  GT(CS10, "Bolero pop", 84, "bol", "bolero", "s:piano", "strings", "A bolero pulse with piano and strings.");
+  GT(CS10, "Quiet piano verse", 62, "soft", "1364", "s:piano", "flute", "Just piano and flute.");
+  GT(CS10, "Big romantic ending", 74, "big", "50s", "s:piano", "strings", "Full band and strings for a big finish.");
+  /* Los Bukis, first five albums */
+  var BU1 = "Los Bukis style: Falso amor (1975)", BU2 = "Los Bukis style: Te tuve y te perdí (1977)", BU3 = "Los Bukis style: Me siento solo (1978)", BU4 = "Los Bukis style: Los triunfadores (1979)", BU5 = "Los Bukis style: Me muero porque seas mi novia (1980)";
+  GT(BU1, "Young grupera ballad", 76, "bal8", "50s", "s:elec", "lead", "Picked electric guitar over an organ pad, simple and young.", { cv2: "s:organ" });
+  GT(BU1, "Early cumbia", 98, "cumb", "1-4-5", "s:organ", "lead", "Organ chops on the off-beats over a cumbia beat.");
+  GT(BU1, "Folk-protest strum", 100, "strum", "m-pop", "s:guitar", "flute", "A strong acoustic strum, words first.", { cv2: "s:organ" });
+  GT(BU1, "Bolero with organ", 84, "bol", "bolero", "s:elec", "lead", "A bolero pulse with guitar and organ.", { cv2: "s:organ" });
+  GT(BU1, "Slow six-eight", 58, "trip", "50s", "s:elec", "lead", "Guitar triplets and organ for a slow dance.", { cv2: "s:organ" });
+  GT(BU1, "Ranchera with keyboards (2/4)", 112, "polka", "ranch", "s:organ", "lead", "A polka beat with organ on the off-beats.");
+  GT(BU1, "Minor cumbia", 96, "cumb", "m1-4-5", "s:elec", "elec", "Minor key, clean guitar chops and guitar answers.");
+  GT(BU1, "Waltz (3/4)", 96, "waltz", "ranch", "s:organ", "lead", "A gentle one-two-three with organ.", { cv2: "pad" });
+  GT(BU1, "Heartbroken ballad", 72, "bal8", "m-sad", "s:organ", "lead", "Minor key, organ and a lonely lead line.", { cv2: "pad" });
+  GT(BU1, "Up-tempo grupera", 124, "rock", "1-4-5", "s:organ", "lead", "Fast organ chops and a keyboard hook.");
+  GT(BU2, "Lost-love ballad", 74, "synbal", "50s", "s:epfm", "lead", "Electric piano arpeggios, a pad and a synth line.");
+  GT(BU2, "Cumbia with guitar", 100, "cumb", "m1-4-5", "s:elec", "elec", "Clean guitar chops and answers over cumbia.");
+  GT(BU2, "Rhythmic ballad", 106, "mid", "1-3-4-5", "s:epfm", "lead", "A steady mid-tempo love song with keyboards.", { kit: E, cv2: "pad" });
+  GT(BU2, "Bolero grupero", 86, "bol", "bolero", "s:elec", "rhodes", "A bolero pulse played by a keyboard band.", { cv2: "pad" });
+  GT(BU2, "Six-eight slow dance", 56, "syn68", "50s", "s:elec", "rhodes", "Swaying guitar triplets and a pad.");
+  GT(BU2, "Ranchera polka", 116, "polka", "ranch", "s:organ", "lead", "Organ on the off-beats instead of a bajo sexto.");
+  GT(BU2, "Minor ballad with sax", 76, "synbal", "m-rom", "s:epfm", "altosax", "A sad minor ballad with a sax line.");
+  GT(BU2, "Waltz ballad", 94, "waltz", "ranch7", "s:epfm", "lead", "Keyboards in three.", { cv2: "pad" });
+  GT(BU2, "Bright cumbia", 102, "cumb", "1-4-5", "s:organ", "lead", "A happy cumbia with organ.");
+  GT(BU2, "Big chorus", 80, "big", "pop", "s:organ", "elec", "Organ, strings and guitar for the part everyone sings.", { kit: E });
+  GT(BU3, "Lonely synth ballad", 70, "synbal", "m-sad", "s:epfm", "lead", "Glassy keys and a lonely synth line.");
+  GT(BU3, "Folk song cover feel", 92, "waltz", "m-rom", "s:nylon", "flute", "Nylon guitar and flute in a folk three.", { k: [0], s2: [3] });
+  GT(BU3, "Cumbia romántica", 94, "cumb", "m1-4-5", "s:epfm", "lead", "A slow cumbia with a pad behind it.", { c2: PAD16, cv2: "pad" });
+  GT(BU3, "Mid-tempo heartache", 104, "mid", "m1-4-5", "s:epfm", "lead", "A minor mid-tempo with keyboards.", { kit: E, cv2: "pad" });
+  GT(BU3, "Slow triplet dance", 56, "syn68", "50s", "s:elec", "lead", "Slow triplets with guitar and pad.");
+  GT(BU3, "Ranchera with organ", 110, "polka", "ranch", "s:organ", "lead", "Polka beat, organ chords.");
+  GT(BU3, "Bolero", 86, "bol", "bolero", "s:epfm", "rhodes", "Bolero pulse on keyboards.", { cv2: "pad" });
+  GT(BU3, "Sax ballad", 74, "synbal", "1625", "s:rhodes", "altosax", "Soft keys with the sax on top.");
+  GT(BU3, "Party cumbia", 104, "cumb", "1-4-5", "s:organ", "lead", "Bright organ cumbia for dancing.");
+  GT(BU3, "Waltz", 96, "waltz", "ranch", "s:epfm", "lead", "A gentle keyboard waltz.", { cv2: "pad" });
+  GT(BU4, "Sad imagining ballad", 72, "synbal", "m-sad", "s:epfm", "lead", "Minor keys and a synth melody.");
+  GT(BU4, "You-are ballad", 76, "synbal", "50s", "s:rhodes", "lead", "Warm electric piano and pad, a simple love song.");
+  GT(BU4, "Playful cumbia", 104, "cumb", "1-4-5", "s:organ", "lead", "A cheeky up-tempo cumbia with organ.");
+  GT(BU4, "Slow six-eight", 56, "syn68", "50s", "s:elec", "rhodes", "Swaying triplets for a slow dance.");
+  GT(BU4, "Rhythmic ballad", 108, "mid", "1-3-4-5", "s:epfm", "lead", "A steady mid-tempo with keys.", { kit: E, cv2: "pad" });
+  GT(BU4, "Ranchera polka", 114, "polka", "ranch", "s:organ", "lead", "Organ polka in two.");
+  GT(BU4, "Bolero grupero", 86, "bol", "bolero", "s:elec", "rhodes", "Bolero pulse with guitar and keys.", { cv2: "pad" });
+  GT(BU4, "Minor cumbia", 96, "cumb", "m1-4-5", "s:elec", "elec", "Minor cumbia with guitar answers.");
+  GT(BU4, "Waltz ballad", 94, "waltz", "ranch7", "s:epfm", "lead", "A keyboard waltz.", { cv2: "pad" });
+  GT(BU4, "Goodbye ballad", 70, "synbal", "m-rom", "s:epfm", "altosax", "A farewell ballad with sax.");
+  GT(BU5, "Sweetheart ballad", 76, "synbal", "50s", "s:epfm", "lead", "Bright keys and a hopeful synth line.");
+  GT(BU5, "Teen-love cumbia", 100, "cumb", "1-4-5", "s:organ", "lead", "Happy organ cumbia.");
+  GT(BU5, "Heartbreak six-eight", 56, "syn68", "m-sad", "s:elec", "rhodes", "Slow minor triplets.");
+  GT(BU5, "Rhythmic love song", 108, "mid", "1-3-4-5", "s:epfm", "lead", "Steady mid-tempo with keys.", { kit: E, cv2: "pad" });
+  GT(BU5, "Bolero with sax", 84, "bol", "bolero", "s:epfm", "altosax", "Bolero pulse with a sax line.", { cv2: "pad" });
+  GT(BU5, "Ranchera keyboards", 112, "polka", "ranch", "s:organ", "lead", "Organ ranchera in two.");
+  GT(BU5, "Minor ballad", 72, "synbal", "m-rom", "s:rhodes", "lead", "Soft keys in a minor key.");
+  GT(BU5, "Cumbia with guitar", 98, "cumb", "m1-4-5", "s:elec", "elec", "Minor cumbia, guitar chops.");
+  GT(BU5, "Waltz", 96, "waltz", "ranch", "s:epfm", "lead", "Keyboard waltz.", { cv2: "pad" });
+  GT(BU5, "Big chorus", 80, "big", "pop", "s:organ", "elec", "Organ, strings and guitar, all in.", { kit: E });
+  /* Los Temerarios, first five albums */
+  var TE1 = "Los Temerarios style: Los 14 grandes éxitos (1983)", TE2 = "Los Temerarios style: En la altura (1984)", TE3 = "Los Temerarios style: Cumbias y norteñas (1985)", TE4 = "Los Temerarios style: Pero no (1986)", TE5 = "Los Temerarios style: Fue un juego (1987)";
+  GT(TE1, "Early norteño polka", 118, "polka", "ranch", "s:accordion", "lead", "Accordion chords on the off-beats over a two-beat bass.");
+  GT(TE1, "Keyboard ranchera", 108, "polka", "ranch7", "s:organ", "lead", "The ranchera beat on keyboards.");
+  GT(TE1, "Simple cumbia", 96, "cumb", "1-4-5", "s:organ", "lead", "A plain early cumbia with organ.");
+  GT(TE1, "Young love ballad", 74, "synbal", "50s", "s:epfm", "lead", "Electric piano and a pad, sweet and simple.");
+  GT(TE1, "Waltz (3/4)", 98, "waltz", "ranch", "s:accordion", "lead", "An accordion waltz.", { cv2: "pad" });
+  GT(TE1, "Bolero", 86, "bol", "bolero", "s:elec", "rhodes", "Bolero pulse with clean guitar.", { cv2: "pad" });
+  GT(TE1, "Minor cumbia", 94, "cumb", "m1-4-5", "s:elec", "elec", "Minor key, guitar chops.");
+  GT(TE1, "Norteña with guitar", 114, "polka", "1-4-5", "strum", "lead", "Bajo sexto strum and polka beat.");
+  GT(TE1, "Six-eight ballad", 56, "syn68", "50s", "s:epfm", "lead", "Slow triplets on keys.");
+  GT(TE1, "Heartbreak ranchera", 92, "polka", "ranch7", "s:accordion", "lead", "A slower ranchera with accordion.");
+  GT(TE2, "Mountain-high ballad", 72, "synbal", "1376", "s:epfm", "lead", "Keys and a pad lifting to a high chorus.");
+  GT(TE2, "Cumbia sabrosa", 98, "cumb", "1-4-5", "s:organ", "lead", "An organ cumbia that keeps moving.");
+  GT(TE2, "Norteño two-step", 120, "polka", "ranch", "s:accordion", "lead", "Fast accordion polka.");
+  GT(TE2, "Minor ballad", 70, "synbal", "m-sad", "s:rhodes", "lead", "Minor key, soft keys.");
+  GT(TE2, "Keyboard waltz", 96, "waltz", "ranch7", "s:epfm", "lead", "A waltz on keyboards.", { cv2: "pad" });
+  GT(TE2, "Romantic cumbia", 92, "cumb", "m1-4-5", "s:epfm", "lead", "Slow cumbia with a pad.", { c2: PAD16, cv2: "pad" });
+  GT(TE2, "Bolero grupero", 86, "bol", "bolero", "s:epfm", "rhodes", "Bolero on keyboards.", { cv2: "pad" });
+  GT(TE2, "Six-eight slow dance", 54, "syn68", "50s", "s:epfm", "altosax", "Very slow triplets with sax answers.");
+  GT(TE2, "Ranchera with keys", 106, "polka", "ranch", "s:organ", "lead", "Ranchera beat with organ.");
+  GT(TE2, "Mid-tempo love song", 104, "mid", "1-3-4-5", "s:epfm", "lead", "A steady mid-tempo with keys.", { kit: E, cv2: "pad" });
+  GT(TE3, "Classic cumbia", 98, "cumb", "1-4-5", "s:organ", "lead", "Guiro, organ chops and a walking cumbia bass.");
+  GT(TE3, "Accordion cumbia", 100, "cumb", "m1-4-5", "s:accordion", "lead", "A cumbia led by accordion.");
+  GT(TE3, "Norteña polka", 120, "polka", "ranch", "s:accordion", "lead", "Accordion and bajo-style bass in two.");
+  GT(TE3, "Norteña with bajo sexto", 116, "polka", "1-4-5", "strum", "lead", "Bajo sexto strum over a polka beat.");
+  GT(TE3, "Minor cumbia with guitar", 96, "cumb", "m1-4-5", "s:elec", "elec", "Minor cumbia with guitar answers.");
+  GT(TE3, "Slow norteña", 96, "polka", "ranch7", "s:accordion", "lead", "A slower norteña for a sad story.");
+  GT(TE3, "Cumbia romántica", 92, "cumb", "m1-4-5", "s:epfm", "lead", "A slow cumbia with keys and pad.", { c2: PAD16, cv2: "pad" });
+  GT(TE3, "Norteño waltz", 100, "waltz", "ranch", "s:accordion", "lead", "An accordion waltz.", { cv2: "pad" });
+  GT(TE3, "Party cumbia", 104, "cumb", "1-4-5", "s:organ", "lead", "Bright and fast cumbia.");
+  GT(TE3, "Redova feel", 112, "waltz", "ranch7", "s:accordion", "lead", "A lively three-beat norteño dance.", { k: [0], s: [2, 4] });
+  GT(TE4, "But-no ballad", 72, "synbal", "m-sad", "s:epfm", "lead", "Glassy keys and a pad, a sad no.");
+  GT(TE4, "Synth strings ballad", 70, "synbal", "50s", "s:epfm", "lead", "Electric piano under synth strings.", { cv2: "strings" });
+  GT(TE4, "Romantic cumbia", 92, "cumb", "m1-4-5", "s:epfm", "lead", "Slow cumbia with pad.", { c2: PAD16, cv2: "pad" });
+  GT(TE4, "Rhythmic bolero", 90, "bol", "bolero", "s:epfm", "rhodes", "A bolero with more push from the kick.", { kit: E, k: [0, 4], cv2: "pad" });
+  GT(TE4, "Six-eight slow dance", 54, "syn68", "50s", "s:epfm", "altosax", "Very slow triplets with sax.");
+  GT(TE4, "Norteña", 116, "polka", "ranch", "s:accordion", "lead", "An accordion polka.");
+  GT(TE4, "Minor heartbreak", 70, "synbal", "m-rom", "s:rhodes", "lead", "Minor key, soft keys and strings.", { cv2: "strings" });
+  GT(TE4, "Keyboard ranchera", 100, "polka", "ranch7", "s:epfm", "lead", "Ranchera on keyboards with strings.", { c2: [[0, 4]], cv2: "strings" });
+  GT(TE4, "Waltz with synth strings", 92, "waltz", "ranch7", "s:piano", "lead", "Piano waltz under synth strings.");
+  GT(TE4, "Up-tempo cumbia", 102, "cumb", "1-4-5", "s:organ", "lead", "Bright organ cumbia.");
+  GT(TE5, "It-was-a-game ballad", 70, "synbal", "m-sad", "s:epfm", "lead", "Slow drum machine, glassy keys and big synth strings.", { cv2: "strings" });
+  GT(TE5, "Strings and piano ballad", 66, "synbal", "1364", "s:piano", "lead", "Piano on every beat under long strings.", { c: Q8, arp: false, cv2: "strings" });
+  GT(TE5, "Sax ballad", 72, "synbal", "1625", "s:rhodes", "altosax", "Soft keys with the sax on top.");
+  GT(TE5, "Six-eight slow dance", 54, "syn68", "50s", "s:epfm", "altosax", "Very slow triplets, sax answers.");
+  GT(TE5, "Romantic cumbia", 92, "cumb", "m1-4-5", "s:epfm", "lead", "Slow cumbia with a pad.", { c2: PAD16, cv2: "pad" });
+  GT(TE5, "Rhythmic bolero", 90, "bol", "bolero", "s:epfm", "rhodes", "Bolero with a pushing kick.", { kit: E, k: [0, 4], cv2: "pad" });
+  GT(TE5, "Minor ballad", 70, "synbal", "m-rom", "s:rhodes", "lead", "Minor ballad with strings.", { cv2: "strings" });
+  GT(TE5, "Slow ranchera with keys", 84, "polka", "ranch", "s:epfm", "lead", "The ranchera pattern on keys with strings.", { c2: [[0, 4]], cv2: "strings" });
+  GT(TE5, "Waltz with synth strings", 90, "waltz", "ranch7", "s:piano", "lead", "Piano waltz with synth strings.");
+  GT(TE5, "Norteña", 116, "polka", "ranch", "s:accordion", "lead", "Accordion polka.");
+  /* Lorde: one groove per album song. Named after the songs; each is an original groove in the general feel of that song, not the song itself. */
+  var LS1 = "Lorde style: song by song – Pure Heroine", LS2 = "Lorde style: song by song – Melodrama", LS3 = "Lorde style: song by song – Solar Power", LS4 = "Lorde style: song by song – Virgin";
+  GT(LS1, "Tennis Court", 92, "lsyn", "m-v", "pad", "lead", "Snappy beat, deep sub bass and a held synth chord.");
+  GT(LS1, "400 Lux", 80, "lsyn", "minb", "pad", "lead", "Slow, warm and late-night: soft kick, sub bass, long pad.", { k: [0, 10] });
+  GT(LS1, "Royals", 85, "lsparse", "onem", "pad", "lead", "Mostly kick, snaps and bass, with very little else.", { s: [4, 12], s2: undefined, c: undefined, mel: "none" });
+  GT(LS1, "Ribs", 104, "lsyn", "m-dream", "s:epfm", "lead", "Echoing synth notes that build into a rush.", { c: ARP16, arp: true, fx: true });
+  GT(LS1, "Buzzcut Season", 112, "lsyn", "dream4", "s:epfm", "lead", "Airy, watery synths over a light skipping beat.", { h: OFFH, fx: true });
+  GT(LS1, "Team", 100, "lsyn", "m-v", "pad", "lead", "Big drums, handclaps and a chant-like pad.", { k: [0, 6, 8] });
+  GT(LS1, "Glory and Gore", 96, "lsyn", "m-epic", "brass", "lead", "Heavy, stomping beat with dark synth stabs.", { c: [[0, 2], [8, 2]] });
+  GT(LS1, "Still Sane", 72, "lsparse", "minb", "pad", "lead", "Quiet and spacious: one kick, a pad and a thin line.");
+  GT(LS1, "White Teeth Teens", 96, "lsyn", "m-v", "pad", "lead", "Swaggering mid-tempo beat with a fat sub bass.", { s: [4, 12], k: [0, 7, 10] });
+  GT(LS1, "A World Alone", 98, "lsyn", "dream4", "pad", "lead", "A gentle closing beat with a hopeful pad.");
+  GT(LS2, "Green Light", 128, "ldance", "4156", "s:piano", "lead", "Bouncy piano chords that turn into a four-on-the-floor dance break.");
+  GT(LS2, "Sober", 108, "lbrass", "m-epic", "brass", "lead", "Punchy synth-brass stabs over a syncopated beat.");
+  GT(LS2, "Homemade Dynamite", 104, "lgroove", "m-v", "pad", "lead", "A bouncy, clicky beat with a playful bass.");
+  GT(LS2, "The Louvre", 116, "lsyn", "dream4", "s:elec", "elec", "Muted guitar and a slow-building beat that never quite drops.", { c: CHOPS });
+  GT(LS2, "Liability", 64, "lpiano", "1364", "s:piano", "lead", "Just a soft piano, very bare.", { mel: "none", k: undefined, s2: undefined });
+  GT(LS2, "Hard Feelings/Loveless", 100, "lsyn", "m-sad", "pad", "lead", "A heavy pulsing synth half, then a snappier beat.");
+  GT(LS2, "Sober II (Melodrama)", 74, "l68", "m-epic", "strings", "strings", "Dark strings and a slow, dramatic six-feel.");
+  GT(LS2, "Writer in the Dark", 60, "lpiano", "1376", "s:piano", "strings", "Piano ballad that rises with strings.", { c2: P8, cv2: "strings" });
+  GT(LS2, "Supercut", 120, "ldance", "4156", "s:epfm", "lead", "Fast, bright synths and a driving dance beat.");
+  GT(LS2, "Liability (Reprise)", 70, "lsparse", "minb", "pad", "lead", "Hazy pad and a faint beat, like a memory.", { mel: "none" });
+  GT(LS2, "Perfect Places", 104, "lsyn", "pop", "s:epfm", "lead", "Big, shimmering synth-pop chorus energy.", { k: [0, 4, 8, 12], h: OFFH });
+  GT(LS3, "The Path", 76, "lgtr", "dream2", "s:guitar", "flute", "Soft picked guitar and a flute, opening the day.");
+  GT(LS3, "Solar Power", 96, "lstrum", "royal", "s:guitar", "elec", "Sunny strummed guitar that slowly grows into a full band.");
+  GT(LS3, "California", 84, "lgtr", "1364", "s:guitar12", "elec", "Gentle 12-string picking, wistful and slow.");
+  GT(LS3, "Stoned at the Nail Salon", 72, "lgtr", "1376", "s:guitar", "strings", "Quiet guitar with soft strings, reflective.");
+  GT(LS3, "Fallen Fruit", 92, "lstrum", "m-dream", "s:guitar12", "flute", "Bright strumming over a darker undercurrent.");
+  GT(LS3, "Secrets from a Girl", 112, "lstrum", "pop", "s:guitar", "elec", "Breezy strummed groove with a light beat.", { k: [0, 4], s2: [2, 6] });
+  GT(LS3, "The Man with the Axe", 64, "lgtr", "minb", "s:elec", "lead", "Slow, sparse clean guitar.", { mel: "none" });
+  GT(LS3, "Dominoes", 88, "lgtr", "royal", "s:guitar", "flute", "Light finger-picked guitar, playful.");
+  GT(LS3, "Big Star", 70, "lgtr", "1364", "s:guitar", "strings", "Tender guitar with strings, simple.");
+  GT(LS3, "Leader of a New Regime", 66, "lgtr", "dream2", "s:harp", "flute", "Short and airy: harp and flute.");
+  GT(LS3, "Mood Ring", 104, "lstrum", "dream4", "s:guitar12", "flute", "A bright, glossy strum with a flute hook.");
+  GT(LS3, "Oceanic Feeling", 80, "lgtr", "1376", "s:guitar", "strings", "A long, slowly growing closer with guitar and strings.");
+  GT(LS4, "Hammer", 118, "ldance", "m-v", "s:epfm", "lead", "Pulsing synths and a steady dance beat.");
+  GT(LS4, "What Was That", 112, "ldance", "4156", "s:epfm", "lead", "Bright synth chords and a driving beat, nostalgic.");
+  GT(LS4, "Shapeshifter", 104, "lgroove", "m-dream", "pad", "lead", "A shifting, syncopated beat with a moody pad.");
+  GT(LS4, "Man of the Year", 72, "lsparse", "minb", "s:piano", "lead", "Spare and tense: one kick, piano and a pad that swells.", { c2: PAD16, cv2: "pad" });
+  GT(LS4, "Favourite Daughter", 120, "ldance", "pop", "s:epfm", "lead", "Bouncy synth-pop with a running bass.");
+  GT(LS4, "Current Affairs", 96, "lsyn", "m-sad", "pad", "lead", "Smooth beat and sub bass with a warm pad.");
+  GT(LS4, "Clearblue", 66, "lsparse", "minb", "pad", "lead", "Almost no beat: a held pad, very exposed.", { mel: "none" });
+  GT(LS4, "GRWM", 100, "lgroove", "m-v", "s:elec", "elec", "Clicky beat and guitar chops, conversational.");
+  GT(LS4, "Broken Glass", 116, "ldance", "m-dream", "s:epfm", "lead", "Glassy synths over a fast, light beat.", { fx: true });
+  GT(LS4, "If She Could See Me Now", 108, "lsyn", "dream4", "s:epfm", "lead", "A rising synth groove with a hopeful lift.", { k: [0, 4, 8, 12] });
+  GT(LS4, "David", 70, "lpiano", "1376", "s:piano", "strings", "Slow piano and strings to close.", { c2: P8, cv2: "strings" });
+  [CS6, CS7, CS8, CS9, CS10].forEach(function (g) { G_NOTE[g] = " In the feel of that album, not a copy of a song."; FAM_OF[g] = "cs"; });
+  [BU1, BU2, BU3, BU4, BU5].forEach(function (g) { G_NOTE[g] = " In the feel of that album, not a copy of a song."; FAM_OF[g] = "buk"; });
+  [TE1, TE2, TE3, TE4, TE5].forEach(function (g) { G_NOTE[g] = " In the feel of that album, not a copy of a song."; FAM_OF[g] = "tem"; });
+  [[LS1, LO_PH], [LS2, LO_ME], [LS3, LO_SP], [LS4, LO_VI]].forEach(function (x) { G_NOTE[x[0]] = " A groove in the general feel of the song it is named after, not the song itself."; if (FAM_OF[x[1]]) FAM_OF[x[0]] = FAM_OF[x[1]]; });
+  SHELVES.forEach(function (x) {
+    if (x[0] === "csall") x[2].push(CS6, CS7, CS8, CS9, CS10);
+    if (x[0] === "balart") x[2].push(CS6, CS7, CS8, CS9, CS10);
+    if (x[0] === "grup") x[2].push(BU1, BU2, BU3, BU4, BU5, TE1, TE2, TE3, TE4, TE5);
+    if (x[0] === "lorde") x[2].push(LS1, LS2, LS3, LS4);
+  });
+
   SHELVES.push(["popdiv", "Olivia Newton-John and Dua Lipa", [G_ON, DL1, DL2, DL3]]);
 
-  var GROUP_ORDER = ["Regional Mexican", "Modern regional Mexican", "Grupera", G_BU, G_TE, "Ballads", "R&B", G_JG, JG1, JG2, JG3, JG4, JG5, G_CS, CS1, CS2, CS3, CS4, CS5, G_JJ, LO_PH, LO_ME, LO_SP, LO_VI, LO_SI, G_MA, G_NR, G_DP, G_IN, G_AL, G_RH, "Electro-pop", G_ON, DL1, DL2, DL3, "Jazz", "Rock", "Metal", "Basics", "Kick drum"];
+  var GROUP_ORDER = ["Regional Mexican", "Modern regional Mexican", "Grupera", G_BU, BU1, BU2, BU3, BU4, BU5, G_TE, TE1, TE2, TE3, TE4, TE5, "Ballads", "R&B", G_JG, JG1, JG2, JG3, JG4, JG5, G_CS, CS1, CS2, CS3, CS4, CS5, CS6, CS7, CS8, CS9, CS10, G_JJ, LO_PH, LO_ME, LO_SP, LO_VI, LO_SI, LS1, LS2, LS3, LS4, G_MA, G_NR, G_DP, G_IN, G_AL, G_RH, "Electro-pop", G_ON, DL1, DL2, DL3, "Jazz", "Rock", "Metal", "Basics", "Kick drum"];
   /* ---------- song form builder ---------- */
   var SEC_NAMES = { intro: "Intro", verse: "Verse", pre: "Pre-chorus", chorus: "Chorus", inter: "Interlude", bridge: "Bridge", solo: "Solo", outro: "Outro" };
   var FORMS = [
@@ -4249,7 +4490,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     sierreno: "sierreno", tumbado: "sierreno", tumbado44: "sierreno", electro: "sierreno", bolero: "bolero", swing: "aaba", jballad: "aaba", bossa: "aaba", blues: "blues", shufflerock: "blues",
     slowjam: "rnb", neosoul: "rnb", rnb90: "rnb" };
   var FORM_GROUP = { "Ballads": "balada", "Grupera": "balada", "Dream and indie pop": "pop", "Electro-pop": "pop", "Lorde style: Pure Heroine era": "pop", "Lorde style: Melodrama era": "pop", "Lorde style: Solar Power era": "pop", "Lorde style: Virgin era": "pop", "The Mar\u00EDas style": "pop", "Not for Radio style": "balada", "Rock": "rock", "Metal": "rock", "Kick drum": "rock", "Basics": "rock" };
-  [G_BU, G_TE, G_JG, G_CS, CS1, CS2, CS3, CS4, CS5].forEach(function (g) { FORM_GROUP[g] = "balada"; }); FORM_GROUP[G_JJ] = "bolero"; FORM_GROUP[LO_SI] = "pop"; FORM_GROUP[G_AL] = "pop"; FORM_GROUP[G_RH] = "rock"; FORM_GROUP[G_DP] = "pop"; FORM_GROUP[G_IN] = "pop";
+  [G_BU, G_TE, G_JG, G_CS, CS1, CS2, CS3, CS4, CS5, CS6, CS7, CS8, CS9, CS10, BU1, BU2, BU3, BU4, BU5, TE1, TE2, TE3, TE4, TE5].forEach(function (g) { FORM_GROUP[g] = "balada"; }); [LS1, LS2, LS3, LS4].forEach(function (g) { FORM_GROUP[g] = FORM_GROUP[LO_PH] || "pop"; }); FORM_GROUP[G_JJ] = "bolero"; FORM_GROUP[LO_SI] = "pop"; FORM_GROUP[G_AL] = "pop"; FORM_GROUP[G_RH] = "rock"; FORM_GROUP[G_DP] = "pop"; FORM_GROUP[G_IN] = "pop";
   var SF = { on: !!(prefs.sf && prefs.sf.on), form: "auto", secs: [], shift: 0, same: false, cur: -1 };
   function sfFormId() { return SF.form !== "auto" ? SF.form : FORM_OF[GV.style.id] || FORM_GROUP[GV.style.group] || "pop"; }
   function sfLoad() {
