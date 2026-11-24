@@ -603,7 +603,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <p class="small" id="bc-tip"></p>
       <div class="row">
         <label class="fld">Practice speed<select id="bc-speed"><option value="1">100%</option><option value="0.9">90%</option><option value="0.75">75%</option><option value="0.6">60%</option><option value="0.5">50%</option></select></label>
-        <label class="fld">When I tap<select id="bc-tapsnd"><option value="bass">Play the bass note</option><option value="click">Play a woodblock</option><option value="off">No sound</option></select></label>
+        <label class="fld">When I tap<select id="bc-tapsnd"><option value="bass">Play the bass note</option><option value="click">Play a woodblock</option><option value="snap">Finger snap</option><option value="cowbell">Cowbell</option><option value="kick">Kick drum</option><option value="off">No sound</option></select></label>
       </div>
       <label class="fld">Drums while I practice<select id="bc-drums"><option value="full">The full groove</option><option value="ks">Only kick and snare (no hi-hat or clicky sounds)</option><option value="beat">No drums, just a soft beep on each beat</option><option value="off">No drums at all</option></select></label>
       <details><summary class="small"><b>More settings</b></summary>
@@ -6836,6 +6836,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   var BC_SYL = ["", "e", "&", "a"];
   var BC_DEG = { r: "R", r5: "R", "5": "5", "5d": "5", "3": "3", "8": "8", "7": "7", "6": "6", "2": "2", "4": "4", a: "→", ab: "→", an: "→" };
   function bcStrip(last) {
+    var tagS = last.bar + ":" + last.st + ":" + GV.style.id; if (BC.stripTag === tagS) return; BC.stripTag = tagS;
     var S = GV.style, P = last.P, sb = bassPat(S, last.bar % 2) || [], c = sbCanvas("bc-strip", 118), g = c.g, W = c.W, per = S.steps / S.beats, cw = (W - 4) / S.steps, i;
     var key = P.key != null ? P.key : GV.key, nxP = gvPlan(last.bar + 1), nxc = chordInfo(nxP, 0).ch, nb = 36 + nxc.root; if (nb > 44) nb -= 12;
     var names = FLAT_KEYS[GV.prog.mode === "min" ? "minor" : "major"].indexOf((key + xp) % 12) >= 0 ? FLAT : SHARP, prevCh = null;
@@ -6874,7 +6875,12 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     var now = ac.currentTime, snd = $("bc-tapsnd").value;
     if (snd !== "off") {
       var best = null, bd = 1e9; BC.exp.forEach(function (e) { var d = Math.abs(now - rhLat() - e.t); if (d < bd) { bd = d; best = e; } });
-      if (snd === "bass" && best && best.m != null) gBass(now + 0.005, best.m, Math.max(0.12, gvStepDur() * 1.5), gvVoices().bv); else dWood(now + 0.005, 0.9);
+      var tt = now + 0.002;
+      if (snd === "bass" && best && best.m != null) gBass(tt, best.m, Math.max(0.12, gvStepDur() * 1.5), gvVoices().bv);
+      else if (snd === "snap") { dNoise(tt, 0.7, 0.03, "bandpass", 2600, 2.5); dNoise(tt + 0.004, 0.35, 0.05, "highpass", 5000); }
+      else if (snd === "cowbell") { [540, 800].forEach(function (f) { var o = ac.createOscillator(), g = ac.createGain(), bp = ac.createBiquadFilter(); o.type = "square"; o.frequency.value = f; bp.type = "bandpass"; bp.frequency.value = 900; g.gain.setValueAtTime(0.0001, tt); g.gain.exponentialRampToValueAtTime(0.22, tt + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.25); o.connect(bp); bp.connect(g); g.connect(output()); o.start(tt); o.stop(tt + 0.27); }); }
+      else if (snd === "kick") dKick(tt, 1);
+      else dWood(tt, 0.9);
     }
     bcJudge(now - rhLat());
   }
@@ -7810,7 +7816,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!ac) {
       if (!running) audioMode("playback");
-      ac = new AC(); analyser = ac.createAnalyser();
+      try { ac = new AC({ latencyHint: "interactive" }); } catch (e) { ac = new AC(); } analyser = ac.createAnalyser();
       analyser.fftSize = 4096; analyser.smoothingTimeConstant = 0;
       buf = new Float32Array(analyser.fftSize);
     }
