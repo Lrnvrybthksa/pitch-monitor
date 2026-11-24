@@ -381,6 +381,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         <button type="button" class="ghost" id="nm-clearskip">Clear skipped parts</button>
       </div>
       <label class="check"><input type="checkbox" id="nm-line" checked> Show the raw pitch line behind the notes</label>
+      <button type="button" class="ghost" id="nm-midi">Export the note map as MIDI</button>
       <div class="row"><button type="button" class="ghost" id="nm-shot">Save a picture of this view</button><button type="button" class="ghost" id="nm-shotall">Save the whole map as a picture</button></div>
       <p class="small" id="nm-out-msg">Pictures name every note on the left and on each note, with times, so you can send them to an AI model or a teacher.</p>
       <div id="nm-out" hidden><img id="nm-img" alt="Picture of the note map" style="width:100%;border-radius:8px;display:block"><div class="row"><a class="ghost" id="nm-dl" download="note-map.png" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Download the picture</a><button type="button" class="ghost" id="nm-share" hidden>Share the picture</button></div></div>
@@ -413,6 +414,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         <label class="check"><input type="checkbox" id="cv-all" checked> Name every note on the left (taller chart)</label>
         <div class="row"><button type="button" class="ghost" id="cv-shot">Save a picture of this view</button><button type="button" class="ghost" id="cv-shotall">Save the whole track as a picture</button></div>
         <button type="button" class="ghost" id="cv-txt">Copy the chord list as text</button>
+        <button type="button" class="ghost" id="cv-midi">Export the chords as MIDI</button>
         <p class="small" id="cv-out-msg">Pictures name every note and show the chords and times, so you can send them to an AI model or a teacher. The chord list text pairs well with them.</p>
         <div id="cv-out" hidden><img id="cv-img" alt="Picture of the note and chord map" style="width:100%;border-radius:8px;display:block"><div class="row"><a class="ghost" id="cv-dl" download="notes-and-chords.png" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Download the picture</a><button type="button" class="ghost" id="cv-share" hidden>Share the picture</button></div></div>
         <p class="small">Tap the map to jump there and see the notes at that moment. Brighter means louder. The strip on top shows the chord names. Each note also rings faintly an octave and a fifth higher, so a faint note there is often an overtone, not a real note. Notes below C2 show only in Bass mode, and very low notes blur together and land a moment late. A solo instrument or a stem works best; reverb makes notes ring into the next chord.</p>
@@ -531,6 +533,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     </div>
     <button type="button" class="big" id="gv-play">Play groove</button>
     <div class="builder" id="bgp-box" style="display:flex;flex-direction:column;gap:6px;margin:6px 0">
+      <div class="row"><button type="button" class="ghost" id="mid-go">Export as MIDI (for BandLab and other apps)</button></div>
+      <p class="small" id="mid-msg">Saves drums, bass, chords and melody as separate MIDI tracks: the groove for the loop length below, or your whole song if the song form is on.</p>
       <div class="row"><button type="button" class="ghost" id="bgp-go">Play in the background (iPhone and iPad)</button><select id="bgp-bars" aria-label="Loop length" style="flex:0 0 auto"><option value="8">8 bars</option><option value="16">16 bars</option><option value="32">32 bars</option></select></div>
       <audio id="bgp-audio" playsinline controls hidden style="width:100%"></audio>
       <p class="small" id="bgp-msg">iPhones and iPads stop the live groove when you switch tabs or apps. This turns the groove (or your whole song, if the song form is on) into an audio loop that keeps playing in the background. Changes you make afterwards need a new loop.</p>
@@ -4810,6 +4814,89 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (GV.song) { var cur = GV.plan[Math.min(GV.bar, GV.plan.length - 1)]; GV.plan = GV.plan.slice(0, GV.bar + 1).concat([{ si: SF.secs.length, bi: 0, n: 1, bars: ["V7"], key: cur.key, mel: null, fill: true, name: "Ending" }]); }
     else GV.endBar = GV.bar + 1;
   });
+  /* ---------- MIDI export: a small Standard MIDI File writer (type 1, 480 ticks per beat) ---------- */
+  function midiBytes(tracks, bpm, beats) {
+    var PPQ = 480, out = [];
+    function vlq(n) { var b = [n & 0x7f]; while ((n >>= 7)) b.unshift((n & 0x7f) | 0x80); return b; }
+    function str(x) { return Array.prototype.map.call(x, function (c) { return c.charCodeAt(0) & 0x7f; }); }
+    function chunk(id, data) { var n = data.length; return str(id).concat([(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255], data); }
+    var tick = function (sec) { return Math.max(0, Math.round(sec * bpm / 60 * PPQ)); };
+    var head = chunk("MThd", [0, 1, 0, tracks.length + 1, (PPQ >> 8) & 255, PPQ & 255]);
+    var us = Math.round(60000000 / bpm), meta = [0, 0xff, 0x51, 3, (us >> 16) & 255, (us >> 8) & 255, us & 255, 0, 0xff, 0x58, 4, beats, 2, 24, 8, 0, 0xff, 0x03].concat(vlq(16), str("Pitchy App MIDI ")).concat([0, 0xff, 0x2f, 0]);
+    var all = head.concat(chunk("MTrk", meta));
+    tracks.forEach(function (tr) {
+      var evs = [];
+      tr.ev.forEach(function (e) { var m = Math.max(0, Math.min(127, Math.round(e.m))), v = Math.max(1, Math.min(127, Math.round(e.v || 90))), a = tick(e.t), b = Math.max(a + 1, tick(e.t + (e.d || 0.1))); evs.push([a, 1, [0x90 | tr.ch, m, v]]); evs.push([b, 0, [0x80 | tr.ch, m, 0]]); });
+      evs.sort(function (x, y) { return x[0] - y[0] || x[1] - y[1]; });
+      var nm = str(tr.name), data = [0, 0xff, 0x03].concat(vlq(nm.length), nm); if (tr.ch !== 9 && tr.prog != null) data = data.concat([0, 0xc0 | tr.ch, tr.prog]);
+      var last = 0; evs.forEach(function (e) { data = data.concat(vlq(e[0] - last), e[2]); last = e[0]; });
+      data = data.concat([0, 0xff, 0x2f, 0]); all = all.concat(chunk("MTrk", data));
+    });
+    return new Uint8Array(all);
+  }
+  function fileOut(blob, name, msgId, what) {
+    var done = function (txt) { if (msgId && $(msgId)) $(msgId).textContent = txt; };
+    try {
+      var f = new File([blob], name, { type: blob.type });
+      if (navigator.canShare && navigator.canShare({ files: [f] }) && /iPad|iPhone|Android/i.test(navigator.userAgent)) { navigator.share({ files: [f], title: name }).then(function () { done("Shared " + name + "."); }, function () { done("Share cancelled."); }); return; }
+    } catch (e) {}
+    var a = document.createElement("a"), u = URL.createObjectURL(blob); a.href = u; a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(u); a.remove(); }, 4000);
+    done("Saved " + name + (what ? " (" + what + ")" : "") + ". Open it in BandLab (Import file) or any music app.");
+  }
+  function midiSave(tracks, bpm, beats, name, msgId) {
+    tracks = tracks.filter(function (tr) { return tr.ev.length; });
+    if (!tracks.length) { if ($(msgId)) $(msgId).textContent = "There are no notes to export yet."; return; }
+    var n = tracks.reduce(function (a, tr) { return a + tr.ev.length; }, 0);
+    fileOut(new Blob([midiBytes(tracks, bpm, beats)], { type: "audio/midi" }), name.replace(/[\\/:*?"<>|]+/g, "-"), msgId, tracks.length + " track" + (tracks.length > 1 ? "s" : "") + ", " + n + " notes");
+  }
+  /* capture the groove as notes: run the scheduler on a silent context with the sound functions swapped for note recorders */
+  var GM_DRUM = { kick: 36, snare: 38, hat: 42, ohat: 46, ride: 51, crash: 49, rim: 37, clap: 39, htom: 50, mtom: 47, ltom: 45, conga: 63, guiro: 73, shaker: 82, cowbell: 56, timbale: 65, tamb: 54 };
+  function midiCaptureGroove() {
+    if (!ac) return null;
+    var song0 = SF.on, plan = song0 ? gvBuildPlan() : null, bars = song0 ? plan.length : +$("bgp-bars").value, S = GV.style, sd0 = 60 / GV.bpm * S.beats / S.steps;
+    var T = { drums: [], bass: [], chords: [], mel: [] }, seen = {};
+    function add(tr, t, m, d, v) { var k = tr + Math.round(t * 200) + ":" + Math.round(m); if (seen[k]) return; seen[k] = 1; T[tr].push({ t: t, m: m, d: d, v: Math.round(40 + 87 * Math.min(1, v == null ? 0.8 : v)) }); }
+    var oc = new OfflineAudioContext(1, 44100, 44100), orig = { gChord: gChord, gBass: gBass, drumHit: drumHit, dNoise: dNoise, dTone: dTone, dKick: dKick, dSnare: dSnare, dHat: dHat, dRim: dRim, dShake: dShake, dCrash: dCrash, dClap: dClap, dRiser: dRiser, synth: synth };
+    var keep = { ac: ac, on: GV.on, song: GV.song, plan: GV.plan, bus: GV.bus, melBus: GV.melBus, chBus: GV.chBus, baBus: GV.baBus, wet: GV.wet, rate: GV.rate, marks: GV.marks, arp: GV.arp, lastCi: GV.lastCi, fillBar: GV.fillBar, endBar: GV.endBar, intro: GV.intro, kc: GV.kc, fxb: GV.fxb, nz: nzBuf, exp: BC.exp.slice(), dexp: DC.exp.slice() };
+    var tks = {}; Object.keys(GV).forEach(function (k) { if (k.slice(0, 3) === "tk_") { tks[k] = GV[k]; delete GV[k]; } });
+    ac = oc; GV.bus = oc.createGain(); GV.bus.connect(oc.destination); GV.melBus = null; GV.chBus = null; GV.baBus = null; GV.wet = null; nzBuf = null;
+    GV.song = song0; GV.plan = plan; GV.rate = 1; GV.marks = []; GV.arp = 0; GV.fillBar = null; GV.endBar = null; GV.intro = 0; GV.kc = null; GV.fxb = {};
+    gChord = function (t, notes, dur, voice, mute) { notes.forEach(function (m) { add("chords", t, m, Math.max(0.08, dur || 0.3), mute ? 0.5 : 0.75); }); };
+    gBass = function (t, m, dur) { add("bass", t, m, Math.max(0.08, dur || 0.3), 0.85); };
+    drumHit = function (piece, t, v) { if (GM_DRUM[piece] != null) add("drums", t, GM_DRUM[piece], 0.1, v); return true; };
+    dKick = function (t, v) { add("drums", t, 36, 0.1, v); }; dSnare = function (t, v) { add("drums", t, 38, 0.1, v); }; dHat = function (t, v) { add("drums", t, 42, 0.05, v); };
+    dRim = function (t, v) { add("drums", t, 37, 0.05, v); }; dShake = function (t, v) { add("drums", t, 82, 0.05, v); }; dCrash = function (t, v) { add("drums", t, 49, 0.5, v); }; dClap = function (t, v) { add("drums", t, 39, 0.1, v); };
+    dRiser = function () {};
+    dNoise = function (t, v, dur, type) { if (type === "highpass") add("drums", t, dur > 0.2 ? 46 : 42, 0.05, Math.min(1, v * 3)); else if (type === "bandpass") add("drums", t, 39, 0.1, Math.min(1, v * 1.5)); };
+    dTone = function (t, v, f0) { add("drums", t, f0 >= 600 ? 65 : f0 >= 180 ? 47 : 36, 0.1, v); };
+    synth = function (ctx, dest, inst, m, t, d) { add("mel", t, m, Math.max(0.08, d || 0.3), 0.8); };
+    var err = null;
+    try { var t = 0; for (var b = 0; b < bars; b++) for (var st = 0; st < S.steps; st++) { gvStep(b, st, t); t += sd0; } } catch (e) { err = e; }
+    gChord = orig.gChord; gBass = orig.gBass; drumHit = orig.drumHit; dNoise = orig.dNoise; dTone = orig.dTone; dKick = orig.dKick; dSnare = orig.dSnare; dHat = orig.dHat; dRim = orig.dRim; dShake = orig.dShake; dCrash = orig.dCrash; dClap = orig.dClap; dRiser = orig.dRiser; synth = orig.synth;
+    ac = keep.ac; nzBuf = keep.nz; Object.keys(GV).forEach(function (k) { if (k.slice(0, 3) === "tk_") delete GV[k]; }); for (var k2 in tks) GV[k2] = tks[k2];
+    ["on", "song", "plan", "bus", "melBus", "chBus", "baBus", "wet", "rate", "marks", "arp", "lastCi", "fillBar", "endBar", "intro", "kc", "fxb"].forEach(function (k) { GV[k] = keep[k]; }); BC.exp = keep.exp; DC.exp = keep.dexp;
+    if (err) throw err;
+    return { T: T, bars: bars, song: song0 };
+  }
+  $("mid-go").addEventListener("click", function () {
+    var go = function () {
+      try {
+        var C = midiCaptureGroove(); if (!C) return;
+        var nm = (GV.style.name || "groove") + " " + KEY_MAJ[(GV.key + xp) % 12] + (GV.prog.mode === "min" ? "m" : "") + " " + Math.round(GV.bpm) + "bpm" + (C.song ? " song" : "");
+        midiSave([{ name: "Drums", ch: 9, ev: C.T.drums }, { name: "Bass", ch: 1, prog: 33, ev: C.T.bass }, { name: "Chords", ch: 2, prog: 0, ev: C.T.chords }, { name: "Melody", ch: 3, prog: 65, ev: C.T.mel }], GV.bpm, GV.style.beats, nm + ".mid", "mid-msg");
+      } catch (e) { $("mid-msg").textContent = "Could not export: " + e.message; }
+    };
+    ensureContext().then(go, go);
+  });
+  $("nm-midi").addEventListener("click", function () {
+    var ev = NM.notes.map(function (n) { return { t: n.t0, d: Math.max(0.05, n.t1 - n.t0), m: n.m + (song.shift || 0), v: 96 }; });
+    midiSave([{ name: "Melody", ch: 0, prog: 65, ev: ev }], 120, 4, (NM.name || "note-map").replace(/\.[a-z0-9]+$/i, "") + " notes.mid", "nm-out-msg");
+  });
+  $("cv-midi").addEventListener("click", function () {
+    var ch = [], ba = [], sh = song.shift || 0;
+    CV.segs.forEach(function (sg) { if (!sg.notes.length) return; var d = Math.max(0.1, sg.t1 - sg.t0); ba.push({ t: sg.t0, d: d, m: sg.notes[0] + sh, v: 90 }); sg.notes.slice(1).forEach(function (m) { ch.push({ t: sg.t0, d: d, m: m + sh, v: 80 }); }); });
+    midiSave([{ name: "Chords", ch: 0, prog: 0, ev: ch }, { name: "Bass notes", ch: 1, prog: 33, ev: ba }], 120, 4, (CV.name || "recording").replace(/\.[a-z0-9]+$/i, "") + " chords.mid", "cv-out-msg");
+  });
   /* ---------- background play for iPhone and iPad: Safari pauses live Web Audio in background tabs, but an <audio> element keeps playing ---------- */
   function wavBlob(chs, sr) {
     var n = chs[0].length, nc = chs.length, buf = new ArrayBuffer(44 + n * nc * 2), v = new DataView(buf), o = 0;
@@ -5710,7 +5797,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     sv.innerHTML = '<b>Save my melody</b><div class="row"><input type="text" id="' + pre + '-sv-name" placeholder="Name it (optional)" style="flex:1"><button type="button" class="ghost" id="' + pre + '-sv-go" style="flex:0 0 auto">Save</button></div>' +
       '<label class="fld">My saved melodies<select id="' + pre + '-sv-list"></select></label>' +
       '<div class="row"><button type="button" class="ghost" id="' + pre + '-sv-hear">Hear it</button><button type="button" class="ghost" id="' + pre + '-sv-load">Load it here</button></div>' +
-      '<div class="row"><button type="button" class="ghost" id="' + pre + '-sv-ren">Rename</button><button type="button" class="ghost" id="' + pre + '-sv-del">Delete</button><button type="button" class="ghost" id="' + pre + '-sv-copy">Copy as notes</button></div>' +
+      '<div class="row"><button type="button" class="ghost" id="' + pre + '-sv-ren">Rename</button><button type="button" class="ghost" id="' + pre + '-sv-del">Delete</button><button type="button" class="ghost" id="' + pre + '-sv-copy">Copy as notes</button><button type="button" class="ghost" id="' + pre + '-sv-midi">MIDI</button></div>' +
       '<p class="small" id="' + pre + '-sv-msg"></p>';
     var anchor = $(pre + "-sing-msg"); anchor.parentNode.insertBefore(sv, anchor.nextSibling);
     function ctrFill() {
@@ -5851,6 +5938,11 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       var v = $(pre + "-sv-list").value; if (v === "") return; var sv2 = $(pre + "-sv-del");
       if (sv2.dataset.sure !== v) { sv2.dataset.sure = v; sv2.textContent = "Tap again to delete"; setTimeout(function () { sv2.dataset.sure = ""; sv2.textContent = "Delete"; }, 3000); return; }
       sv2.dataset.sure = ""; sv2.textContent = "Delete"; var gone = SAVED_MEL.splice(+v, 1)[0]; melStore(); melRefresh(); $(pre + "-sv-msg").textContent = "Deleted \u201c" + gone.name + "\u201d.";
+    });
+    $(pre + "-sv-midi").addEventListener("click", function () {
+      var M = picked(); if (!M) return; var bpm = M.bpm || GV.bpm, spb = 60 / bpm, beats = GV.style.beats, steps = M.steps || GV.style.steps, sd = spb * beats / steps, ev = [];
+      for (var b = 0; b < M.bars; b++) ownNotes(M.own[b] || [], M.key).forEach(function (n) { ev.push({ t: (b * steps + n.st) * sd, d: Math.max(0.1, n.len * sd * 0.95), m: n.m, v: 96 }); });
+      midiSave([{ name: "Melody", ch: 0, prog: 65, ev: ev }], bpm, beats, (M.name || "melody") + ".mid", pre + "-sv-msg");
     });
     $(pre + "-sv-copy").addEventListener("click", function () {
       var M = picked(); if (!M) return; var nn = M.keyName.indexOf("♭") >= 0 || /^F /.test(M.keyName) ? FLAT : SHARP, lines = [M.name + " (" + M.keyName + ", " + M.date + ")"];
