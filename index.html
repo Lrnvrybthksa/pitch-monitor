@@ -530,10 +530,6 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <label class="fld">Chords<select id="gv-prog"></select></label>
     </div>
     <button type="button" class="big" id="gv-play">Play groove</button>
-    <div class="row">
-      <button type="button" class="ghost" id="gv-fill">Play a fill</button>
-      <button type="button" class="ghost" id="gv-end">Finish with an ending</button>
-    </div>
     <div class="builder" id="bgp-box" style="display:flex;flex-direction:column;gap:6px;margin:6px 0">
       <div class="row"><button type="button" class="ghost" id="bgp-go">Play in the background (iPhone and iPad)</button><select id="bgp-bars" aria-label="Loop length" style="flex:0 0 auto"><option value="8">8 bars</option><option value="16">16 bars</option><option value="32">32 bars</option></select></div>
       <audio id="bgp-audio" playsinline controls hidden style="width:100%"></audio>
@@ -541,6 +537,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     </div>
     <label class="check"><input type="checkbox" id="gv-pa"> Play-along view: big chord, next chord and shapes for guitar, piano, bass or sax</label>
     <div id="pa-jam-slot"></div>
+    <div class="row">
+      <button type="button" class="ghost" id="gv-fill">Play a fill</button>
+      <button type="button" class="ghost" id="gv-end">Finish with an ending</button>
+    </div>
     <div class="row">
       <label class="fld">Fill<select id="gv-filltype"></select></label>
       <label class="fld">Ending<select id="gv-endtype"></select></label>
@@ -3543,12 +3543,18 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (st === 0 && P.own && !MU.m) gvOwnPlay(P, t);
     if (st === 0 && P.mel && !MU.m) gvMelody(P.bi, t, ch, P.mel);
     if (fk === "drop" && st === half) dRiser(t, half * sd, 0.3);
+    if (fk === "half" && hasDr) { MU = mergeO(MU, { d: 1 }); if (st === 0) { if (ek) dTone(t, 0.95, 105, 40, 0.5); else dKick(t, 0.95); } if (st === half) { if (ek) dClap(t, 0.85); else dSnare(t, 0.9); } if (st % (S.steps / S.beats) === 0) dHat(t, 0.5); }
+    if (fk === "swell" && hasDr && st === S.steps - S.steps / S.beats) { var sw2 = nz(), hf = ac.createBiquadFilter(), gs = ac.createGain(), dur2 = (S.steps / S.beats) * sd; hf.type = "highpass"; hf.frequency.value = 3000; sw2.loop = true; gs.gain.setValueAtTime(0.0001, t); gs.gain.exponentialRampToValueAtTime(0.35, t + dur2); gs.gain.linearRampToValueAtTime(0, t + dur2 + 0.03); sw2.connect(hf); hf.connect(gs); gs.connect(trk("drums")); sw2.start(t); sw2.stop(t + dur2 + 0.05); }
     if (fk && fk !== "auto" && fk !== "drop" && fk !== "bass" && fk !== "crash" && fk !== "stabs" && fk !== "conga" && !MU.d && st >= half && hasDr) {
       var fr2 = (st - half) / half, v2 = 0.4 + 0.5 * fr2;
       if (fk === "roll") { dSnare(t, v2); dSnare(t + sd / 2, v2 * 0.85); }
       else if (fk === "toms") { if (acKit()) drumHit(fr2 < 0.5 ? "htom" : "ltom", t, 0.7 + 0.3 * fr2); else dTone(t, 0.6 + 0.3 * fr2, 270 - 160 * fr2, 140 - 80 * fr2, 0.22); }
       else if (fk === "claps") { dClap(t, v2); if (fr2 >= 0.5) dClap(t + sd / 2, v2 * 0.8); }
       else if (fk === "timbal") { dTone(t, 0.45 + 0.3 * fr2, 950 - 350 * fr2, 760 - 250 * fr2, 0.12, "triangle"); if (fr2 >= 0.5) dTone(t + sd / 2, 0.4 + 0.3 * fr2, 900 - 350 * fr2, 720 - 250 * fr2, 0.1, "triangle"); }
+      else if (fk === "triplet") { var bt3 = (S.steps / S.beats) * sd; if (st % (S.steps / S.beats) === 0) for (var q3 = 0; q3 < 3; q3++) { var fq = fr2 + q3 / 3 * (2 / S.beats); if (acKit()) drumHit(fq < 0.5 ? "htom" : "ltom", t + q3 * bt3 / 3, 0.75 + 0.2 * fq); else dTone(t + q3 * bt3 / 3, 0.7, 280 - 170 * Math.min(1, fq), 150 - 90 * Math.min(1, fq), 0.2); } }
+      else if (fk === "flams") { if (st % (S.steps / S.beats) === 0 || fr2 >= 0.75) { dSnare(t, v2 * 0.45); dSnare(t + 0.018, v2); } }
+      else if (fk === "kicks") { if (ek) { dTone(t, 0.8, 105, 40, 0.3); dTone(t + sd / 2, 0.7, 105, 40, 0.3); } else { dKick(t, 0.8); dKick(t + sd / 2, 0.7); } if (st % (S.steps / S.beats) === 0) dSnare(t, 0.6); }
+      else if (fk === "openhat") { var lastB = S.steps - S.steps / S.beats; if (st === lastB) { dKick(t, 0.9); dSnare(t, 0.85); } if (st === S.steps - Math.max(1, S.steps / S.beats / 2)) dNoise(t, 0.28, 0.35, "highpass", 7000); if (st < lastB && st % (S.steps / S.beats) === 0) dSnare(t, 0.6); }
       else if (fk === "riser") { if (st === half) dRiser(t, half * sd, 0.35); if (fr2 >= 0.5) { if (ek) dClap(t, v2); else dSnare(t, v2); } }
     }
     if (fk === "auto" && !MU.d && st >= S.steps / 2 && (S.k || S.s || S.s2 || S.p)) {
@@ -4860,7 +4866,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (p && p.then) p.then(fix, fix); else fix();
   });
   /* ---------- fills, endings, breaks, build-ups, intros and key changes. Each lands on a bar line, scheduled ahead so it stays in time. ---------- */
-  var FILLS = [["auto", "Auto"], ["roll", "Snare roll"], ["toms", "Tom run down"], ["crash", "Crash and pause"], ["stabs", "Hits on 3 and 4"], ["bass", "Bass only for a bar"], ["drop", "Drop out with a riser (Lorde style)"], ["claps", "Clap build (electronic)"], ["riser", "Riser and snare (dance pop)"], ["timbal", "Timbal fill (grupera, cumbia)"], ["conga", "Percussion break (cumbia)"]];
+  var FILLS = [["auto", "Auto"], ["roll", "Snare roll"], ["toms", "Tom run down"], ["crash", "Crash and pause"], ["stabs", "Hits on 3 and 4"], ["bass", "Bass only for a bar"], ["drop", "Drop out with a riser (Lorde style)"], ["claps", "Clap build (electronic)"], ["riser", "Riser and snare (dance pop)"], ["timbal", "Timbal fill (grupera, cumbia)"], ["conga", "Percussion break (cumbia)"], ["triplet", "Tom triplets"], ["flams", "Snare flams"], ["kicks", "Double kick roll"], ["openhat", "Open hi-hat push into the next bar"], ["swell", "Cymbal swell into the next bar"], ["half", "Half-time bar"]];
   var ENDS = [["auto", "Auto"], ["held", "Big held chord"], ["slow", "Slow down to a stop"], ["fade", "Fade out"], ["chacha", "Cha-cha-chá (grupera, cumbia)"], ["mariachi", "Mariachi ending"], ["cut", "Cut to silence (Lorde style)"], ["stab", "Stab with echoes (dance pop)"], ["simple", "Simple (the original)"]];
   function fxGenre(S) {
     var g = S.group || "", f = FAM_OF[g] || "";
@@ -6981,8 +6987,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     function top(id) { var el = $(id); if (!el) return null; while (el.parentNode && el.parentNode !== panel) el = el.parentNode; return el.parentNode === panel ? el : null; }
     var SECS = [
       ["pick", "1. Pick a groove", true, ["gv-shelf", "gv-fav", "gv-like", "gv-q", "gv-q-msg", "gv-art", "gv-style"]],
-      ["play", "2. Play, key and tempo", true, ["gv-play", "gv-fill", "gv-key", "gv-bpm", "gv-tip", "gv-who", "gv-chord", "gv-beats", "gv-grid", "gv-chips"]],
-      ["fx", "Fills, endings, intros and build-ups", false, ["gv-filltype", "gv-break", "gv-intro", "gv-fx-msg"]],
+      ["play", "2. Play, key and tempo", true, ["gv-play", "gv-key", "gv-bpm", "gv-tip", "gv-who", "gv-chord", "gv-beats", "gv-grid", "gv-chips"]],
+      ["fx", "Fills, endings, intros and build-ups", false, ["gv-fill", "gv-filltype", "gv-break", "gv-intro", "gv-fx-msg"]],
       ["kc", "Key change", false, ["gv-kc"]],
       ["mel", "Melody: on/off, pick one or write your own", false, ["gv-meltog", "gv-mel", "jm-box"]],
       ["bass", "Bass: your own line and the rhythm coach", false, ["bg-box", "bc-box"]],
