@@ -603,16 +603,19 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <p class="small" id="bc-tip"></p>
       <div class="row">
         <label class="fld">Practice speed<select id="bc-speed"><option value="1">100%</option><option value="0.9">90%</option><option value="0.75">75%</option><option value="0.6">60%</option><option value="0.5">50%</option></select></label>
+        <label class="fld">When I tap<select id="bc-tapsnd"><option value="bass">Play the bass note</option><option value="click">Play a click</option><option value="off">No sound</option></select></label>
       </div>
-      <label class="check"><input type="checkbox" id="bc-click"> Click on every bass note (to feel where they go)</label>
-      <label class="check"><input type="checkbox" id="bc-mute"> Mute the app’s bass, I’ll play it</label>
-      <canvas id="bc-strip" style="width:100%;height:76px;display:block"></canvas>
-      <p class="small">Filled boxes are the bass notes: R root, 5 fifth, 3 third, 8 octave, → leads into the next chord. Say the count above them out loud as the light moves.</p>
+      <details><summary class="small"><b>More settings</b></summary>
+        <label class="check"><input type="checkbox" id="bc-click"> Click on every bass note (to feel where they go)</label>
+        <label class="check"><input type="checkbox" id="bc-mute"> Mute the app’s bass, I’ll play it</label>
+        <label class="check"><input type="checkbox" id="bc-mic"> Listen to my bass with the mic instead of tapping (turn on the mic first)</label>
+      </details>
+      <canvas id="bc-strip" style="width:100%;height:118px;display:block"></canvas>
+      <p class="small">Top: the count to say out loud. Then the chord. Filled boxes are the bass notes, with the note name and its number in the chord (R root, 3 third, 5 fifth, 8 octave, → into the next chord).</p>
       <button type="button" class="big" id="bc-tap" style="font-size:18px;min-height:72px;touch-action:manipulation">Tap with the bass</button>
-      <label class="check"><input type="checkbox" id="bc-mic"> Listen to my bass with the mic instead (turn on the mic first)</label>
       <div style="text-align:center"><div id="bc-fb" style="font-size:22px;font-weight:800">–</div><div class="small" id="bc-stats"></div></div>
       <div class="row"><button type="button" class="ghost" id="bc-reset">Reset the score</button></div>
-      <p class="small">Tap (or play) each bass note. It tells you if you were early, late or on time. Timing uses the offset from the Rhythm tab’s “clap along to set the timing”, so set that once for best results. Start slow, then raise the speed when you get 8 in a row.</p>
+      <details><summary class="small"><b>How it works</b></summary><p class="small">Tap (or play) each bass note. It tells you if you were early, late or on time. Timing uses the offset from the Rhythm tab’s “clap along to set the timing”, so set that once for best results. Start slow, then raise the speed when you get 8 in a row.</p></details>
     </details>
     <div class="row">
       <label class="fld">Drum kit<select id="gv-kit">
@@ -3490,7 +3493,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     var b0 = 36 + ch.root; if (b0 > 44) b0 -= 12;
     var VV = gvVoices(), SBx = bassPat(S, bar % 2), SB = MU.b ? null : SBx, CP = chordPat(S, bar % 2), SC = MU.c ? null : CP.c;
     if (GV.wet) GV.wet.gain.value = S.fx ? 0.4 : 0;
-    if (SBx && !P.brk && !(MU.b && !GV.bcWatch)) for (i = 0; i < SBx.length; i++) if (SBx[i][0] === st) { BC.exp.push({ t: t, c: SBx[i][1], st: st, got: null }); if (BC.exp.length > 64) BC.exp.shift(); if (BC.click) dRim(t, 0.5); }
+    if (SBx && !P.brk && !(MU.b && !GV.bcWatch)) for (i = 0; i < SBx.length; i++) if (SBx[i][0] === st) { var nbx = 36 + nxt.root; if (nbx > 44) nbx -= 12; BC.exp.push({ t: t, c: SBx[i][1], st: st, got: null, m: bassNote(SBx[i][1], b0, ch, nbx, bar % 2) }); if (BC.exp.length > 64) BC.exp.shift(); if (BC.click) dRim(t, 0.5); }
     if (SB && !BC.mute) for (i = 0; i < SB.length; i++) if (SB[i][0] === st) {
       var nb = 36 + nxt.root; if (nb > 44) nb -= 12;
       var m = bassNote(SB[i][1], b0, ch, nb, bar % 2);
@@ -6806,7 +6809,11 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   bgList();
   /* ---------- bass rhythm coach: a counting strip, a click on the bass notes, and a timing check by tap or mic ---------- */
   var BC = { exp: [], click: false, mute: false, hits: 0, ok: 0, streak: 0, best: 0, sum: 0, n: 0, an: null, mbuf: null, lastT: 0, lastOn: 0, slow: 0.01 };
-  BASS_DRILLS.forEach(function (d, i) { var o = document.createElement("option"); o.value = String(i); o.textContent = d[0]; $("bc-drill").appendChild(o); });
+  [["1. Start here: long notes", [0, 1]], ["2. Steady beats", [2, 3, 4]], ["3. Off-beats (syncopation)", [5, 6]], ["4. Latin and Mexican styles", [7, 8, 9]], ["5. Dance, funk and walking", [10, 11, 12]]].forEach(function (grp) {
+    var og = document.createElement("optgroup"); og.label = grp[0];
+    grp[1].forEach(function (i) { var o = document.createElement("option"); o.value = String(i); o.textContent = BASS_DRILLS[i][0]; og.appendChild(o); });
+    $("bc-drill").appendChild(og);
+  });
   $("bc-drill").addEventListener("change", function (e) {
     var v = e.target.value; if (v === "") { $("bc-tip").textContent = "Using the groove’s bass line. Pick a pattern above to practice a specific rhythm."; return; }
     var d = BASS_DRILLS[+v]; BG.data = { a: d[1].map(function (q) { return q.slice(); }), b: [], two: false, steps: 16 }; BG.bar = 0; bgStore(); bgUse(); if ($("bg-box").open) bgDraw();
@@ -6817,15 +6824,24 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   $("bc-click").addEventListener("change", function (e) { BC.click = e.target.checked; });
   $("bc-mute").addEventListener("change", function (e) { BC.mute = e.target.checked; });
   var BC_SYL = ["", "e", "&", "a"];
+  var BC_DEG = { r: "R", r5: "R", "5": "5", "5d": "5", "3": "3", "8": "8", "7": "7", "6": "6", "2": "2", "4": "4", a: "→", ab: "→", an: "→" };
   function bcStrip(last) {
-    var S = GV.style, P = last.P, sb = bassPat(S, last.bar % 2) || [], c = sbCanvas("bc-strip", 76), g = c.g, W = c.W, per = S.steps / S.beats, cw = (W - 4) / S.steps, i;
-    var b0 = 36, ch = chordInfo(P, 0).ch;
+    var S = GV.style, P = last.P, sb = bassPat(S, last.bar % 2) || [], c = sbCanvas("bc-strip", 118), g = c.g, W = c.W, per = S.steps / S.beats, cw = (W - 4) / S.steps, i;
+    var key = P.key != null ? P.key : GV.key, nxP = gvPlan(last.bar + 1), nxc = chordInfo(nxP, 0).ch, nb = 36 + nxc.root; if (nb > 44) nb -= 12;
+    var names = FLAT_KEYS[GV.prog.mode === "min" ? "minor" : "major"].indexOf((key + xp) % 12) >= 0 ? FLAT : SHARP, prevCh = null;
     for (i = 0; i < S.steps; i++) {
       var x = 2 + i * cw, isB = i % per === 0, hit = sb.filter(function (e) { return e[0] === i; })[0], cur = i === last.st;
-      g.fillStyle = cur ? GOOD : hit ? TH.note : rgba(TH.text, isB ? 0.14 : 0.06); g.globalAlpha = cur && !hit ? 0.5 : 1; g.fillRect(x + 1, 30, cw - 2, 40); g.globalAlpha = 1;
+      var ci = chordInfo(P, i), ch = ci.ch, cn = chordName(ch, key);
+      if (cn !== prevCh) { g.fillStyle = TH.text; g.font = "700 12px system-ui, sans-serif"; g.textAlign = "left"; g.textBaseline = "middle"; g.fillText(cn, x + 2, 36); if (i) { g.fillStyle = rgba(TH.text, 0.35); g.fillRect(x, 28, 1.5, 84); } prevCh = cn; }
+      g.fillStyle = cur ? GOOD : hit ? TH.note : rgba(TH.text, isB ? 0.14 : 0.06); g.globalAlpha = cur && !hit ? 0.5 : 1; g.fillRect(x + 1, 48, cw - 2, 60); g.globalAlpha = 1;
       var syl = per === 4 ? (isB ? String(i / per + 1) : BC_SYL[i % 4]) : per === 2 ? (isB ? String(i / per + 1) : "&") : per === 3 ? (isB ? String(i / per + 1) : (i % 3 === 1 ? "&" : "a")) : (isB ? String(i / per + 1) : "");
-      g.fillStyle = isB ? TH.text : TH.muted; g.font = (isB ? "800 15px" : "12px") + " system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(syl, x + cw / 2, 15);
-      if (hit) { var lab = { r: "R", "5": "5", "5d": "5", "3": "3", "8": "8", "7": "7", "6": "6", "2": "2", "4": "4", a: "→", ab: "→", an: "N", r5: "R" }[hit[1]] || "•"; g.fillStyle = TH.noteInk || "#000"; g.font = "800 14px system-ui, sans-serif"; g.fillText(lab, x + cw / 2, 50); }
+      g.fillStyle = isB ? TH.text : TH.muted; g.font = (isB ? "800 15px" : "12px") + " system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(syl, x + cw / 2, 12);
+      if (hit) {
+        var b0 = 36 + ch.root; if (b0 > 44) b0 -= 12;
+        var m = bassNote(hit[1], b0, ch, nb, last.bar % 2), nm = names[((m + xp) % 12 + 12) % 12];
+        g.fillStyle = TH.noteInk || "#000"; g.font = "800 " + (cw < 22 ? 11 : 14) + "px system-ui, sans-serif"; g.fillText(nm, x + cw / 2, 70);
+        g.font = "700 " + (cw < 22 ? 9 : 11) + "px system-ui, sans-serif"; g.fillText(BC_DEG[hit[1]] || "•", x + cw / 2, 92);
+      }
     }
   }
   function bcJudge(t) {
@@ -6843,7 +6859,15 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     $("bc-stats").textContent = BC.n ? BC.ok + " of " + BC.n + " on time (" + Math.round(BC.ok / BC.n * 100) + "%) · streak " + BC.streak + " · best " + BC.best + " · " + (Math.abs(avg) < 15 ? "right on the beat on average" : "about " + Math.abs(avg) + " ms " + (avg < 0 ? "early (rushing)" : "late (dragging)") + " on average") : "";
     if (BC.streak === 8) $("bc-fb").textContent = "8 in a row! Try a bit faster.";
   }
-  function bcTap() { if (!GV.on) { bcShow("Press Play groove first", null); return; } bcJudge(ac.currentTime - rhLat()); }
+  function bcTap() {
+    if (!GV.on) { bcShow("Press Play groove first", null); return; }
+    var now = ac.currentTime, snd = $("bc-tapsnd").value;
+    if (snd !== "off") {
+      var best = null, bd = 1e9; BC.exp.forEach(function (e) { var d = Math.abs(now - rhLat() - e.t); if (d < bd) { bd = d; best = e; } });
+      if (snd === "bass" && best && best.m != null) gBass(now + 0.005, best.m, Math.max(0.12, gvStepDur() * 1.5), gvVoices().bv); else dRim(now + 0.005, 0.9);
+    }
+    bcJudge(now - rhLat());
+  }
   $("bc-tap").addEventListener("pointerdown", function (e) { e.preventDefault(); bcTap(); });
   $("bc-reset").addEventListener("click", function () { BC.ok = 0; BC.n = 0; BC.sum = 0; BC.streak = 0; BC.best = 0; BC.exp.forEach(function (x) { x.got = x.got == null ? null : x.got; }); bcShow("–", null); $("bc-stats").textContent = ""; });
   $("bc-mic").addEventListener("change", function (e) {
