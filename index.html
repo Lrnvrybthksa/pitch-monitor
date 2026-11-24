@@ -603,10 +603,11 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <p class="small" id="bc-tip"></p>
       <div class="row">
         <label class="fld">Practice speed<select id="bc-speed"><option value="1">100%</option><option value="0.9">90%</option><option value="0.75">75%</option><option value="0.6">60%</option><option value="0.5">50%</option></select></label>
-        <label class="fld">When I tap<select id="bc-tapsnd"><option value="bass">Play the bass note</option><option value="click">Play a click</option><option value="off">No sound</option></select></label>
+        <label class="fld">When I tap<select id="bc-tapsnd"><option value="bass">Play the bass note</option><option value="click">Play a woodblock</option><option value="off">No sound</option></select></label>
       </div>
+      <label class="fld">Drums while I practice<select id="bc-drums"><option value="full">The full groove</option><option value="ks">Only kick and snare (no hi-hat or clicky sounds)</option><option value="beat">No drums, just a soft beep on each beat</option><option value="off">No drums at all</option></select></label>
       <details><summary class="small"><b>More settings</b></summary>
-        <label class="check"><input type="checkbox" id="bc-click"> Click on every bass note (to feel where they go)</label>
+        <label class="check"><input type="checkbox" id="bc-click"> Bell on every bass note (to feel where they go)</label>
         <label class="check"><input type="checkbox" id="bc-mute"> Mute the app’s bass, I’ll play it</label>
         <label class="check"><input type="checkbox" id="bc-mic"> Listen to my bass with the mic instead of tapping (turn on the mic first)</label>
       </details>
@@ -3377,6 +3378,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function dHat(t, v) { if (!drumHit("hat", t, v)) dNoise(t, v * 0.3, 0.045, "highpass", 7000); }
   function dRim(t, v) { if (drumHit("rim", t, v)) return; dTone(t, v * 0.4, 1700, 1700, 0.035, "triangle"); dNoise(t, v * 0.2, 0.03, "bandpass", 2500, 2); }
   function dShake(t, v) { if (!drumHit("shaker", t, v)) dNoise(t, v * 0.28, 0.07, "bandpass", 5200, 1); }
+  /* three sounds that don't sound like drums, so practice cues stand apart from the groove */
+  function dWood(t, v) { var o = ac.createOscillator(), g = ac.createGain(); o.type = "sine"; o.frequency.setValueAtTime(1900, t); o.frequency.exponentialRampToValueAtTime(1300, t + 0.04); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5 * v, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07); o.connect(g); g.connect(output()); o.start(t); o.stop(t + 0.08); }
+  function dBell(t, v) { [587, 845].forEach(function (f) { var o = ac.createOscillator(), g = ac.createGain(); o.type = "square"; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.06 * v, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18); o.connect(g); g.connect(output()); o.start(t); o.stop(t + 0.2); }); }
+  function dBeep(t, v) { var o = ac.createOscillator(), g = ac.createGain(); o.type = "triangle"; o.frequency.value = v >= 1 ? 1320 : 990; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3 * v, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06); o.connect(g); g.connect(output()); o.start(t); o.stop(t + 0.07); }
   function dClap(t, v) { dNoise(t, v * 0.5, 0.03, "bandpass", 1500, 1.2); dNoise(t + 0.012, v * 0.45, 0.03, "bandpass", 1500, 1.2); dNoise(t + 0.024, v * 0.55, 0.14, "bandpass", 1400, 0.9); }
   function dRiser(t, dur, v) {
     var s2 = nz(), f = ac.createBiquadFilter(), g = ac.createGain(); f.type = "bandpass"; f.Q.value = 1.4;
@@ -3463,6 +3468,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function gvStep(bar, st, t) {
     var S = GV.style, P = gvPlan(bar), bars = P.bars, CI = chordInfo(P, st), ch = CI.ch, PN = gvPlan(bar + 1), nxt = CI.nx || chordOf(PN.bars[PN.bi % PN.bars.length], PN.key), sd = gvStepDur(), i;
     GV.ck = P.key;
+    var bcD = typeof BC !== "undefined" && BC.drums && $("bc-box").open ? BC.drums : "full";
+    if (bcD === "ks") S = mergeO(S, { h: null, p: null, s2: null });
     if (st === 0 || CI.ci !== GV.lastCi) GV.marks.push({ t: t, ch: ch, key: P.key });
     GV.lastCi = CI.ci;
     var ek = GV.kitNow === "e", MU = P.mute || {}, half = S.steps / 2, fk = fxFill(P), hasDr = !!(S.k || S.s || S.s2 || S.p);
@@ -3483,6 +3490,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       MU = { d: 1, b: MU.b, c: MU.c, m: MU.m };
     }
     if (MU.perc) { if (S.p && S.p.indexOf(st) >= 0) dShake(t, 0.9); if (S.s2 && S.s2.indexOf(st) >= 0) dRim(t, 0.7); if (st % 2 === 0) dTone(t, 0.35, 330, 300, 0.15, "sine"); if (st % 4 === 3) dTone(t, 0.3, 220, 200, 0.15, "sine"); }
+    if (bcD === "beat" || bcD === "off") { MU = mergeO(MU, { d: 1 }); if (bcD === "beat" && st % (S.steps / S.beats) === 0) dBeep(t, st === 0 ? 1 : 0.6); }
     if (!MU.d && !MU.perc) {
     if (S.k && S.k.indexOf(st) >= 0) { if (ek) dTone(t, 0.95, 105, 40, 0.5); else dKick(t, 0.9); }
     if (S.s && S.s.indexOf(st) >= 0) { if (ek) { dNoise(t, 0.5, 0.03, "bandpass", 1500, 1.2); dNoise(t + 0.012, 0.45, 0.03, "bandpass", 1500, 1.2); dNoise(t + 0.024, 0.55, 0.14, "bandpass", 1400, 0.9); } else dSnare(t, 0.8); }
@@ -3493,7 +3501,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     var b0 = 36 + ch.root; if (b0 > 44) b0 -= 12;
     var VV = gvVoices(), SBx = bassPat(S, bar % 2), SB = MU.b ? null : SBx, CP = chordPat(S, bar % 2), SC = MU.c ? null : CP.c;
     if (GV.wet) GV.wet.gain.value = S.fx ? 0.4 : 0;
-    if (SBx && !P.brk && !(MU.b && !GV.bcWatch)) for (i = 0; i < SBx.length; i++) if (SBx[i][0] === st) { var nbx = 36 + nxt.root; if (nbx > 44) nbx -= 12; BC.exp.push({ t: t, c: SBx[i][1], st: st, got: null, m: bassNote(SBx[i][1], b0, ch, nbx, bar % 2) }); if (BC.exp.length > 64) BC.exp.shift(); if (BC.click) dRim(t, 0.5); }
+    if (SBx && !P.brk && !(MU.b && !GV.bcWatch)) for (i = 0; i < SBx.length; i++) if (SBx[i][0] === st) { var nbx = 36 + nxt.root; if (nbx > 44) nbx -= 12; BC.exp.push({ t: t, c: SBx[i][1], st: st, got: null, m: bassNote(SBx[i][1], b0, ch, nbx, bar % 2) }); if (BC.exp.length > 64) BC.exp.shift(); if (BC.click) dBell(t, 0.5); }
     if (SB && !BC.mute) for (i = 0; i < SB.length; i++) if (SB[i][0] === st) {
       var nb = 36 + nxt.root; if (nb > 44) nb -= 12;
       var m = bassNote(SB[i][1], b0, ch, nb, bar % 2);
@@ -6822,6 +6830,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   });
   $("bc-speed").addEventListener("change", function (e) { GV.rate = +e.target.value; if ($("sb-speed")) $("sb-speed").value = e.target.value; });
   $("bc-click").addEventListener("change", function (e) { BC.click = e.target.checked; });
+  $("bc-drums").addEventListener("change", function (e) { BC.drums = e.target.value; prefs.bcDrums = e.target.value; savePrefs(); });
+  if (prefs.bcDrums) { $("bc-drums").value = prefs.bcDrums; BC.drums = prefs.bcDrums; }
   $("bc-mute").addEventListener("change", function (e) { BC.mute = e.target.checked; });
   var BC_SYL = ["", "e", "&", "a"];
   var BC_DEG = { r: "R", r5: "R", "5": "5", "5d": "5", "3": "3", "8": "8", "7": "7", "6": "6", "2": "2", "4": "4", a: "→", ab: "→", an: "→" };
@@ -6864,7 +6874,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     var now = ac.currentTime, snd = $("bc-tapsnd").value;
     if (snd !== "off") {
       var best = null, bd = 1e9; BC.exp.forEach(function (e) { var d = Math.abs(now - rhLat() - e.t); if (d < bd) { bd = d; best = e; } });
-      if (snd === "bass" && best && best.m != null) gBass(now + 0.005, best.m, Math.max(0.12, gvStepDur() * 1.5), gvVoices().bv); else dRim(now + 0.005, 0.9);
+      if (snd === "bass" && best && best.m != null) gBass(now + 0.005, best.m, Math.max(0.12, gvStepDur() * 1.5), gvVoices().bv); else dWood(now + 0.005, 0.9);
     }
     bcJudge(now - rhLat());
   }
