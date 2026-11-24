@@ -227,6 +227,8 @@ h1 .title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-o
 .pick input { width: 64px; height: 40px; padding: 0; border: 1px solid color-mix(in srgb, var(--text) 20%, transparent); border-radius: 10px; background: none; cursor: pointer; }
 .panel h2 { font-size: 16px; }
 h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-size: 14px; padding: 0 8px; border-radius: 999px; }
+  details.jsec { border: 1px solid var(--line, rgba(127,127,127,.25)); border-radius: 12px; padding: 10px 12px; margin: 6px 0; }
+  details.jsec > summary { cursor: pointer; font-size: 16px; list-style-position: inside; }
 </style>
 </head>
 <body>
@@ -617,6 +619,24 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <div style="text-align:center"><div id="bc-fb" style="font-size:22px;font-weight:800">–</div><div class="small" id="bc-stats"></div></div>
       <div class="row"><button type="button" class="ghost" id="bc-reset">Reset the score</button></div>
       <details><summary class="small"><b>How it works</b></summary><p class="small">Tap (or play) each bass note. It tells you if you were early, late or on time. Timing uses the offset from the Rhythm tab’s “clap along to set the timing”, so set that once for best results. Start slow, then raise the speed when you get 8 in a row.</p></details>
+    </details>
+    <details class="builder" id="dc-box" style="margin:6px 0">
+      <summary><b>Drum rhythm coach</b></summary>
+      <p class="small">Practice one drum at a time with the groove: the kick, the snare, the hi-hat, or kick and snare together. Good for feeling where each part sits.</p>
+      <div class="row">
+        <label class="fld">Part to practice<select id="dc-part"><option value="k">Kick drum</option><option value="s">Snare (and side-stick)</option><option value="h">Hi-hat</option><option value="ks">Kick and snare (two pads)</option><option value="p">Percussion (shaker, güiro, rim)</option></select></label>
+        <label class="fld">Practice speed<select id="dc-speed"><option value="1">100%</option><option value="0.9">90%</option><option value="0.75">75%</option><option value="0.6">60%</option><option value="0.5">50%</option></select></label>
+      </div>
+      <label class="check"><input type="checkbox" id="dc-mute" checked> Mute that part in the groove, I’ll play it</label>
+      <canvas id="dc-strip" style="width:100%;height:110px;display:block"></canvas>
+      <p class="small">The count is on top. Each row is a drum; the part you are practicing is bright. The light follows the beat.</p>
+      <div class="row" id="dc-pads">
+        <button type="button" class="big" id="dc-tap1" style="font-size:18px;min-height:80px;touch-action:manipulation">Kick</button>
+        <button type="button" class="big" id="dc-tap2" hidden style="font-size:18px;min-height:80px;touch-action:manipulation">Snare</button>
+      </div>
+      <div style="text-align:center"><div id="dc-fb" style="font-size:22px;font-weight:800">–</div><div class="small" id="dc-stats"></div></div>
+      <div class="row"><button type="button" class="ghost" id="dc-reset">Reset the score</button></div>
+      <details><summary class="small"><b>Tips</b></summary><p class="small">Start with the kick at 75% speed, then the snare, then the hi-hat. When you can get 8 in a row, raise the speed. In "Kick and snare", tap the left pad for the kick and the right pad for the snare, like two hands on a table. Use wired headphones or the speaker; Bluetooth adds delay.</p></details>
     </details>
     <div class="row">
       <label class="fld">Drum kit<select id="gv-kit">
@@ -3490,6 +3510,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       MU = { d: 1, b: MU.b, c: MU.c, m: MU.m };
     }
     if (MU.perc) { if (S.p && S.p.indexOf(st) >= 0) dShake(t, 0.9); if (S.s2 && S.s2.indexOf(st) >= 0) dRim(t, 0.7); if (st % 2 === 0) dTone(t, 0.35, 330, 300, 0.15, "sine"); if (st % 4 === 3) dTone(t, 0.3, 220, 200, 0.15, "sine"); }
+    if (typeof DC !== "undefined" && DC.on && !MU.d && !P.brk && !P.build) {
+      DC.parts.forEach(function (pt) { var arr = pt === "s" ? (S.s || []).concat(S.s2 || []) : S[pt]; if (arr && arr.indexOf(st) >= 0) { DC.exp.push({ t: t, part: pt, got: null }); if (DC.exp.length > 96) DC.exp.shift(); } });
+      if (DC.mute) { var mz = {}; DC.parts.forEach(function (pt) { mz[pt] = null; if (pt === "s") mz.s2 = null; }); S = mergeO(S, mz); }
+    }
     if (bcD === "beat" || bcD === "off") { MU = mergeO(MU, { d: 1 }); if (bcD === "beat" && st % (S.steps / S.beats) === 0) dBeep(t, st === 0 ? 1 : 0.6); }
     if (!MU.d && !MU.perc) {
     if (S.k && S.k.indexOf(st) >= 0) { if (ek) dTone(t, 0.95, 105, 40, 0.5); else dKick(t, 0.9); }
@@ -3626,6 +3650,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     for (var i = 0; i < dots.length; i++) dots[i].className = i === beat ? "on" : "";
     if (typeof PA !== "undefined" && PA.on) paUpdate(last, beat);
     if (typeof BC !== "undefined" && $("bc-box").open && mode === "jam") bcStrip(last);
+    if (typeof DC !== "undefined" && DC.on && mode === "jam") dcStrip(last);
   }
   /* Melody section for a groove: a simple line that follows the chords, played by violins and/or brass in thirds. */
   var MELS = [
@@ -6906,6 +6931,87 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     }
     requestAnimationFrame(bcMicLoop);
   }
+  /* ---------- drum rhythm coach: practice the kick, snare, hi-hat or percussion of the groove by tapping ---------- */
+  var DC = { on: false, parts: ["k"], mute: true, exp: [], st: { n: 0, ok: 0, sum: 0, streak: 0, best: 0 }, tag: "" };
+  var DC_NAME = { k: "Kick", s: "Snare", h: "Hi-hat", p: "Percussion" };
+  function dcSet() {
+    var v = $("dc-part").value; DC.parts = v === "ks" ? ["k", "s"] : [v];
+    $("dc-tap1").textContent = DC_NAME[DC.parts[0]]; $("dc-tap2").hidden = DC.parts.length < 2; if (DC.parts[1]) $("dc-tap2").textContent = DC_NAME[DC.parts[1]];
+    DC.tag = "";
+  }
+  $("dc-box").addEventListener("toggle", function () { DC.on = $("dc-box").open; DC.exp = []; });
+  $("dc-part").addEventListener("change", function () { dcSet(); DC.exp = []; });
+  $("dc-mute").addEventListener("change", function (e) { DC.mute = e.target.checked; });
+  $("dc-speed").addEventListener("change", function (e) { GV.rate = +e.target.value; if ($("sb-speed")) $("sb-speed").value = e.target.value; });
+  function dcSound(pt, t) { if (pt === "k") { if (GV.kitNow === "e") dTone(t, 0.95, 105, 40, 0.5); else dKick(t, 1); } else if (pt === "s") { if (GV.kitNow === "e") dClap(t, 0.8); else dSnare(t, 0.8); } else if (pt === "h") dHat(t, 0.8); else dShake(t, 0.9); }
+  function dcShow(txt, err) {
+    var S2 = DC.st, avg = S2.n ? Math.round(S2.sum / S2.n * 1000) : 0;
+    $("dc-fb").textContent = txt; $("dc-fb").style.color = err == null ? TH.muted : Math.abs(err) <= 0.05 ? GOOD : WARN;
+    $("dc-stats").textContent = S2.n ? S2.ok + " of " + S2.n + " on time (" + Math.round(S2.ok / S2.n * 100) + "%) · streak " + S2.streak + " · best " + S2.best + " · " + (Math.abs(avg) < 15 ? "right on the beat on average" : "about " + Math.abs(avg) + " ms " + (avg < 0 ? "early (rushing)" : "late (dragging)") + " on average") : "";
+    if (S2.streak === 8) $("dc-fb").textContent = "8 in a row! Try a bit faster.";
+  }
+  function dcTap(k) {
+    if (!GV.on) { dcShow("Press Play groove first", null); return; }
+    var pt = DC.parts[k] || DC.parts[0], now = ac.currentTime; dcSound(pt, now + 0.002);
+    var t = now - rhLat(), best = null, bd = 1e9; DC.exp.forEach(function (e) { if (e.part !== pt) return; var d = Math.abs(t - e.t); if (d < bd) { bd = d; best = e; } });
+    var gap = gvStepDur() * 2; if (!best || bd > Math.max(0.12, Math.min(0.3, gap))) { dcShow("Extra " + DC_NAME[pt].toLowerCase(), null); return; }
+    if (best.got != null) { dcShow("Already played that one", null); return; }
+    var err = t - best.t, a = Math.abs(err), ms = Math.round(a * 1000), S2 = DC.st; best.got = err; S2.n++; S2.sum += err;
+    if (a <= 0.05) { S2.ok++; S2.streak++; S2.best = Math.max(S2.best, S2.streak); dcShow(DC_NAME[pt] + ": on time ✓", err); }
+    else { S2.streak = 0; dcShow(DC_NAME[pt] + ": " + (a <= 0.11 ? "a little " : "") + (err < 0 ? "early" : "late") + " (" + ms + " ms)", err); }
+  }
+  $("dc-tap1").addEventListener("pointerdown", function (e) { e.preventDefault(); dcTap(0); });
+  $("dc-tap2").addEventListener("pointerdown", function (e) { e.preventDefault(); dcTap(1); });
+  $("dc-reset").addEventListener("click", function () { DC.st = { n: 0, ok: 0, sum: 0, streak: 0, best: 0 }; dcShow("–", null); });
+  function dcStrip(last) {
+    var tag = last.bar + ":" + last.st + ":" + GV.style.id + ":" + DC.parts.join(""); if (tag === DC.tag) return; DC.tag = tag;
+    var S = GV.style, c = sbCanvas("dc-strip", 110), g = c.g, W = c.W, per = S.steps / S.beats, L = 62, cw = (W - L - 2) / S.steps, rows = [["k", "Kick"], ["s", "Snare"], ["h", "Hi-hat"], ["p", "Perc"]], i, r;
+    for (i = 0; i < S.steps; i++) { var isB = i % per === 0, syl = per === 4 ? (isB ? String(i / per + 1) : BC_SYL[i % 4]) : per === 2 ? (isB ? String(i / per + 1) : "&") : per === 3 ? (isB ? String(i / per + 1) : (i % 3 === 1 ? "&" : "a")) : (isB ? String(i / per + 1) : ""); g.fillStyle = isB ? TH.text : TH.muted; g.font = (isB ? "800 14px" : "11px") + " system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(syl, L + (i + 0.5) * cw, 10); }
+    for (r = 0; r < rows.length; r++) {
+      var pt = rows[r][0], arr = pt === "s" ? (S.s || []).concat(S.s2 || []) : (S[pt] || []), sel = DC.parts.indexOf(pt) >= 0, y0 = 22 + r * 21;
+      g.fillStyle = sel ? TH.text : TH.muted; g.font = (sel ? "700 " : "") + "11px system-ui, sans-serif"; g.textAlign = "right"; g.fillText(rows[r][1], L - 4, y0 + 10);
+      for (i = 0; i < S.steps; i++) { var hit = arr.indexOf(i) >= 0, cur = i === last.st; g.globalAlpha = hit ? (sel ? 1 : 0.35) : cur ? 0.35 : i % per === 0 ? 0.14 : 0.06; g.fillStyle = cur ? GOOD : hit ? (sel ? TH.note : TH.text) : TH.text; g.fillRect(L + i * cw + 1, y0 + 1, cw - 2, 19); }
+      g.globalAlpha = 1;
+    }
+  }
+  dcSet();
+  /* ---------- Jam tab in folding sections: the first two open, the rest folded, each remembered ---------- */
+  (function () {
+    var panel = $("panel-jam"); if (!panel) return;
+    function top(id) { var el = $(id); if (!el) return null; while (el.parentNode && el.parentNode !== panel) el = el.parentNode; return el.parentNode === panel ? el : null; }
+    var SECS = [
+      ["pick", "1. Pick a groove", true, ["gv-shelf", "gv-fav", "gv-like", "gv-q", "gv-q-msg", "gv-art", "gv-style"]],
+      ["play", "2. Play, key and tempo", true, ["gv-play", "gv-fill", "gv-key", "gv-bpm", "gv-tip", "gv-who", "gv-chord", "gv-beats", "gv-grid", "gv-chips"]],
+      ["fx", "Fills, endings, intros and build-ups", false, ["gv-filltype", "gv-break", "gv-intro", "gv-fx-msg"]],
+      ["kc", "Key change", false, ["gv-kc"]],
+      ["mel", "Melody: on/off, pick one or write your own", false, ["gv-meltog", "gv-mel", "jm-box"]],
+      ["bass", "Bass: your own line and the rhythm coach", false, ["bg-box", "bc-box"]],
+      ["drum", "Drums: rhythm coach", false, ["dc-box"]],
+      ["snd", "Sounds and mix", false, ["gv-cv", "gv-kit", "mix-box"]],
+      ["pa", "Play along: big chords and chord shapes", false, ["gv-pa", "pa-jam-slot", "cs-box"]],
+      ["sf", "Full song (song form)", false, ["sf-box"]],
+      ["cd", "Chord lengths", false, ["cd-box"]],
+      ["bgp", "Play in the background (iPhone and iPad)", false, ["bgp-box"]]
+    ];
+    prefs.jamOpen = prefs.jamOpen || {};
+    var frag = [];
+    SECS.forEach(function (sec) {
+      var d = document.createElement("details"); d.className = "jsec"; d.setAttribute("data-sec", sec[0]);
+      var open = prefs.jamOpen[sec[0]] != null ? prefs.jamOpen[sec[0]] : sec[2]; if (open) d.open = true;
+      var sm = document.createElement("summary"); sm.innerHTML = "<b>" + sec[1] + "</b>"; d.appendChild(sm);
+      var body = document.createElement("div"); body.style.cssText = "display:flex;flex-direction:column;gap:10px;padding-top:8px"; d.appendChild(body);
+      var seen = [];
+      sec[3].forEach(function (id) { var el = top(id); if (el && seen.indexOf(el) < 0) { seen.push(el); body.appendChild(el); } });
+      d.addEventListener("toggle", function () { prefs.jamOpen[sec[0]] = d.open; savePrefs(); if (d.open) { if (sec[0] === "bass" && $("bg-box").open) bgDraw(); try { window.dispatchEvent(new Event("resize")); } catch (e) {} } });
+      frag.push(d);
+    });
+    var first = panel.firstElementChild; frag.forEach(function (d) { panel.insertBefore(d, first); });
+    var tools = document.createElement("div"); tools.className = "row";
+    tools.innerHTML = '<button type="button" class="ghost" id="jsec-open">Open all</button><button type="button" class="ghost" id="jsec-close">Fold all but the first two</button>';
+    panel.insertBefore(tools, frag[0]);
+    $("jsec-open").addEventListener("click", function () { panel.querySelectorAll("details.jsec").forEach(function (d) { d.open = true; }); });
+    $("jsec-close").addEventListener("click", function () { panel.querySelectorAll("details.jsec").forEach(function (d, i) { d.open = i < 2; }); });
+  })();
   blFill();
   /* ---------- chord lengths: how many beats each chord of a progression lasts ---------- */
   function progOfBars(bars) {
