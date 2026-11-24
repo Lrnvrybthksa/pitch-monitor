@@ -336,6 +336,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <label class="fld">Speed (the pitch stays the same)<select id="lp-speed"><option value="1">100% (normal)</option><option value="0.9">90%</option><option value="0.8">80%</option><option value="0.75">75%</option><option value="0.7">70%</option><option value="0.6">60%</option><option value="0.5">50%</option></select></label>
       <div class="row"><button type="button" class="ghost" id="lp-a">Loop starts here (A)</button><button type="button" class="ghost" id="lp-b">Loop ends here (B)</button></div>
       <div class="row"><label class="check" style="flex:1"><input type="checkbox" id="lp-on"> Loop A to B</label><button type="button" class="ghost" id="lp-clear" style="flex:0 0 auto">Clear the loop</button></div>
+      <button type="button" class="ghost" id="lp-bg">Play in the background (iPhone and iPad)</button>
       <p class="small" id="lp-msg">Play the recording, tap A at the start of the hard part and B at the end, then turn on the loop. Slow it down to learn it, and speed it back up as it gets easier.</p>
     </div>
     <div class="builder" id="nm-box" hidden style="display:flex;flex-direction:column;gap:8px">
@@ -530,6 +531,11 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     <div class="row">
       <button type="button" class="ghost" id="gv-fill">Play a fill</button>
       <button type="button" class="ghost" id="gv-end">Finish with an ending</button>
+    </div>
+    <div class="builder" id="bgp-box" style="display:flex;flex-direction:column;gap:6px;margin:6px 0">
+      <div class="row"><button type="button" class="ghost" id="bgp-go">Play in the background (iPhone and iPad)</button><select id="bgp-bars" aria-label="Loop length" style="flex:0 0 auto"><option value="8">8 bars</option><option value="16">16 bars</option><option value="32">32 bars</option></select></div>
+      <audio id="bgp-audio" playsinline controls hidden style="width:100%"></audio>
+      <p class="small" id="bgp-msg">iPhones and iPads stop the live groove when you switch tabs or apps. This turns the groove (or your whole song, if the song form is on) into an audio loop that keeps playing in the background. Changes you make afterwards need a new loop.</p>
     </div>
     <label class="check"><input type="checkbox" id="gv-pa"> Play-along view: big chord, next chord and shapes for guitar, piano, bass or sax</label>
     <div id="pa-jam-slot"></div>
@@ -3008,6 +3014,14 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     $("lp-b").textContent = "Loop ends here (B)" + (song.loopB ? " · " + fmt(song.loopB) : "");
     if (!ok && song.loopOn) { song.loopOn = false; $("lp-on").checked = false; }
   }
+  $("lp-bg").addEventListener("click", function () {
+    if (!song.buf) return; var b = song.playBuf || song.buf;
+    if (song.playing) songPause();
+    var y; if (b.numberOfChannels > 1) { var c0 = b.getChannelData(0), c1 = b.getChannelData(1); y = new Float32Array(b.length); for (var i = 0; i < b.length; i++) y[i] = (c0[i] + c1[i]) * 0.5; } else y = b.getChannelData(0);
+    var rate = song.rate || 1, sr = Math.round(b.sampleRate * rate);
+    var a0 = 0, a1 = y.length; if (song.loopOn && song.loopB > song.loopA) { var stf = song.stretch || 1; a0 = Math.floor(song.loopA * stf * b.sampleRate); a1 = Math.min(y.length, Math.floor(song.loopB * stf * b.sampleRate)); }
+    bgPlay(wavBlob([y.subarray(a0, a1)], sr), (CV.name || "Recording") + (song.loopOn ? " (loop)" : ""), song.loopOn, "lp-msg");
+  });
   function lpRestart() { if (song.playing) { songPause(); songPlay(); } }
   $("lp-speed").addEventListener("change", function (e) { song.speed = +e.target.value; songShift(song.shift); $("lp-msg").textContent = song.speed === 1 ? "Back to normal speed." : "Playing at " + Math.round(song.speed * 100) + "% speed, same pitch."; });
   $("lp-a").addEventListener("click", function () { song.loopA = songTime(); if (song.loopB <= song.loopA + 0.2) song.loopB = Math.min(song.dur, song.loopA + 4); lpShow(); lpRestart(); });
@@ -4753,6 +4767,61 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (GV.endKind === "fade") { fxFade(); return; }
     if (GV.song) { var cur = GV.plan[Math.min(GV.bar, GV.plan.length - 1)]; GV.plan = GV.plan.slice(0, GV.bar + 1).concat([{ si: SF.secs.length, bi: 0, n: 1, bars: ["V7"], key: cur.key, mel: null, fill: true, name: "Ending" }]); }
     else GV.endBar = GV.bar + 1;
+  });
+  /* ---------- background play for iPhone and iPad: Safari pauses live Web Audio in background tabs, but an <audio> element keeps playing ---------- */
+  function wavBlob(chs, sr) {
+    var n = chs[0].length, nc = chs.length, buf = new ArrayBuffer(44 + n * nc * 2), v = new DataView(buf), o = 0;
+    function w4(sx) { for (var i = 0; i < 4; i++) v.setUint8(o++, sx.charCodeAt(i)); }
+    w4("RIFF"); v.setUint32(o, 36 + n * nc * 2, true); o += 4; w4("WAVE"); w4("fmt "); v.setUint32(o, 16, true); o += 4; v.setUint16(o, 1, true); o += 2; v.setUint16(o, nc, true); o += 2;
+    v.setUint32(o, sr, true); o += 4; v.setUint32(o, sr * nc * 2, true); o += 4; v.setUint16(o, nc * 2, true); o += 2; v.setUint16(o, 16, true); o += 2; w4("data"); v.setUint32(o, n * nc * 2, true); o += 4;
+    for (var i = 0; i < n; i++) for (var c = 0; c < nc; c++) { var x = Math.max(-1, Math.min(1, chs[c][i])); v.setInt16(o, x < 0 ? x * 0x8000 : x * 0x7fff, true); o += 2; }
+    return new Blob([buf], { type: "audio/wav" });
+  }
+  var BGP = { url: null };
+  function bgPlay(blob, title, loop, msgId) {
+    var a = $("bgp-audio");
+    if (BGP.url) { try { URL.revokeObjectURL(BGP.url); } catch (e) {} }
+    BGP.url = URL.createObjectURL(blob); a.src = BGP.url; a.loop = !!loop; a.hidden = false;
+    if (msgId !== "bgp-msg") { var host = $(msgId).parentNode; host.insertBefore(a, $(msgId)); }
+    try { if ("mediaSession" in navigator) { navigator.mediaSession.metadata = new MediaMetadata({ title: title, artist: "Ricardo’s Pitchy App" }); navigator.mediaSession.setActionHandler("play", function () { a.play(); }); navigator.mediaSession.setActionHandler("pause", function () { a.pause(); }); } } catch (e) {}
+    var p = a.play(); if (p && p.catch) p.catch(function () { $(msgId).textContent = "Tap the play button on the player to start it."; });
+    $(msgId).textContent = "Playing as a background loop. You can switch tabs or apps now. Use the player controls to pause.";
+  }
+  function bgRenderGroove() {
+    if (!ac) return;
+    var nb = +$("bgp-bars").value, song0 = SF.on, plan = song0 ? gvBuildPlan() : null, bars = song0 ? plan.length : nb;
+    var sd0 = 60 / GV.bpm * GV.style.beats / GV.style.steps, sr = 44100, len = bars * GV.style.steps * sd0, tail = 2.5;
+    if (len > 360) { $("bgp-msg").textContent = "That song is too long for one loop (over 6 minutes). Shorten it or turn off the song form."; return; }
+    var oc = new OfflineAudioContext(2, Math.ceil((len + tail) * sr), sr);
+    var keep = { ac: ac, on: GV.on, song: GV.song, plan: GV.plan, bus: GV.bus, melBus: GV.melBus, chBus: GV.chBus, baBus: GV.baBus, wet: GV.wet, rate: GV.rate, marks: GV.marks, arp: GV.arp, lastCi: GV.lastCi, fillBar: GV.fillBar, endBar: GV.endBar, intro: GV.intro, kc: GV.kc, fxb: GV.fxb, nz: nzBuf, exp: BC.exp.slice() };
+    var tks = {}; Object.keys(GV).forEach(function (k) { if (k.slice(0, 3) === "tk_") { tks[k] = GV[k]; delete GV[k]; } });
+    ac = oc; GV.bus = oc.createGain(); GV.bus.gain.value = 0.7; GV.bus.connect(oc.destination); GV.melBus = null; GV.chBus = null; GV.baBus = null; GV.wet = null; nzBuf = null;
+    GV.song = song0; GV.plan = plan; GV.rate = 1; GV.marks = []; GV.arp = 0; GV.fillBar = null; GV.endBar = null; GV.intro = 0; GV.kc = null; GV.fxb = {};
+    var err = null;
+    try { var t = 0.02; for (var b = 0; b < bars; b++) for (var st = 0; st < GV.style.steps; st++) { gvStep(b, st, t); t += sd0; } } catch (e) { err = e; }
+    ac = keep.ac; nzBuf = keep.nz; Object.keys(GV).forEach(function (k) { if (k.slice(0, 3) === "tk_") delete GV[k]; }); for (var k2 in tks) GV[k2] = tks[k2];
+    ["on", "song", "plan", "bus", "melBus", "chBus", "baBus", "wet", "rate", "marks", "arp", "lastCi", "fillBar", "endBar", "intro", "kc", "fxb"].forEach(function (k) { GV[k] = keep[k]; }); BC.exp = keep.exp;
+    if (err) { $("bgp-msg").textContent = "Could not make the loop: " + err.message; return; }
+    $("bgp-msg").textContent = "Making the audio loop…";
+    oc.startRendering().then(function (out) {
+      var L = Math.ceil((len) * sr), c0 = out.getChannelData(0), c1 = out.getChannelData(1), a0 = new Float32Array(L), a1 = new Float32Array(L), i;
+      for (i = 0; i < L; i++) { a0[i] = c0[i]; a1[i] = c1[i]; }
+      if (!song0) for (i = L; i < out.length; i++) { a0[i - L] += c0[i]; a1[i - L] += c1[i]; }
+      bgPlay(wavBlob([a0, a1], sr), (GV.style.name || "Groove") + (song0 ? " (song)" : ""), !song0, "bgp-msg");
+    }, function (e) { $("bgp-msg").textContent = "Could not make the loop: " + (e && e.message || e); });
+  }
+  $("bgp-go").addEventListener("click", function () {
+    if (GV.on || GV.ending) gvStop();
+    var a = $("bgp-audio"); if ($("bgp-box").contains(a) === false) $("bgp-box").insertBefore(a, $("bgp-msg"));
+    ensureContext().then(gvLoadMel).then(function () { return typeof loadDrums === "function" ? loadDrums() : null; }).then(bgRenderGroove, bgRenderGroove);
+  });
+  $("gv-play").addEventListener("click", function () { var a = $("bgp-audio"); if (!a.paused) a.pause(); });
+  /* when the page comes back on iPhone/iPad, wake the audio and re-time a groove that was playing so it does not rush to catch up */
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden || !ac) return;
+    var p = ac.state !== "running" ? ac.resume() : null;
+    var fix = function () { if (GV.on && GV.t < ac.currentTime) { GV.t = ac.currentTime + 0.1; GV.marks = []; } };
+    if (p && p.then) p.then(fix, fix); else fix();
   });
   /* ---------- fills, endings, breaks, build-ups, intros and key changes. Each lands on a bar line, scheduled ahead so it stays in time. ---------- */
   var FILLS = [["auto", "Auto"], ["roll", "Snare roll"], ["toms", "Tom run down"], ["crash", "Crash and pause"], ["stabs", "Hits on 3 and 4"], ["bass", "Bass only for a bar"], ["drop", "Drop out with a riser (Lorde style)"], ["claps", "Clap build (electronic)"], ["riser", "Riser and snare (dance pop)"], ["timbal", "Timbal fill (grupera, cumbia)"], ["conga", "Percussion break (cumbia)"]];
