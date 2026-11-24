@@ -590,6 +590,24 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <div class="row"><button type="button" class="ghost" id="bg-load">Load it</button><button type="button" class="ghost" id="bg-del">Delete</button></div>
       <p class="small" id="bg-msg"></p>
     </details>
+    <details class="builder" id="bc-box" style="margin:6px 0">
+      <summary><b>Bass rhythm coach</b></summary>
+      <p class="small">Learn when the bass notes fall and practice staying in time. The strip counts the beats out loud for you, and the app can check your timing.</p>
+      <label class="fld">Practice pattern<select id="bc-drill"><option value="">The groove’s current bass line</option></select></label>
+      <p class="small" id="bc-tip"></p>
+      <div class="row">
+        <label class="fld">Practice speed<select id="bc-speed"><option value="1">100%</option><option value="0.9">90%</option><option value="0.75">75%</option><option value="0.6">60%</option><option value="0.5">50%</option></select></label>
+      </div>
+      <label class="check"><input type="checkbox" id="bc-click"> Click on every bass note (to feel where they go)</label>
+      <label class="check"><input type="checkbox" id="bc-mute"> Mute the app’s bass, I’ll play it</label>
+      <canvas id="bc-strip" style="width:100%;height:76px;display:block"></canvas>
+      <p class="small">Filled boxes are the bass notes: R root, 5 fifth, 3 third, 8 octave, → leads into the next chord. Say the count above them out loud as the light moves.</p>
+      <button type="button" class="big" id="bc-tap" style="font-size:18px;min-height:72px;touch-action:manipulation">Tap with the bass</button>
+      <label class="check"><input type="checkbox" id="bc-mic"> Listen to my bass with the mic instead (turn on the mic first)</label>
+      <div style="text-align:center"><div id="bc-fb" style="font-size:22px;font-weight:800">–</div><div class="small" id="bc-stats"></div></div>
+      <div class="row"><button type="button" class="ghost" id="bc-reset">Reset the score</button></div>
+      <p class="small">Tap (or play) each bass note. It tells you if you were early, late or on time. Timing uses the offset from the Rhythm tab’s “clap along to set the timing”, so set that once for best results. Start slow, then raise the speed when you get 8 in a row.</p>
+    </details>
     <div class="row">
       <label class="fld">Drum kit<select id="gv-kit">
         <option value="auto">Style default</option><option value="ac">Acoustic drums (recorded)</option><option value="e">Electronic drums</option><option value="syn">Simple synth drums</option>
@@ -3456,9 +3474,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (S.p && S.p.indexOf(st) >= 0) (S.pv === "shake" ? (S.steps === 16 && S.p.length === 12 ? function (tt, v) { if (!drumHit("guiro", tt, v)) dShake(tt, v); } : dShake) : S.pv === "rim" ? dRim : S.pv === "golpe" ? function (tt, v) { dNoise(tt, v * 0.6, 0.06, "lowpass", 420); } : dHat)(t, 0.9);
     }
     var b0 = 36 + ch.root; if (b0 > 44) b0 -= 12;
-    var VV = gvVoices(), SB = MU.b ? null : bassPat(S, bar % 2), CP = chordPat(S, bar % 2), SC = MU.c ? null : CP.c;
+    var VV = gvVoices(), SBx = bassPat(S, bar % 2), SB = MU.b ? null : SBx, CP = chordPat(S, bar % 2), SC = MU.c ? null : CP.c;
     if (GV.wet) GV.wet.gain.value = S.fx ? 0.4 : 0;
-    if (SB) for (i = 0; i < SB.length; i++) if (SB[i][0] === st) {
+    if (SBx && !P.brk && !(MU.b && !GV.bcWatch)) for (i = 0; i < SBx.length; i++) if (SBx[i][0] === st) { BC.exp.push({ t: t, c: SBx[i][1], st: st, got: null }); if (BC.exp.length > 64) BC.exp.shift(); if (BC.click) dRim(t, 0.5); }
+    if (SB && !BC.mute) for (i = 0; i < SB.length; i++) if (SB[i][0] === st) {
       var nb = 36 + nxt.root; if (nb > 44) nb -= 12;
       var m = bassNote(SB[i][1], b0, ch, nb, bar % 2);
       var nextB = S.steps; for (var j = 0; j < SB.length; j++) if (SB[j][0] > st) { nextB = SB[j][0]; break; }
@@ -3581,6 +3600,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     var beat = Math.floor(last.st / (GV.style.steps / GV.style.beats)), dots = $("gv-beats").children;
     for (var i = 0; i < dots.length; i++) dots[i].className = i === beat ? "on" : "";
     if (typeof PA !== "undefined" && PA.on) paUpdate(last, beat);
+    if (typeof BC !== "undefined" && $("bc-box").open && mode === "jam") bcStrip(last);
   }
   /* Melody section for a groove: a simple line that follows the chords, played by violins and/or brass in thirds. */
   var MELS = [
@@ -6652,6 +6672,21 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     sel.value = keep; if (sel.value !== keep) sel.value = "auto";
   }
   $("gv-bl").addEventListener("change", function (e) { GV.bline = e.target.value; gvGridIdle(); sbDraw(); gvWho(); if (GV.bline === "mine") { $("bg-box").open = true; bgDraw(); } });
+  var BASS_DRILLS = [
+    ["Roots on beat 1", [[0, "r"]], 70, "Play the root once, right on 1, and let it ring for the whole bar. Count 1, 2, 3, 4 out loud."],
+    ["Roots on 1 and 3", [[0, "r"], [8, "r"]], 75, "Root on 1 and on 3. These are the strong beats; the kick drum is usually there too."],
+    ["Root on every beat", [[0, "r"], [4, "r"], [8, "r"], [12, "r"]], 80, "Four even roots: 1, 2, 3, 4. Keep them the same length and loudness."],
+    ["Root and fifth", [[0, "r"], [8, "5"]], 80, "Root on 1, fifth on 3. The classic two-note bass line for ballads and country."],
+    ["Eighth-note drive", [[0, "r"], [2, "r"], [4, "r"], [6, "r"], [8, "r"], [10, "r"], [12, "r"], [14, "r"]], 80, "Even eighths: 1 and 2 and 3 and 4 and. Pop and rock drive. Stay relaxed and even."],
+    ["Push on the and of 2", [[0, "r"], [6, "r"], [8, "5"]], 85, "1, then the and of 2, then 3. The note on the and comes early, before beat 3. Say 1 (2) AND 3."],
+    ["Ballad walk-up", [[0, "r"], [8, "5"], [14, "a"]], 70, "Root on 1, fifth on 3, then a note just below the next chord on the and of 4 to lead into it."],
+    ["Cumbia bass", [[0, "r"], [6, "5"], [8, "5"], [12, "r"]], 90, "Root on 1, fifth on the and of 2 and on 3, root on 4. Feel the bounce from the güiro."],
+    ["Ranchera and norteña (root, fifth)", [[0, "r"], [8, "5"]], 100, "In 2/4 grooves this is bass on each beat, alternating root and fifth, while the chords hit the off-beats: BOOM-chick, BOOM-chick."],
+    ["Bolero", [[0, "r"], [6, "5"], [8, "5"]], 75, "Long root on 1, then the fifth on the and of 2 and again on 3. Smooth and sustained."],
+    ["Disco octaves", [[0, "r"], [2, "8"], [4, "r"], [6, "8"], [8, "r"], [10, "8"], [12, "r"], [14, "8"]], 90, "Root, octave, root, octave on the eighths. Short, bouncy notes."],
+    ["Funk sixteenths", [[0, "r"], [3, "r"], [6, "5"], [10, "r"], [12, "8"]], 80, "Count 1 e and a. Hits on 1, the a of 1, the and of 2, the and of 3 and on 4. Start slow."],
+    ["Walking quarters", [[0, "r"], [4, "3"], [8, "5"], [12, "a"]], 90, "Root, third, fifth, then a half step into the next chord. One note on every beat."]
+  ];
   /* ---------- write your own bass line: a tap grid of chord notes, so the line follows the chords ---------- */
   var BG_ROWS = [["8", "Octave up"], ["7", "7th"], ["6", "6th"], ["5", "5th"], ["4", "4th"], ["3", "3rd"], ["2", "2nd"], ["r", "Root"], ["5d", "Low 5th"], ["a", "½ below next"], ["ab", "½ above next"], ["an", "Next root early"]];
   var BG = { bar: 0, data: (function () { try { var d = JSON.parse(localStorage.getItem("pm.mybass") || "null"); if (d && d.a) return d; } catch (e) {} return { a: [[0, "r"]], b: [], two: false, steps: 16 }; })(), geo: null };
@@ -6700,6 +6735,68 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   $("bg-del").addEventListener("click", function () { var v = $("bg-list").value, b = $("bg-del"); if (v === "") return; if (b.dataset.sure !== v) { b.dataset.sure = v; b.textContent = "Tap again to delete"; setTimeout(function () { b.dataset.sure = ""; b.textContent = "Delete"; }, 3000); return; } b.dataset.sure = ""; b.textContent = "Delete"; var gone = BG_SAVED.splice(+v, 1)[0]; try { localStorage.setItem("pm.basslines", JSON.stringify(BG_SAVED)); } catch (e) {} bgList(); $("bg-msg").textContent = "Deleted \u201c" + gone.name + "\u201d."; });
   $("bg-box").addEventListener("toggle", function () { if ($("bg-box").open) bgDraw(); });
   bgList();
+  /* ---------- bass rhythm coach: a counting strip, a click on the bass notes, and a timing check by tap or mic ---------- */
+  var BC = { exp: [], click: false, mute: false, hits: 0, ok: 0, streak: 0, best: 0, sum: 0, n: 0, an: null, mbuf: null, lastT: 0, lastOn: 0, slow: 0.01 };
+  BASS_DRILLS.forEach(function (d, i) { var o = document.createElement("option"); o.value = String(i); o.textContent = d[0]; $("bc-drill").appendChild(o); });
+  $("bc-drill").addEventListener("change", function (e) {
+    var v = e.target.value; if (v === "") { $("bc-tip").textContent = "Using the groove’s bass line. Pick a pattern above to practice a specific rhythm."; return; }
+    var d = BASS_DRILLS[+v]; BG.data = { a: d[1].map(function (q) { return q.slice(); }), b: [], two: false, steps: 16 }; BG.bar = 0; bgStore(); bgUse(); if ($("bg-box").open) bgDraw();
+    $("bc-tip").textContent = d[3] + " Suggested tempo: " + d[2] + " bpm.";
+    if (!GV.on) { $("gv-bpm").value = d[2]; gvApply(""); }
+  });
+  $("bc-speed").addEventListener("change", function (e) { GV.rate = +e.target.value; if ($("sb-speed")) $("sb-speed").value = e.target.value; });
+  $("bc-click").addEventListener("change", function (e) { BC.click = e.target.checked; });
+  $("bc-mute").addEventListener("change", function (e) { BC.mute = e.target.checked; });
+  var BC_SYL = ["", "e", "&", "a"];
+  function bcStrip(last) {
+    var S = GV.style, P = last.P, sb = bassPat(S, last.bar % 2) || [], c = sbCanvas("bc-strip", 76), g = c.g, W = c.W, per = S.steps / S.beats, cw = (W - 4) / S.steps, i;
+    var b0 = 36, ch = chordInfo(P, 0).ch;
+    for (i = 0; i < S.steps; i++) {
+      var x = 2 + i * cw, isB = i % per === 0, hit = sb.filter(function (e) { return e[0] === i; })[0], cur = i === last.st;
+      g.fillStyle = cur ? GOOD : hit ? TH.note : rgba(TH.text, isB ? 0.14 : 0.06); g.globalAlpha = cur && !hit ? 0.5 : 1; g.fillRect(x + 1, 30, cw - 2, 40); g.globalAlpha = 1;
+      var syl = per === 4 ? (isB ? String(i / per + 1) : BC_SYL[i % 4]) : per === 2 ? (isB ? String(i / per + 1) : "&") : per === 3 ? (isB ? String(i / per + 1) : (i % 3 === 1 ? "&" : "a")) : (isB ? String(i / per + 1) : "");
+      g.fillStyle = isB ? TH.text : TH.muted; g.font = (isB ? "800 15px" : "12px") + " system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(syl, x + cw / 2, 15);
+      if (hit) { var lab = { r: "R", "5": "5", "5d": "5", "3": "3", "8": "8", "7": "7", "6": "6", "2": "2", "4": "4", a: "→", ab: "→", an: "N", r5: "R" }[hit[1]] || "•"; g.fillStyle = TH.noteInk || "#000"; g.font = "800 14px system-ui, sans-serif"; g.fillText(lab, x + cw / 2, 50); }
+    }
+  }
+  function bcJudge(t) {
+    var best = null, bd = 1e9; BC.exp.forEach(function (e) { var d = Math.abs(t - e.t); if (d < bd) { bd = d; best = e; } });
+    var gap = gvStepDur() * 2; if (!best || bd > Math.max(0.12, Math.min(0.3, gap))) { bcShow("Extra note", null); return; }
+    if (best.got != null) { bcShow("Already played that one", null); return; }
+    var err = t - best.t; best.got = err; BC.n++; BC.sum += err;
+    var a = Math.abs(err), ms = Math.round(a * 1000);
+    if (a <= 0.05) { BC.ok++; BC.streak++; BC.best = Math.max(BC.best, BC.streak); bcShow("On time ✓", err); }
+    else { BC.streak = 0; bcShow(a <= 0.11 ? "A little " + (err < 0 ? "early" : "late") + " (" + ms + " ms)" : (err < 0 ? "Early" : "Late") + " (" + ms + " ms)", err); }
+  }
+  function bcShow(txt, err) {
+    $("bc-fb").textContent = txt; $("bc-fb").style.color = err == null ? TH.muted : Math.abs(err) <= 0.05 ? GOOD : WARN;
+    var avg = BC.n ? Math.round(BC.sum / BC.n * 1000) : 0;
+    $("bc-stats").textContent = BC.n ? BC.ok + " of " + BC.n + " on time (" + Math.round(BC.ok / BC.n * 100) + "%) · streak " + BC.streak + " · best " + BC.best + " · " + (Math.abs(avg) < 15 ? "right on the beat on average" : "about " + Math.abs(avg) + " ms " + (avg < 0 ? "early (rushing)" : "late (dragging)") + " on average") : "";
+    if (BC.streak === 8) $("bc-fb").textContent = "8 in a row! Try a bit faster.";
+  }
+  function bcTap() { if (!GV.on) { bcShow("Press Play groove first", null); return; } bcJudge(ac.currentTime - rhLat()); }
+  $("bc-tap").addEventListener("pointerdown", function (e) { e.preventDefault(); bcTap(); });
+  $("bc-reset").addEventListener("click", function () { BC.ok = 0; BC.n = 0; BC.sum = 0; BC.streak = 0; BC.best = 0; BC.exp.forEach(function (x) { x.got = x.got == null ? null : x.got; }); bcShow("–", null); $("bc-stats").textContent = ""; });
+  $("bc-mic").addEventListener("change", function (e) {
+    if (e.target.checked && !srcNode) { e.target.checked = false; bcShow("Turn on the mic first (Start listening)", null); return; }
+    if (e.target.checked) { var lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 400; BC.an = ac.createAnalyser(); BC.an.fftSize = 2048; srcNode.connect(lp); lp.connect(BC.an); BC.mbuf = new Float32Array(2048); BC.lastT = ac.currentTime; requestAnimationFrame(bcMicLoop); }
+    else BC.an = null;
+  });
+  function bcMicLoop() {
+    if (!BC.an || !$("bc-mic").checked) return;
+    if (GV.on) {
+      BC.an.getFloatTimeDomainData(BC.mbuf);
+      var now = ac.currentTime, sr = ac.sampleRate, N = 2048, C = 128;
+      for (var c = 0; c < N / C; c++) {
+        var ct = now - (N - c * C - C / 2) / sr; if (ct <= BC.lastT) continue;
+        var sum = 0; for (var i = c * C; i < c * C + C; i++) sum += BC.mbuf[i] * BC.mbuf[i];
+        var en = Math.sqrt(sum / C);
+        if (en > 0.015 && en > BC.slow * 3 && ct - BC.lastOn > 0.1) { BC.lastOn = ct; bcJudge(ct - rhLat()); }
+        BC.slow = BC.slow * 0.96 + en * 0.04; BC.lastT = ct;
+      }
+    }
+    requestAnimationFrame(bcMicLoop);
+  }
   blFill();
   /* ---------- chord lengths: how many beats each chord of a progression lasts ---------- */
   function progOfBars(bars) {
@@ -7131,6 +7228,14 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     { group: "Jazz", name: "Charleston", beats: 4, steps: 8, hits: [0, 3], bpm: 110, tip: "Beat one, then the and of two. A classic comping rhythm." },
     { group: "Metal", name: "Gallop", beats: 4, steps: 16, hits: GAL, bpm: 80, tip: "One long, two short: da-dada, da-dada. Start slow." },
     { group: "Metal", name: "Reverse gallop", beats: 4, steps: 16, hits: [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14], bpm: 80, tip: "Two short, one long: dada-da, dada-da." },
+    { group: "Bass rhythms", name: "Roots on 1 and 3", beats: 4, steps: 4, hits: [0, 2], bpm: 75, tip: "Play (or clap) on 1 and 3 only. The strong beats, where most bass lines start." },
+    { group: "Bass rhythms", name: "Push on the and of 2", beats: 4, steps: 8, hits: [0, 3, 4], bpm: 85, tip: "1, the and of 2, then 3. The middle note comes early." },
+    { group: "Bass rhythms", name: "Cumbia bass", beats: 4, steps: 8, hits: [0, 3, 4, 6], bpm: 90, tip: "1, the and of 2, 3, 4. The cumbia bounce." },
+    { group: "Bass rhythms", name: "Bolero bass", beats: 4, steps: 8, hits: [0, 3, 4], bpm: 75, tip: "Long 1, then the and of 2 and 3, smooth." },
+    { group: "Bass rhythms", name: "Ranchera (2/4)", beats: 2, steps: 4, hits: [0, 2], bpm: 100, tip: "Bass on each beat: BOOM-chick, BOOM-chick. Play only the BOOM." },
+    { group: "Bass rhythms", name: "Ballad walk-up", beats: 4, steps: 8, hits: [0, 4, 7], bpm: 70, tip: "1, 3, and the and of 4 leading into the next bar." },
+    { group: "Bass rhythms", name: "Funk sixteenths", beats: 4, steps: 16, hits: [0, 3, 6, 10, 12], bpm: 70, tip: "1, the a of 1, the and of 2, the and of 3, 4. Count 1 e and a." },
+    { group: "Bass rhythms", name: "Eighth-note drive", beats: 4, steps: 8, hits: ALL8, bpm: 80, tip: "Even eighths for pop and rock bass. Stay relaxed." },
     { group: "Kick drum", name: "Four on the floor", beats: 4, steps: 4, hits: [0, 1, 2, 3], bpm: 110, tip: "A hit on every beat, like a dance kick drum." },
     { group: "Kick drum", name: "Rock kick", beats: 4, steps: 8, hits: [0, 3, 4], bpm: 100, tip: "One, the and of two, three." },
     { group: "Kick drum", name: "Double-time kicks", beats: 4, steps: 16, hits: ALL16, bpm: 60, tip: "Even sixteenth notes. Use two hands, or two feet." }
