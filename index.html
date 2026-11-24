@@ -4693,7 +4693,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     slowjam: "rnb", neosoul: "rnb", rnb90: "rnb" };
   var FORM_GROUP = { "Ballads": "balada", "Grupera": "balada", "Dream and indie pop": "pop", "Electro-pop": "pop", "Lorde style: Pure Heroine era": "pop", "Lorde style: Melodrama era": "pop", "Lorde style: Solar Power era": "pop", "Lorde style: Virgin era": "pop", "The Mar\u00EDas style": "pop", "Not for Radio style": "balada", "Rock": "rock", "Metal": "rock", "Kick drum": "rock", "Basics": "rock" };
   [G_BU, G_TE, G_JG, G_CS, CS1, CS2, CS3, CS4, CS5, CS6, CS7, CS8, CS9, CS10, BU1, BU2, BU3, BU4, BU5, TE1, TE2, TE3, TE4, TE5].forEach(function (g) { FORM_GROUP[g] = "balada"; }); [LS1, LS2, LS3, LS4].forEach(function (g) { FORM_GROUP[g] = FORM_GROUP[LO_PH] || "pop"; }); FORM_GROUP[G_JJ] = "bolero"; FORM_GROUP[LO_SI] = "pop"; FORM_GROUP[G_AL] = "pop"; FORM_GROUP[G_RH] = "rock"; FORM_GROUP[G_DP] = "pop"; FORM_GROUP[G_IN] = "pop";
-  var SF = { on: !!(prefs.sf && prefs.sf.on), form: "auto", secs: [], shift: 0, same: false, cur: -1 };
+  var SF = { on: !!prefs.sfJam, form: "auto", secs: [], shift: 0, same: false, cur: -1 };
   function sfFormId() { return SF.form !== "auto" ? SF.form : FORM_OF[GV.style.id] || FORM_GROUP[GV.style.group] || "pop"; }
   function sfLoad() {
     var f = FORMS.filter(function (x) { return x.id === sfFormId(); })[0] || FORMS[0];
@@ -4785,7 +4785,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   FORMS.forEach(function (f) { var o = document.createElement("option"); o.value = f.id; o.textContent = f.name; $("sf-form").appendChild(o); });
   $("sf-on").checked = SF.on; $("sf-body").hidden = !SF.on;
-  $("sf-on").addEventListener("change", function (e) { setTimeout(gvWho, 0); SF.on = e.target.checked; $("sf-body").hidden = !SF.on; prefs.sf = { on: SF.on }; savePrefs(); if (GV.on || GV.ending) gvStop(); sfRender(); });
+  $("sf-on").addEventListener("change", function (e) { setTimeout(gvWho, 0); SF.on = e.target.checked; $("sf-body").hidden = !SF.on; prefs.sfJam = SF.on; savePrefs(); if (GV.on || GV.ending) gvStop(); sfRender(); });
   $("sf-form").addEventListener("change", function (e) { SF.form = e.target.value; if (GV.on || GV.ending) gvStop(); sfLoad(); });
   $("sf-key").addEventListener("change", function (e) { SF.shift = +e.target.value; });
   document.querySelectorAll("[data-sfadd]").forEach(function (b) {
@@ -5432,7 +5432,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   });
   $("sb-play").addEventListener("click", function () {
     if (GV.on || GV.ending) { gvStop(); return; }
-    if (!SF.on) { SF.on = true; $("sf-on").checked = true; $("sf-body").hidden = false; prefs.sf = { on: true }; savePrefs(); }
+    if (!SF.on) { SF.on = true; $("sf-on").checked = true; $("sf-body").hidden = false; }
     gvStart(0);
   });
   $("sb-loop").addEventListener("change", function (e) { SF.loop = e.target.checked; });
@@ -7613,11 +7613,13 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (m === "jam") setTimeout(function () { gvGridIdle(); jmDraw(); }, 0);
     if (m === "build") {
       if (GV.on && !GV.song) gvStop();
-      if (!SF.on) { SF.on = true; $("sf-on").checked = true; prefs.sf = { on: true }; savePrefs(); $("gv-play").textContent = "Play the song"; }
+      if (!SF.on) { SF.on = true; $("sf-on").checked = true; $("gv-play").textContent = "Play the song"; }
       $("sf-body").hidden = false; $("sb-host").appendChild($("sf-body"));
       $("sb-info").textContent = GV.style.name + " \u00B7 " + GV.prog.name + " \u00B7 " + Math.round(GV.bpm) + " bpm";
       setTimeout(sbDraw, 0);
     } else if ($("sf-body").parentNode !== $("sf-box")) $("sf-box").appendChild($("sf-body"));
+    /* in the Jam tab the song form stays off unless you turned it on there yourself */
+    if (m === "jam" && SF.on !== !!prefs.sfJam) { if (GV.on || GV.ending) gvStop(); SF.on = !!prefs.sfJam; $("sf-on").checked = SF.on; $("sf-body").hidden = !SF.on; $("gv-play").textContent = SF.on ? "Play the song" : "Play groove"; setTimeout(gvWho, 0); }
     document.querySelector(".trace-wrap").hidden = m === "rhythm" || m === "play"; card.hidden = m === "play"; toggle.hidden = m === "play" && !running;
     sizeChart(); $("kb-card").hidden = m === "song" || m === "rhythm" || m === "build" || m === "learn" || m === "play" || !sw("kb");
     if (m === "exercise") { setFlats(); renderChips(); }
