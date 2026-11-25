@@ -3524,7 +3524,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     if (S.s && S.s.indexOf(st) >= 0) { if (ek) { dNoise(t, 0.5, 0.03, "bandpass", 1500, 1.2); dNoise(t + 0.012, 0.45, 0.03, "bandpass", 1500, 1.2); dNoise(t + 0.024, 0.55, 0.14, "bandpass", 1400, 0.9); } else dSnare(t, 0.8); }
     if (S.s2 && S.s2.indexOf(st) >= 0) { if (!(S.p && S.pv === "shake" && drumHit("conga", t, 0.8))) dRim(t, 0.7); }
     if (S.h && S.h.indexOf(st) >= 0) { if (ek) dNoise(t, (S.h.length > 8 ? 0.6 : 0.9) * 0.22, 0.025, "highpass", 9000); else if (!(S.group === "Jazz" && drumHit("ride", t, S.h.length > 8 ? 0.6 : 0.9))) dHat(t, S.h.length > 8 ? 0.6 : 0.9); }
-    if (S.p && S.p.indexOf(st) >= 0) (S.pv === "shake" ? (S.steps === 16 && S.p.length === 12 ? function (tt, v) { if (!drumHit("guiro", tt, v)) dShake(tt, v); } : dShake) : S.pv === "rim" ? dRim : S.pv === "golpe" ? function (tt, v) { dNoise(tt, v * 0.6, 0.06, "lowpass", 420); } : dHat)(t, 0.9);
+    if (S.p && S.p.indexOf(st) >= 0) (S.pv === "shake" ? (S.steps === 16 && S.p.length === 12 ? function (tt, v) { if (!drumHit("guiro", tt, v)) dShake(tt, v); } : dShake) : S.pv === "rim" ? dRim : S.pv === "clap" ? dClap : S.pv === "golpe" ? function (tt, v) { dNoise(tt, v * 0.6, 0.06, "lowpass", 420); } : dHat)(t, 0.9);
     }
     var b0 = 36 + ch.root; if (b0 > 44) b0 -= 12;
     var VV = gvVoices(), SBx = bassPat(S, bar % 2), SB = MU.b ? null : SBx, CP = chordPat(S, bar % 2), SC = MU.c ? null : CP.c;
@@ -4908,6 +4908,41 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   [BU6, BU7, BU8, BU9, BU10, BU11, BU12, BU13, BU14, BU15].forEach(function (g) { G_NOTE[g] = " In the feel of that album, not a copy of a song."; FAM_OF[g] = "buk"; FORM_GROUP[g] = "balada"; });
   [TE6, TE7, TE8, TE9, TE10, TE11, TE12, TE13, TE14, TE15].forEach(function (g) { G_NOTE[g] = " In the feel of that album, not a copy of a song."; FAM_OF[g] = "tem"; FORM_GROUP[g] = "balada"; });
   SHELVES.forEach(function (x) { if (x[0] === "grup") x[2].push(BU6, BU7, BU8, BU9, BU10, BU11, BU12, BU13, BU14, BU15, TE6, TE7, TE8, TE9, TE10, TE11, TE12, TE13, TE14, TE15); });
+  /* ---------- Lorde, set 2: new grooves inspired by Melodrama, Solar Power and Virgin. Original grooves in the general feel of each album. ---------- */
+  var L2M = "Lorde style: Melodrama era – set 2 (new grooves)", L2S = "Lorde style: Solar Power era – set 2 (new grooves)", L2V = "Lorde style: Virgin era – set 2 (new grooves)";
+  GT(L2M, "Midnight piano stabs", 124, "ldance", "4156", "s:piano", "lead", "Bouncing piano chords on the off-beats over a club kick.", { c: [[2, 1], [6, 1], [10, 1], [14, 1]], arp: false });
+  GT(L2M, "Party aftermath ballad", 66, "lpiano", "m-sad", "s:piano", "strings", "Lonely piano with a string pad creeping in.", { c2: P8, cv2: "pad" });
+  GT(L2M, "Taxi-ride synth pulse", 112, "lsyn", "m-dream", "s:epfm", "lead", "Eighth-note synth pulse and a soft kick, city lights going by.", { c: EV16, arp: true, h: OFFH });
+  GT(L2M, "Heartbreak brass hits", 104, "lbrass", "m-v", "brass", "lead", "Short synth-brass stabs answering a stomping beat.");
+  GT(L2M, "Dance-floor confession", 118, "ldance", "pop", "s:epfm", "lead", "Four-on-the-floor with a hopeful chord loop.", { b: OCT16 });
+  GT(L2M, "Whispered verse, loud chorus", 96, "lsparse", "m-epic", "pad", "lead", "Almost empty verse feel: kick and a held chord, waiting to explode.", { c2: PAD16, cv2: "strings" });
+  GT(L2M, "Glitter clap groove", 108, "lgroove", "4156", "s:epfm", "lead", "Syncopated bass, handclap snare and glassy keys.", { s: [4, 12, 14] });
+  GT(L2M, "Strings and sub drama", 72, "l68", "m-epic", "strings", "strings", "Swelling strings in six with a deep sub underneath.", { bv: SUB });
+  GT(L2M, "Bedroom piano bounce", 100, "lsyn", "1364", "s:piano", "lead", "Bouncy piano over a light electronic beat.", { c: CHOPS, arp: false });
+  GT(L2M, "Last-song-of-the-night", 84, "lsyn", "1376", "pad", "lead", "Slow, glowing pad and a gentle beat to close the party.", { k: [0, 10] });
+  GT(L2S, "Beach-path strum", 92, "lstrum", "royal", "s:guitar", "flute", "Easy acoustic strum and a flute, walking to the water.");
+  GT(L2S, "Sun-faded 12-string", 84, "lgtr", "dream2", "s:guitar12", "elec", "Shimmering 12-string picking, slow and warm.");
+  GT(L2S, "Seventies harmony pop", 100, "lstrum", "1364", "s:guitar", "strings", "Laid-back seventies groove with strings like stacked harmonies.", { k: [0, 4], s2: [2, 6] });
+  GT(L2S, "Hammock bossa", 82, "lgtr", "1625", "s:nylon", "flute", "A lazy bossa feel with nylon guitar.", { p: [0, 3, 6], pv: "rim", b: [[0, "r"], [3, "5"], [4, "5"], [7, "r"]], c: [[0, 2], [3, 1], [5, 2]], arp: false });
+  GT(L2S, "Island campfire", 96, "lstrum", "pop", "s:guitar", "flute", "Clapping along around a fire: strum and claps.", { p: [2, 6], pv: "clap" });
+  GT(L2S, "Golden-hour ballad", 70, "lgtr", "1376", "s:guitar", "strings", "Picked guitar and strings as the sun goes down.", { c2: P8, cv2: "strings" });
+  GT(L2S, "Tambourine sway", 104, "lstrum", "dream4", "s:guitar12", "flute", "Bright strumming with a tambourine on the off-beats.", { p: OFF8, pv: "shake" });
+  GT(L2S, "Quiet garden", 64, "lgtr", "minb", "s:harp", "flute", "Harp-like picking and flute, very still.");
+  GT(L2S, "Sunburn mid-tempo", 108, "lstrum", "m-dream", "s:guitar", "elec", "A brighter strum over a darker chord turn.", { k: [0, 3, 4], s2: [2, 6] });
+  GT(L2S, "Ocean fade-out", 76, "lgtr", "dream2", "s:guitar", "strings", "A long, slowly building outro with guitar and strings.", { c2: P8, cv2: "strings" });
+  GT(L2V, "Raw synth confession", 74, "lsparse", "minb", "pad", "lead", "Bare kick, a low synth and lots of space.", { c2: PAD16, cv2: "pad" });
+  GT(L2V, "Pulsing club heart", 120, "ldance", "m-v", "s:epfm", "lead", "Steady four-on-the-floor with a pulsing synth chord.", { c: EV16, arp: true });
+  GT(L2V, "Glitchy clap verse", 102, "lgroove", "m-dream", "pad", "lead", "Choppy beat with off-grid claps and a moody pad.", { s: [4, 11, 12] });
+  GT(L2V, "Distorted bass strut", 98, "lsyn", "m-v", "s:elec", "elec", "A fat, gritty bass under clean guitar stabs.", { c: CHOPS, k: [0, 7, 10] });
+  GT(L2V, "Bright running bass", 122, "ldance", "pop", "s:epfm", "lead", "Bouncy synth-pop with a running eighth-note bass.", { b: B8 });
+  GT(L2V, "Fluorescent ballad", 68, "lpiano", "1376", "s:piano", "strings", "Piano and a cold synth pad, close and honest.", { c2: PAD16, cv2: "pad" });
+  GT(L2V, "Static and sub", 90, "lsyn", "minb", "pad", "lead", "Sub bass, noisy hats and a held chord.", { h: ALL16 });
+  GT(L2V, "Rising synth arps", 110, "lsyn", "dream4", "s:epfm", "lead", "Climbing synth arpeggios over a light beat.", { c: ARP16, arp: true, k: [0, 4, 8, 12] });
+  GT(L2V, "Mirror-dance groove", 116, "lgroove", "4156", "s:elec", "elec", "Syncopated bass and guitar chops you can move to.");
+  GT(L2V, "Slow-burn closer", 70, "l68", "1376", "s:piano", "strings", "Six-feel piano and strings building to the end.", { c2: [[0, 12]], cv2: "strings" });
+  [[L2M, LO_ME], [L2S, LO_SP], [L2V, LO_VI]].forEach(function (x) { G_NOTE[x[0]] = " New set of grooves in the general feel of that album, not copies of songs."; if (FAM_OF[x[1]]) FAM_OF[x[0]] = FAM_OF[x[1]]; FORM_GROUP[x[0]] = FORM_GROUP[x[1]] || FORM_GROUP[LO_PH] || "pop"; });
+  (function () { var i = GROUP_ORDER.indexOf(LS4); GROUP_ORDER.splice(i + 1, 0, L2M, L2S, L2V); })();
+  SHELVES.forEach(function (x) { if (x[0] === "lorde") x[2].push(L2M, L2S, L2V); });
   (function () { var i = GROUP_ORDER.indexOf(BU5); GROUP_ORDER.splice.apply(GROUP_ORDER, [i + 1, 0].concat([BU6, BU7, BU8, BU9, BU10, BU11, BU12, BU13, BU14, BU15])); i = GROUP_ORDER.indexOf(TE5); GROUP_ORDER.splice.apply(GROUP_ORDER, [i + 1, 0].concat([TE6, TE7, TE8, TE9, TE10, TE11, TE12, TE13, TE14, TE15])); })();
  FORM_GROUP[G_JJ] = "bolero"; FORM_GROUP[LO_SI] = "pop"; FORM_GROUP[G_AL] = "pop"; FORM_GROUP[G_RH] = "rock"; FORM_GROUP[G_DP] = "pop"; FORM_GROUP[G_IN] = "pop";
   var SF = { on: !!prefs.sfJam, form: "auto", secs: [], shift: 0, same: false, cur: -1 };
