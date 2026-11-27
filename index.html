@@ -442,6 +442,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   </section>
 
   <section class="panel" id="panel-ex" hidden>
+    <div class="cats" id="ex-secs" role="group" aria-label="Exercise section"></div>
     <div class="cats" id="ex-cats" role="group" aria-label="Exercise type"></div>
     <div class="exgrid" id="ex-grid" role="group" aria-label="Exercise"></div>
     <div class="row">
@@ -516,7 +517,10 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     <div class="sing"><b id="ex-now">Ready</b><span id="ex-count"></span></div>
     <div class="chips" id="chips"></div>
     <div class="summary" id="ex-summary" hidden></div>
-    <button type="button" class="ghost" id="ex-preview">Hear this exercise</button>
+    <div class="row" style="align-items:center">
+      <button type="button" class="ghost" id="ex-preview" style="flex:1">Hear this exercise</button>
+      <label class="check" style="flex:0 1 auto"><input type="checkbox" id="pv-loop"> Keep repeating</label>
+    </div>
     <button type="button" class="big" id="ex-start">Start exercise</button>
     <div class="row">
       <button type="button" class="ghost" id="ex-hear">Hear note again</button>
@@ -1822,18 +1826,91 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     { group: "Melody shapes", name: "Pickup and land", steps: [-5,-3,-1,0,4,2,0], hold: 0.55, beats: 1, tip: "A few lead-in notes from below that land on home. Most phrases start like this." },
     { group: "Vocal workouts", name: "Lip trill ladder", glide: [[0,0],[1,0],[2.5,4],[3.5,4],[5,7],[6,7],[8,0],[9,0]], tip: "Slide up to the third, then the fifth, then home, on a lip trill or \"ng\". Follow the green path." }
   );
-  var GROUPS = [INST_GROUP, "Warm-ups", "Vocal workouts", "Melody shapes", "Song guides", "Scales", JZ, XO, MX, BL, MT, LK, CH, OR, "Intervals", "Arpeggios", "Slides", "Range builders", "Ear training", "Your own"];
-  var CAT_NAMES = { "Vocal workouts": "Workouts", "Melody shapes": "Shapes", "Song guides": "Songs", "For your instrument": "Instrument", "Exotic scales": "Exotic", "Regional Mexican": "Mexican regional", "Range builders": "Range", "Ear training": "Ear", "Your own": "Mine" }, curCat = null;
+  EX.push(
+    { group: MX, name: "Ranchera: climb to the grito note", steps: [0,4,7,12,12,11,9,7], hold: 0.75, beats: 2, tip: "Climb the chord to the high note and hold it with a full, open sound, then come down." },
+    { group: MX, name: "Ranchera: high note and fall", steps: [7,9,12,12,9,7,4,0], hold: 0.7, beats: 2, tip: "Start strong on top and fall home in steps. Keep the top note from going sharp." },
+    { group: MX, name: "Bolero: chromatic lean", steps: [4,3,4,7,6,7,9,7,4], hold: 0.6, beats: 2, tip: "Lean on the half step below each note before landing, the romantic bolero sound." },
+    { group: MX, name: "Bolero: minor sigh", steps: [7,8,7,5,3,2,0], hold: 0.65, beats: 2, tip: "A sighing minor line that falls home. Let it breathe.", min: true },
+    { group: MX, name: "Huapango: falsetto leaps", steps: [0,9,0,9,7,4,2,0], hold: 0.6, beats: 2, tip: "Flip up a sixth like the huapango falsete, then settle. Light and quick on the jump." },
+    { group: MX, name: "Son jarocho: quick run", steps: [0,2,4,5,7,5,4,2,0,2,4], hold: 0.4, beats: 1, tip: "A fast, bright major run. Keep it rhythmic." },
+    { group: MX, name: "Cumbia: sung call", steps: [7,7,9,7,5,4,2,4,0], hold: 0.5, beats: 1, tip: "A bouncy call phrase that sits around the fifth and comes home." },
+    { group: MX, name: "Grupera: rising pre-chorus", steps: [0,2,4,4,5,7,7,9,7], hold: 0.55, beats: 1, tip: "Step up with repeated notes to build into the chorus, like a romantic grupera ballad." },
+    { group: MX, name: "Grupera: high chorus hook", steps: [12,11,9,7,9,7,4,2,0], hold: 0.6, beats: 2, tip: "The chorus starts high and walks down. Aim for the top note before you sing it." },
+    { group: MX, name: "Norteño: segunda voz line", steps: [4,5,7,9,7,5,4,2,0], hold: 0.6, beats: 2, tip: "A line built a third above the melody, the classic norteño duet part." },
+    { group: MX, name: "Banda: harmonic minor run", steps: [0,2,3,5,7,8,11,12,11,8,7], hold: 0.45, beats: 1, tip: "The minor scale with a raised seventh, the dramatic banda sound.", min: true },
+    { group: MX, name: "Corrido tumbado: minor riff", steps: [0,3,5,3,0,-2,0], hold: 0.45, beats: 1, tip: "A short minor riff that dips below home. Keep it relaxed and in the pocket.", min: true },
+    { group: MX, name: "Mariachi: five-chord resolve", steps: [-5,-1,2,5,4,2,-1,0], hold: 0.6, beats: 2, tip: "Outline the five chord and resolve home, the ending of many mariachi phrases." },
+    { group: BL, name: "Balada: big climb to the chorus", steps: [0,2,4,5,7,9,11,12], hold: 0.6, beats: 2, tip: "Climb the whole scale into the chorus, the Camilo Sesto build. Grow louder as you go." },
+    { group: BL, name: "Balada: octave lift and settle", steps: [0,12,11,9,7,5,4,2,0], hold: 0.65, beats: 2, tip: "Leap the octave, then come down slowly. Keep the top light." },
+    { group: BL, name: "Balada: suspended sigh", steps: [5,4,5,4,2,0], hold: 0.7, beats: 2, tip: "Lean on the fourth before it falls to the third, a tender ballad move." },
+    { group: BL, name: "Balada: minor climb", steps: [0,2,3,5,7,8,10,12], hold: 0.6, beats: 2, tip: "The minor scale up to the octave for a dramatic chorus.", min: true },
+    { group: BL, name: "Balada: leading-tone pull", steps: [9,11,12,11,12,14,12], hold: 0.6, beats: 2, tip: "Pull up through the seventh to the octave and float above it." },
+    { group: BL, name: "Balada: half-step key change", steps: [0,2,4,7,4,1,3,5,8,5], hold: 0.6, beats: 2, tip: "Sing the phrase, then the same phrase a half step higher, like a final-chorus key change." },
+    { group: BL, name: "Balada: long phrase on the fifth", steps: [7,7,7,9,7,5,4], hold: 0.7, beats: 2, tip: "Hold steady on the fifth with clear words, then resolve." },
+    { group: "Pop", name: "Low moody verse", steps: [0,0,-2,0,0,-2,-5,0], hold: 0.55, beats: 1, tip: "A low, close-to-speaking verse line. Stay relaxed down low and keep it in tune." },
+    { group: "Pop", name: "One-note chant hook", steps: [7,7,7,7,5,7,4], hold: 0.5, beats: 1, tip: "Many pop hooks sit on one note. Keep the repeated notes exactly level." },
+    { group: "Pop", name: "Octave-jump chorus", steps: [0,0,12,12,10,7,5], hold: 0.6, beats: 2, tip: "Jump the octave for the chorus lift, then come down." },
+    { group: "Pop", name: "Minor pentatonic hook", steps: [0,3,5,7,5,3,0], hold: 0.5, beats: 1, tip: "The go-to dark pop hook shape.", min: true },
+    { group: "Pop", name: "Falsetto flip", steps: [7,12,7,12,14,12], hold: 0.55, beats: 1, tip: "Flip into a light head voice on the high notes and back." },
+    { group: "Pop", name: "Disco octave line", steps: [0,12,10,12,7,10,12], hold: 0.45, beats: 1, tip: "A bouncy octave line for dance-pop. Snap onto each note.", min: true },
+    { group: "Pop", name: "Falling sigh hook", steps: [9,7,4,2,0], hold: 0.6, beats: 2, tip: "A simple falling hook. Let each note be clean and short." },
+    { group: "Pop", name: "Stacked-thirds pre-chorus", steps: [0,4,7,11,12], hold: 0.65, beats: 2, tip: "Climb a major seventh chord into the chorus." },
+    { group: "Dream pop", name: "Floaty major 7", steps: [0,4,7,11,7,4], hold: 0.7, beats: 2, tip: "The dreamy major seventh chord, up and back. Soft and breathy." },
+    { group: "Dream pop", name: "Ninth float", steps: [7,11,14,11,7], hold: 0.7, beats: 2, tip: "Float up to the ninth and back, the hazy dream pop top note." },
+    { group: "Dream pop", name: "Lydian lift", steps: [0,2,4,6,7,6,4,2,0], hold: 0.6, beats: 2, tip: "The raised fourth gives a floating, bright feel." },
+    { group: "Dream pop", name: "Lazy pentatonic drift", steps: [9,7,4,2,0,2,4], hold: 0.65, beats: 2, tip: "A slow, lazy drift down and back up." },
+    { group: "Dream pop", name: "Breathy steps", steps: [4,5,4,2,0,2], hold: 0.7, beats: 2, tip: "Small, soft steps. Keep air in the tone but stay on pitch." },
+    { group: "Dream pop", name: "Minor 7 sway", steps: [0,3,7,10,7,3], hold: 0.65, beats: 2, tip: "A swaying minor seventh shape.", min: true },
+    { group: "Dream pop", name: "Wide ninth leap", steps: [0,14,12,11,7], hold: 0.7, beats: 2, tip: "A big leap up to the ninth, then settle. Aim before you jump." },
+    { group: "Dream pop", name: "Dorian hook", steps: [0,2,3,5,9,7,5,3], hold: 0.55, beats: 1, tip: "Minor with a bright sixth, a classic indie and dream pop color.", min: true },
+    { group: "Gospel and worship", name: "Gospel run down", steps: [12,9,7,4,2,0], hold: 0.35, beats: 1, tip: "A quick pentatonic run from the top down. Clean notes first, then speed up." },
+    { group: "Gospel and worship", name: "Blue-note run", steps: [12,10,9,7,6,5,3,0], hold: 0.35, beats: 1, tip: "A run with the bluesy flat notes that gospel singers love." },
+    { group: "Gospel and worship", name: "Worship octave climb", steps: [0,4,7,12,11,12,14,12], hold: 0.6, beats: 2, tip: "Climb to the octave and lift past it for the big chorus." },
+    { group: "Gospel and worship", name: "Turn on the five", steps: [7,9,7,6,7,4,2,0], hold: 0.5, beats: 1, tip: "Turn around the fifth, then come home. Common in praise melodies." },
+    { group: "Gospel and worship", name: "Call and answer", steps: [0,2,4,7,4,2,0,4,2,0], hold: 0.5, beats: 1, tip: "A leader line and a congregation answer." },
+    { group: "Gospel and worship", name: "Sus4 to 3", steps: [5,4,5,4,0], hold: 0.7, beats: 2, tip: "Hang on the fourth and resolve to the third. A worship staple." },
+    { group: "Gospel and worship", name: "Amen ending", steps: [5,5,4,2,0], hold: 0.8, beats: 2, tip: "The plagal ending feel. Slow and full." },
+    { group: "Gospel and worship", name: "Hold the third, resolve", steps: [4,5,4,2,4,0], hold: 0.6, beats: 2, tip: "Center on the third and resolve gently home." },
+    { group: "Soul and blues", name: "Minor pentatonic run", steps: [15,12,10,7,5,3,0], hold: 0.35, beats: 1, tip: "The classic R&B run down. Slow it down, get every note, then speed up.", min: true },
+    { group: "Soul and blues", name: "Three-note turns", steps: [7,9,7,5,7,5,4,5,4,2,0], hold: 0.35, beats: 1, tip: "Little turns stacked into a run, the soul melisma building block." },
+    { group: "Soul and blues", name: "Flat-five blues run", steps: [12,10,7,6,5,3,0], hold: 0.4, beats: 1, tip: "A blues run with the flat five." },
+    { group: "Soul and blues", name: "Melisma on one vowel", steps: [7,9,10,9,7,5,7], hold: 0.4, beats: 1, tip: "Sing it all on one vowel like \"oh\". Keep the notes separate, not smeared." },
+    { group: "Soul and blues", name: "Neighbor-note riff", steps: [4,5,4,2,4,2,0], hold: 0.4, beats: 1, tip: "A riff around the third with neighbor notes." },
+    { group: "Soul and blues", name: "Blues call", steps: [0,3,5,3,0,-2,0], hold: 0.5, beats: 1, tip: "A short blues call phrase.", min: true },
+    { group: JZ, name: "Bebop scale down", steps: [12,11,10,9,7,5,4,2,0], hold: 0.45, beats: 1, tip: "The major scale with an extra passing note, so beats land on chord tones." },
+    { group: JZ, name: "Enclosure", steps: [2,-1,0,6,3,4,9,6,7], hold: 0.45, beats: 1, tip: "Approach each target from above and below before landing." },
+    { group: JZ, name: "Major 7 arpeggio", steps: [0,4,7,11,12,11,7,4,0], hold: 0.55, beats: 1, tip: "The major seventh chord through the octave and back." },
+    { group: JZ, name: "Minor 7 arpeggio", steps: [0,3,7,10,12,10,7,3,0], hold: 0.55, beats: 1, tip: "The minor seventh chord through the octave and back.", min: true },
+    { group: JZ, name: "Scat blues line", steps: [12,10,7,6,5,3,0], hold: 0.45, beats: 1, tip: "A scat-style blues line. Try \"doo-bah\" syllables." }
+  );
+  var GROUPS = [INST_GROUP, "Warm-ups", "Vocal workouts", "Melody shapes", "Song guides", "Scales", JZ, XO, MX, BL, "Pop", "Dream pop", "Gospel and worship", "Soul and blues", MT, LK, CH, OR, "Intervals", "Arpeggios", "Slides", "Range builders", "Ear training", "Your own"];
+  var STYLE_GROUPS = [JZ, XO, MX, BL, "Pop", "Dream pop", "Gospel and worship", "Soul and blues", MT, LK, CH, OR], SHAPE_GROUPS = ["Melody shapes", "Song guides"];
+  var CAT_NAMES = { "Gospel and worship": "Gospel", "Soul and blues": "Soul", "Vocal workouts": "Workouts", "Melody shapes": "Shapes", "Song guides": "Songs", "For your instrument": "Instrument", "Exotic scales": "Exotic", "Regional Mexican": "Mexican regional", "Range builders": "Range", "Ear training": "Ear", "Your own": "Mine" }, curCat = null;
   function pickerRender() {
     var cats = $("ex-cats"), grid = $("ex-grid"), sel = EX[+exSel.value];
     if (!curCat || pickerRender.last !== exSel.value) curCat = sel.group;
     pickerRender.last = exSel.value;
     cats.innerHTML = ""; grid.innerHTML = "";
+    var secOf = function (g) { return STYLE_GROUPS.indexOf(g) >= 0 ? "styles" : SHAPE_GROUPS.indexOf(g) >= 0 ? "shapes" : "basics"; };
+    if (!pickerRender.sec || pickerRender.curWas !== curCat) pickerRender.sec = secOf(curCat);
+    pickerRender.curWas = curCat;
+    var secs = $("ex-secs"); secs.innerHTML = "";
+    [["basics", "Basics"], ["styles", "Styles and genres"], ["shapes", "Shapes and songs"]].forEach(function (sc) {
+      var b = document.createElement("button"); b.type = "button"; b.textContent = sc[1];
+      b.setAttribute("aria-pressed", String(sc[0] === pickerRender.sec));
+      b.addEventListener("click", function () {
+        pickerRender.sec = sc[0];
+        if (secOf(curCat) !== sc[0]) { var first = GROUPS.filter(function (g) { return secOf(g) === sc[0] && EX.some(function (e) { return e.group === g && (!e.inst || e.inst.indexOf(player) >= 0); }); })[0]; if (first) curCat = first; }
+        pickerRender.curWas = curCat; pickerRender();
+      });
+      secs.appendChild(b);
+    });
     GROUPS.forEach(function (g) {
+      if (secOf(g) !== pickerRender.sec) return;
       if (!EX.some(function (e) { return e.group === g && (!e.inst || e.inst.indexOf(player) >= 0); })) return;
       var b = document.createElement("button"); b.type = "button"; b.textContent = CAT_NAMES[g] || g;
       b.setAttribute("aria-pressed", String(g === curCat));
-      b.addEventListener("click", function () { curCat = g; pickerRender(); });
+      b.addEventListener("click", function () { curCat = g; pickerRender.curWas = g; pickerRender(); });
       cats.appendChild(b);
     });
     EX.forEach(function (e, i) {
@@ -2107,7 +2184,13 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     $("ex-preview").textContent = "Hear this exercise";
     if (was) mapRender();
   }
+  function pvEnd() {
+    if (!pv.on) return;
+    if ($("pv-loop").checked && ex.state !== "running") { pvStop(); pv.timer = setTimeout(pvStart, 700); pv.wait = true; return; }
+    pvStop();
+  }
   function pvStart() {
+    pv.wait = false;
     if (ex.state === "running") return;
     var d = curDef();
     if (d.ear) return;
@@ -2122,7 +2205,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
         o.connect(gn); o2.connect(g2); g2.connect(gn); gn.connect(output()); o.start(t0); o2.start(t0); o.stop(t0 + total + 0.05); o2.stop(t0 + total + 0.05);
         pv.node = { stop: function () { try { gn.gain.cancelScheduledValues(0); gn.gain.value = 0; o.stop(); o2.stop(); } catch (e) {} } };
         ignoreUntil = Math.max(ignoreUntil, performance.now() + total * 1000 + 300);
-        pv.timer = setTimeout(pvStop, total * 1000 + 200);
+        pv.timer = setTimeout(pvEnd, total * 1000 + 200);
         return;
       }
       var st = previewSteps();
@@ -2130,14 +2213,15 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       var gap = d.call ? (d.gap || 0.2) * 1000 : st.length > 20 ? 380 : 520, lead = harmSel.value !== "0" && !d.gen ? baseSteps(d, +rootSel.value) : null;
       (function next(i) {
         if (!pv.on) return;
-        if (i >= st.length) { pv.timer = setTimeout(pvStop, 600); return; }
+        if (i >= st.length) { pv.timer = setTimeout(pvEnd, 600); return; }
         pv.idx = i; playTone(st[i], gap / 1000 + 0.14); mapRender();
         if (lead && lead[i] != null) playTone(lead[i], gap / 1000 + 0.14);
         pv.timer = setTimeout(function () { next(i + 1); }, gap);
       })(0);
     });
   }
-  $("ex-preview").addEventListener("click", function () { if (pv.on) pvStop(); else pvStart(); });
+  $("ex-preview").addEventListener("click", function () { if (pv.on || pv.wait) { pv.wait = false; clearTimeout(pv.timer); pvStop(); } else pvStart(); });
+  $("pv-loop").checked = !!prefs.pvLoop; $("pv-loop").addEventListener("change", function () { prefs.pvLoop = this.checked; savePrefs(); });
   function exOptionsUI() {
     var d = curDef();
     $("ex-preview").disabled = !!d.ear;
