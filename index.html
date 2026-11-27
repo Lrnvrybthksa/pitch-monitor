@@ -449,6 +449,20 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       <label class="fld">Starting note<select id="root-sel"></select></label>
     </div>
     <div class="row">
+      <label class="fld">Exercise mode<select id="ex-mode">
+        <option value="normal">Normal</option>
+        <option value="long">Hold each note longer</option>
+        <option value="tones">Long tones (3 seconds a note)</option>
+        <option value="quick">Quick and light</option>
+      </select></label>
+      <label class="fld">Repeat<select id="ex-rep">
+        <option value="off">Off</option>
+        <option value="same">Repeat the same</option>
+        <option value="up">A half step higher each time</option>
+        <option value="ladder">Up 5 half steps, then back down</option>
+      </select></label>
+    </div>
+    <div class="row">
       <label class="fld">Sound<select class="inst" id="inst-e"></select></label>
       <label class="fld">Your part<select id="harm-sel">
         <option value="0">The same note</option>
@@ -1783,8 +1797,33 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     scaleEx("Romanian minor (Dorian sharp 4)", [0,2,3,6,7,9,10,12], "A minor scale with a raised fourth.", 1),
     scaleEx("Spanish eight-note scale", [0,1,3,4,5,7,8,10,12], "Phrygian with both the minor and the major third. The flamenco color behind huapango and bolero guitar runs.", 1)
   );
-  var GROUPS = [INST_GROUP, "Warm-ups", "Scales", JZ, XO, MX, BL, MT, LK, CH, OR, "Intervals", "Arpeggios", "Slides", "Range builders", "Ear training", "Your own"];
-  var CAT_NAMES = { "For your instrument": "Instrument", "Exotic scales": "Exotic", "Regional Mexican": "Mexican regional", "Range builders": "Range", "Ear training": "Ear", "Your own": "Mine" }, curCat = null;
+  EX.push(
+    { group: "Vocal workouts", name: "Nine-note scale", steps: [0,2,4,5,7,9,11,12,14,12,11,9,7,5,4,2,0], hold: 0.45, beats: 1, tip: "The classic Rossini run: up a ninth and back. Keep it light and even, one breath if you can." },
+    { group: "Vocal workouts", name: "Pentatonic run", steps: [0,2,4,7,9,12,14,12,9,7,4,2,0], hold: 0.5, beats: 1, tip: "The five-note scale up past the octave and back. Great for agility." },
+    { group: "Vocal workouts", name: "5-4-3-2-1 drop", steps: [0,7,5,4,2,0], hold: 0.6, beats: 2, tip: "Jump up to the fifth, then walk down home. Land the top note cleanly first." },
+    { group: "Vocal workouts", name: "Turn pattern", steps: [0,2,0,-1,0,4,5,4,2,0], hold: 0.5, beats: 1, tip: "A little turn around the starting note, then a short run. Trains small, quick moves." },
+    { group: "Vocal workouts", name: "Octave and a ninth arpeggio", steps: [0,4,7,12,14,11,7,5,2,0], hold: 0.6, beats: 2, tip: "Up the chord to the octave, touch the ninth, and come down the scale." },
+    { group: "Vocal workouts", name: "Sixth leaps", steps: [0,9,7,0,9,7,5,4,2,0], hold: 0.7, beats: 2, tip: "Leap up a sixth, the jump in a lot of love songs. Aim for the top note before you go." },
+    { group: "Vocal workouts", name: "Minor arpeggio", steps: [0,3,7,12,7,3,0], hold: 0.7, beats: 2, tip: "The minor chord up and back. Notice how the third sits lower than in major." },
+    { group: "Vocal workouts", name: "Step and skip", steps: [0,2,4,2,4,5,7,5,4,2,0], hold: 0.55, beats: 1, tip: "Steps and small skips mixed, like a real melody." },
+    { group: "Vocal workouts", name: "Long tones 1-3-5", steps: [0,4,7,4,0], hold: 3, beats: 6, tip: "Hold each note for a slow count. Keep the tone and volume steady." },
+    { group: "Vocal workouts", name: "Blues riff", steps: [0,3,5,6,5,3,0], hold: 0.55, beats: 1, tip: "The blues scale with its bent middle note. Good for runs and riffs." },
+    { group: "Vocal workouts", name: "Top-down octave", steps: [12,11,9,7,5,4,2,0], hold: 0.55, beats: 1, tip: "Start on the octave and walk all the way down without going flat." },
+    { group: "Vocal workouts", name: "Staccato fifths", steps: [0,7,0,7,0,7,0], hold: 0.35, beats: 1, tip: "Short, bouncy notes between home and the fifth. Think \"ha ha ha\" from the belly." },
+    { group: "Melody shapes", name: "Arch", steps: [0,2,4,7,9,7,4,2,0], hold: 0.6, beats: 2, tip: "Rises to a peak in the middle and comes back down. The most common melody shape in songs." },
+    { group: "Melody shapes", name: "Valley", steps: [7,5,4,2,0,2,4,5,7], hold: 0.6, beats: 2, tip: "Starts high, dips down, and climbs back. Common in verses that build to a chorus." },
+    { group: "Melody shapes", name: "Rising sequence", steps: [0,2,4,2,4,5,4,5,7,5,7,9,7,9,11,12], hold: 0.5, beats: 1, tip: "The same three-note idea repeated one step higher each time. Builds energy." },
+    { group: "Melody shapes", name: "Falling sequence", steps: [12,11,9,11,9,7,9,7,5,7,5,4,5,4,2,0], hold: 0.5, beats: 1, tip: "The same idea repeated a step lower each time. Feels like settling down." },
+    { group: "Melody shapes", name: "Leap then fill", steps: [0,9,7,5,4,2,0], hold: 0.6, beats: 2, tip: "A big jump up, then steps back down to fill the gap. Classic hook writing." },
+    { group: "Melody shapes", name: "Wave", steps: [0,4,2,5,4,7,5,4,2,0], hold: 0.55, beats: 1, tip: "Up and down in small waves. Keeps a line moving without big jumps." },
+    { group: "Melody shapes", name: "Call and response", steps: [7,9,7,4,7,9,7,2,4,2,0], hold: 0.55, beats: 1, tip: "A short phrase that asks (ends up in the air) and an answer that comes home." },
+    { group: "Melody shapes", name: "Climb to the hook", steps: [0,0,2,4,4,5,7,7,9,12,12], hold: 0.5, beats: 1, tip: "Repeated notes that step up to a high hook note, like a pre-chorus into a chorus." },
+    { group: "Melody shapes", name: "Repeated-note hook", steps: [7,7,7,9,7,4,4,2,0], hold: 0.5, beats: 1, tip: "Lots of pop hooks sit on one note, then fall away. Keep the repeated notes exactly level." },
+    { group: "Melody shapes", name: "Pickup and land", steps: [-5,-3,-1,0,4,2,0], hold: 0.55, beats: 1, tip: "A few lead-in notes from below that land on home. Most phrases start like this." },
+    { group: "Vocal workouts", name: "Lip trill ladder", glide: [[0,0],[1,0],[2.5,4],[3.5,4],[5,7],[6,7],[8,0],[9,0]], tip: "Slide up to the third, then the fifth, then home, on a lip trill or \"ng\". Follow the green path." }
+  );
+  var GROUPS = [INST_GROUP, "Warm-ups", "Vocal workouts", "Melody shapes", "Song guides", "Scales", JZ, XO, MX, BL, MT, LK, CH, OR, "Intervals", "Arpeggios", "Slides", "Range builders", "Ear training", "Your own"];
+  var CAT_NAMES = { "Vocal workouts": "Workouts", "Melody shapes": "Shapes", "Song guides": "Songs", "For your instrument": "Instrument", "Exotic scales": "Exotic", "Regional Mexican": "Mexican regional", "Range builders": "Range", "Ear training": "Ear", "Your own": "Mine" }, curCat = null;
   function pickerRender() {
     var cats = $("ex-cats"), grid = $("ex-grid"), sel = EX[+exSel.value];
     if (!curCat || pickerRender.last !== exSel.value) curCat = sel.group;
@@ -1823,6 +1862,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     curCat = EX[+exSel.value].group;
   }
   fillEx();
+  if (prefs.exMode) $("ex-mode").value = prefs.exMode; if (prefs.exRep) $("ex-rep").value = prefs.exRep;
   var ex = { state: "idle", def: EX[0], kind: "steps", steps: [], play: [], idx: 0, acc: 0, onTime: 0, totalTime: 0, results: [], harm: 0, tempo: false };
   var melody = store.get("pm.melody", []), melOct = 4;
   if (!Array.isArray(melody)) melody = [];
@@ -2143,20 +2183,28 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     renderChips();
   }
   function exStartStep() {
+    ex.stepStart = performance.now();
     exRefresh();
     if (ex.def.call) { if (ex.idx === 0 && sw("ref")) playLick(); return; }
     var note = ex.play[ex.idx];
     if (ex.tempo) {
-      var beats = ex.def.beats || 2, d = Math.min(0.45, ex.beat / 1000 * 0.6);
+      var beats = Math.max(1, Math.round((ex.def.beats || 2) * (ex.beatsMul || 1))), d = Math.min(0.45, ex.beat / 1000 * 0.6);
       ex.stepStart = performance.now(); ex.stepDur = beats * ex.beat;
       if (sw("ref")) playTone(note, d, 120);
       clicks(beats, ex.beat / 1000);
     } else if (sw("ref")) playTone(note, ex.idx === 0 ? 1.1 : 0.9);
   }
-  function exBegin() {
+  function exBegin(auto) {
     var def = curDef(), rootM = +rootSel.value;
-    ex.def = def; ex.kind = def.glide ? "glide" : "steps"; ex.root = rootM;
+    if (auto !== true) { ex.repDir = 1; ex.repN = 0; }
+    clearTimeout(ex.repT); ex.repT = 0;
+    ex.def = def; ex.kind = def.glide ? "glide" : "steps"; ex.root = rootM; ex.past = [];
     ex.hold = (def.hold || 0.7) * ((player === "guitar" || player === "bass") && def.hold > 0.45 ? 0.55 : 1);
+    var em = $("ex-mode").value; prefs.exMode = em; prefs.exRep = $("ex-rep").value; savePrefs();
+    ex.beatsMul = 1;
+    if (em === "long") { ex.hold *= 2; ex.beatsMul = 2; }
+    else if (em === "tones") { ex.hold = Math.max(ex.hold, 3); ex.beatsMul = Math.max(1, 6 / (def.beats || 2)); }
+    else if (em === "quick") { ex.hold = Math.max(0.25, ex.hold * 0.5); ex.beatsMul = 0.5; }
     if (pv.on) pvStop();
     ex.state = "idle"; setFlats();
     ex.results = []; ex.idx = 0; ex.acc = 0; ex.onTime = 0; ex.totalTime = 0; ex.lv = []; ex.extra = "";
@@ -2177,6 +2225,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     applyScale(); exRefresh();
   }
   function exStop() {
+    clearTimeout(ex.repT);
     if (ex.state === "idle") return;
     ex.state = "idle";
     $("ex-start").textContent = "Start exercise"; $("ex-start").classList.remove("stop");
@@ -2192,9 +2241,44 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     var rec = dayRec(); rec.ex.push({ n: ex.def.name + (ex.kind === "steps" && ex.harm ? " (harmony)" : ""), s: Math.round(avg * 100) });
     if (rec.ex.length > 60) rec.ex.shift();
     saveDays(); renderProgress();
+    exRepeat();
+  }
+  function exRepeat() {
+    var r = $("ex-rep").value, d = ex.def; if (r === "off") return;
+    var cur = +rootSel.value, next = cur;
+    if (r !== "same" && !d.abs && !d.custom) {
+      if (r === "up") next = cur + 1;
+      else { if (ex.repN >= 5) ex.repDir = -1; next = cur + ex.repDir; ex.repN += ex.repDir; if (ex.repN < 0) { ex.repDir = 1; ex.repN = 0; return; } }
+      var has = [].some.call(rootSel.options, function (o) { return +o.value === next; });
+      if (!has) { $("ex-summary").textContent += " · Reached the end of your range"; return; }
+    }
+    $("ex-summary").textContent += " · Next round in 2 s" + (next !== cur ? " (" + noteLabel(next) + ")" : "");
+    $("ex-start").textContent = "Stop repeating"; $("ex-start").classList.add("stop");
+    ex.repT = setTimeout(function () {
+      if (ex.state !== "done" || mode !== "exercise") return;
+      rootSel.value = String(next); exBegin(true);
+    }, 2000);
+  }
+  /* Exercise piano-roll: past notes on the left of the arrow, the note you are on, and the next notes coming in from the right. */
+  function exBlocks(now, yOf, xOf, rowH, w) {
+    var est = function () { return ex.tempo ? Math.max(1, Math.round((ex.def.beats || 2) * (ex.beatsMul || 1))) * ex.beat : ex.hold * 1000 + 450; };
+    var curEnd = ex.tempo ? ex.stepStart + ex.stepDur : Math.max(now + 120, now + (ex.hold * 1000 - ex.acc) + 150);
+    function block(m, t0, t1, a, line, label) {
+      var x0 = Math.max(34, xOf(t0)), x1 = Math.min(w, xOf(t1) - 3); if (x1 <= x0) return;
+      var y = yOf(m), bh = Math.max(6, rowH - 2);
+      ctx2d.fillStyle = rgba(GOOD, a); ctx2d.fillRect(x0, y - bh / 2, x1 - x0, bh);
+      if (line) { ctx2d.strokeStyle = rgba(GOOD, 0.95); ctx2d.lineWidth = 2; ctx2d.strokeRect(x0, y - bh / 2, x1 - x0, bh); }
+      if (label && x1 - x0 > 26 && bh >= 9) { ctx2d.fillStyle = TH.text; ctx2d.font = "600 " + Math.min(11, bh - 1) + "px ui-monospace, Menlo, Consolas, monospace"; ctx2d.fillText(noteLabel(m), x0 + 4, y); }
+    }
+    (ex.past || []).forEach(function (p) { block(p.m, p.t0, p.t1, 0.18, false, false); });
+    block(ex.steps[ex.idx], ex.stepStart, curEnd, 0.42, true, true);
+    var t = curEnd + 80;
+    for (var i = ex.idx + 1; i < ex.steps.length && xOf(t) < w; i++) { var e = est(); block(ex.steps[i], t, t + e, 0.26, false, true); t += e + 80; }
   }
   function exAdvance() {
     ex.results.push(ex.totalTime > 0 ? ex.onTime / ex.totalTime : 0);
+    (ex.past = ex.past || []).push({ m: ex.steps[ex.idx], t0: ex.stepStart, t1: performance.now() });
+    if (ex.past.length > 40) ex.past.shift();
     ex.idx++; ex.acc = 0; ex.onTime = 0; ex.totalTime = 0; holdfill.style.width = "0%";
     if (ex.idx >= ex.steps.length) exDone(); else exStartStep();
   }
@@ -2232,6 +2316,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   $("ex-start").addEventListener("click", function () {
     if (ex.state === "running") { exStop(); return; }
+    if (ex.state === "done" && ex.repT) { clearTimeout(ex.repT); ex.repT = 0; $("ex-start").textContent = "Start again"; $("ex-start").classList.remove("stop"); return; }
     ex.state = "idle";
     var go = function () { ready().then(exBegin); };
     if (running) go(); else startMic().then(function (ok) { if (ok) go(); });
@@ -3265,12 +3350,12 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   /* ---------- chart zoom ---------- */
   var ZOOMS = [13, 25, 37, 61], ZOOM_NAMES = ["1 octave", "2 octaves", "3 octaves", "All notes"];
   var zi = prefs.zoom == null ? 1 : clamp(prefs.zoom, 0, 3), fcen = 60, fgoal = 60;
-  function fullMode(m) { return m === "free" || m === "key" || m === "range" || m === "song" || m === "jam"; }
+  function fullMode(m) { return m === "free" || m === "key" || m === "range" || m === "song" || m === "jam" || m === "exercise"; }
   function sizeChart() {
     var full = fullMode(mode);
     canvas.style.height = !full ? "190px" : ZOOMS[zi] === 61 ? "640px" : mode === "song" ? "340px" : "400px";
     $("zoom-ctl").hidden = !full; $("zoom-lbl").textContent = ZOOM_NAMES[zi];
-    $("trace-note").textContent = !full ? "Green band is your target" : mode === "key" ? "Bright rows are in the key" : zi === 3 ? "C2 to C7" : "Follows your voice";
+    $("trace-note").textContent = !full ? "Green band is your target" : mode === "exercise" ? "Green blocks are the notes coming up" : mode === "key" ? "Bright rows are in the key" : zi === 3 ? "C2 to C7" : "Follows your voice";
   }
   function setZoom(d) { zi = clamp(zi + d, 0, 3); prefs.zoom = zi; savePrefs(); sizeChart(); }
   $("zoom-in").addEventListener("click", function () { setZoom(-1); });
@@ -6880,6 +6965,41 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   var ALV = "Alvvays";
   SMX("al-am", "Archie, Marry Me", ALV, null, "Alvvays (2014)", G_AL + "|Dreamy mid-tempo", 0, 115, "intro: G Gmaj7 G6 G|verse: G D Am C G D Am C|chorus: G D Am C G D Am C|verse: G D Am C G D Am C|chorus: G D Am C G D Am C|solo: G D Am C G D Am C|bridge: Em F F# G Em F F# G|chorus: G D Am C G D Am C G D Am C G D Am C D|outro: G", "Ultimate Guitar and GuitarTabsExplorer (moved to G, no capo)");
   SMX("al-dt", "Dreams Tonite", ALV, null, "Antisocialites (2017)", G_AL + "|Dreamy mid-tempo", 0, 101, "verse: Gmaj7 A F#m G Gmaj7 A F#m G|pre: Gmaj7 A Gmaj7 A|chorus: D Gmaj7 F#m D Em Bm A Gmaj7 A|verse: Gmaj7 A F#m G Gmaj7 A F#m Gmaj7 A|pre: Gmaj7 A Gmaj7 A|chorus: D Gmaj7 F#m D Em Bm A Gmaj7 A D Em Bm A Gmaj7 F#m A|bridge: E F#m G A D A E F#m G A D Am Em F#m Bm A#dim7 Gmaj7 D A|outro: D Em Bm A Gmaj7 F#m A D Em Bm A Gmaj7 A");
+  /* Song guides: a guide-tone line that moves through the chords of songs in the app (chorus or first section). Not the real sung melody. */
+  (function () {
+    var PCN = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }, per = {}, picks = [];
+    SONGMAPS.forEach(function (sm) {
+      if (picks.length >= 14 || (per[sm.artist] = (per[sm.artist] || 0) + 1) > 3) return;
+      var sec = sm.secs.filter(function (x) { return x[0] === "chorus"; })[0] || sm.secs[0]; if (!sec) return;
+      var chs = [];
+      String(sec[1]).split(/\s+/).forEach(function (tok) {
+        var m = /^([A-G])(#|b)?(m(?!aj))?(dim)?/.exec(tok.replace(/:.*$/, "")); if (!m) return;
+        var pc = PCN[m[1]] + (m[2] === "#" ? 1 : m[2] === "b" ? -1 : 0);
+        var c = { pc: (pc + 12) % 12, third: m[3] || m[4] ? 3 : 4, fifth: m[4] ? 6 : 7 };
+        if (chs.length < 12) chs.push(c);
+      });
+      if (chs.length < 3) return;
+      picks.push({ sm: sm, chs: chs, sec: sec[0] });
+    });
+    picks.forEach(function (p) {
+      EX.push({ group: "Song guides", name: p.sm.title + " (" + p.sec + ")", hold: 0.8, beats: 4, songGuide: 1,
+        tip: "A guide line through the " + p.sec + " chords of " + p.sm.title + " by " + p.sm.artist + ", moved to your starting note. Each note is a chord tone, chosen to move as little as possible, so it is not the real melody. Use it to hear how a line can follow the chords, then try your own.",
+        gen: function (r0) {
+          var shift = r0 - (p.sm.key + 60), prev = r0 + 4 - (p.sm.mode === "min" ? 1 : 0), out = [];
+          p.chs.forEach(function (c, i) {
+            var best = null, bd = 99;
+            for (var o = -2; o <= 2; o++) [0, c.third, c.fifth].forEach(function (iv) {
+              var m = 60 + c.pc + iv + 12 * o + shift; if (m < r0 - 3 || m > r0 + 12) return;
+              var dd = Math.abs(m - prev) + (m === prev && i ? 1.5 : 0);
+              if (dd < bd) { bd = dd; best = m; }
+            });
+            if (best == null) best = r0; out.push(best); prev = best;
+          });
+          return out;
+        } });
+    });
+    fillEx();
+  })();
   SF.meta = null;
   /* Song picker: filter by style, artist (Lorde by album) and a search box, so the list stays short. */
   var SM_GENRE = { "Lorde": "pop", "Dua Lipa": "pop", "Olivia Newton-John": "pop", "The Marías": "dream", "Not for Radio": "dream", "Alvvays": "dream", "Juan Gabriel": "mex", "Los Bukis": "mex", "Los Temerarios": "mex" };
@@ -8220,8 +8340,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     var full = !gl && fullMode(mode);
     if (full) {
       span = ZOOMS[zi];
-      var ft = spT != null ? spT : hasPitch ? curSm : null, edge = span * 0.3, fmin = chLo() + span / 2, fmax = 96.5 - span / 2;
-      if (ft != null && sw("follow")) { if (ft > fgoal + edge) fgoal = ft - edge; else if (ft < fgoal - edge) fgoal = ft + edge; }
+      var ft = spT != null ? spT : (mode === "exercise" && ref != null && ex.kind === "steps") ? ref : hasPitch ? curSm : null, edge = span * 0.3, fmin = chLo() + span / 2, fmax = 96.5 - span / 2;
+      if (ft != null && (sw("follow") || mode === "exercise")) { if (ft > fgoal + edge) fgoal = ft - edge; else if (ft < fgoal - edge) fgoal = ft + edge; }
       fgoal = clamp(fgoal, fmin, Math.max(fmin, fmax));
       fcen = clamp(fcen + (fgoal - fcen) * 0.12, fmin, Math.max(fmin, fmax));
     }
@@ -8268,6 +8388,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       ctx2d.strokeStyle = "rgba(238,241,246,.5)"; ctx2d.lineWidth = 1;
       ctx2d.beginPath(); ctx2d.moveTo(xOf(now), 0); ctx2d.lineTo(xOf(now), h); ctx2d.stroke();
       ctx2d.fillStyle = GOOD; ctx2d.beginPath(); ctx2d.arc(xOf(now), yOf(ref), 5, 0, 6.3); ctx2d.fill();
+    } else if (full && mode === "exercise" && ex.state === "running" && ex.kind === "steps" && !earActive()) {
+      exBlocks(now, yOf, xOf, h / (hi2 - lo2), w);
     } else if (ref != null && !earActive()) {
       var y1 = yOf(ref + tol / 100), y2 = yOf(ref - tol / 100);
       ctx2d.fillStyle = rgba(GOOD, 0.2); ctx2d.fillRect(34, y1, w - 34, y2 - y1);
