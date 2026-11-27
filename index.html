@@ -519,8 +519,14 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     <div class="summary" id="ex-summary" hidden></div>
     <div class="row" style="align-items:center">
       <button type="button" class="ghost" id="ex-preview" style="flex:1">Hear this exercise</button>
-      <label class="check" style="flex:0 1 auto"><input type="checkbox" id="pv-loop"> Keep repeating</label>
+      <label class="fld" style="flex:0 1 170px">Repeat listening<select id="pv-rep">
+        <option value="off">Off</option>
+        <option value="same">Repeat the same</option>
+        <option value="up">Half step higher each time</option>
+        <option value="ladder">Up 5 half steps, then down</option>
+      </select></label>
     </div>
+    <label class="check"><input type="checkbox" id="end-note"> End on the home note (adds the starting note at the end if the exercise doesn't land there)</label>
     <button type="button" class="big" id="ex-start">Start exercise</button>
     <div class="row">
       <button type="button" class="ghost" id="ex-hear">Hear note again</button>
@@ -1947,7 +1953,12 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   function curDef() { return EX[+exSel.value]; }
   function earActive() { return mode === "exercise" && ex.state === "running" && !!ex.def.ear; }
   function exactNow() { return mode === "exercise" && ex.state === "running" && (!!ex.def.exact || player !== "voice"); }
-  function baseSteps(d, r0) { return d.abs ? d.abs.slice() : d.custom ? melody.slice() : d.gen ? d.gen(r0) : d.steps.map(function (x) { return r0 + x; }); }
+  function baseSteps(d, r0) {
+    var out = d.abs ? d.abs.slice() : d.custom ? melody.slice() : d.gen ? d.gen(r0) : d.steps.map(function (x) { return r0 + x; });
+    var en = document.getElementById("end-note");
+    if (en && en.checked && !d.exact && !d.abs && !d.custom && !d.call && !d.ear && out.length && out[out.length - 1] !== r0) out.push(r0);
+    return out;
+  }
   function gliding() { return mode === "exercise" && ex.state === "running" && ex.kind === "glide"; }
   function curTol() { return gliding() || (mode === "song" && song.track && song.playing) ? Math.max(tol, 35) : tol; }
   function glideAt(sec) {
@@ -2186,11 +2197,23 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   }
   function pvEnd() {
     if (!pv.on) return;
-    if ($("pv-loop").checked && ex.state !== "running") { pvStop(); pv.timer = setTimeout(pvStart, 700); pv.wait = true; return; }
+    var r = $("pv-rep").value, d = curDef();
+    if (r !== "off" && ex.state !== "running") {
+      pvStop();
+      if (r !== "same" && !d.abs && !d.custom) {
+        var cur = +rootSel.value, next;
+        if (r === "up") next = cur + 1;
+        else { if (pv.repN >= 5) pv.repDir = -1; next = cur + pv.repDir; pv.repN += pv.repDir; if (pv.repN < 0) { pv.repDir = 1; pv.repN = 0; return; } }
+        if (![].some.call(rootSel.options, function (o) { return +o.value === next; })) return;
+        rootSel.value = String(next); setFlats(); renderChips();
+      }
+      pv.timer = setTimeout(function () { pvStart(true); }, 700); pv.wait = true; return;
+    }
     pvStop();
   }
-  function pvStart() {
+  function pvStart(auto) {
     pv.wait = false;
+    if (auto !== true) { pv.repDir = 1; pv.repN = 0; }
     if (ex.state === "running") return;
     var d = curDef();
     if (d.ear) return;
@@ -2220,8 +2243,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       })(0);
     });
   }
-  $("ex-preview").addEventListener("click", function () { if (pv.on || pv.wait) { pv.wait = false; clearTimeout(pv.timer); pvStop(); } else pvStart(); });
-  $("pv-loop").checked = !!prefs.pvLoop; $("pv-loop").addEventListener("change", function () { prefs.pvLoop = this.checked; savePrefs(); });
+  $("ex-preview").addEventListener("click", function () { if (pv.on || pv.wait) { pv.wait = false; clearTimeout(pv.timer); pvStop(); } else pvStart(false); });
+  if (prefs.pvRep) $("pv-rep").value = prefs.pvRep; $("pv-rep").addEventListener("change", function () { prefs.pvRep = this.value; savePrefs(); });
+  $("end-note").checked = !!prefs.endNote; $("end-note").addEventListener("change", function () { prefs.endNote = this.checked; savePrefs(); if (ex.state !== "running") { ex.state = "idle"; exIdleUI(); } });
   function exOptionsUI() {
     var d = curDef();
     $("ex-preview").disabled = !!d.ear;
