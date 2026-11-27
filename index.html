@@ -1889,19 +1889,114 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     { group: JZ, name: "Minor 7 arpeggio", steps: [0,3,7,10,12,10,7,3,0], hold: 0.55, beats: 1, tip: "The minor seventh chord through the octave and back.", min: true },
     { group: JZ, name: "Scat blues line", steps: [12,10,7,6,5,3,0], hold: 0.45, beats: 1, tip: "A scat-style blues line. Try \"doo-bah\" syllables." }
   );
-  var GROUPS = [INST_GROUP, "Warm-ups", "Vocal workouts", "Melody shapes", "Song guides", "Scales", JZ, XO, MX, BL, "Pop", "Dream pop", "Gospel and worship", "Soul and blues", MT, LK, CH, OR, "Intervals", "Arpeggios", "Slides", "Range builders", "Ear training", "Your own"];
-  var STYLE_GROUPS = [JZ, XO, MX, BL, "Pop", "Dream pop", "Gospel and worship", "Soul and blues", MT, LK, CH, OR], SHAPE_GROUPS = ["Melody shapes", "Song guides"];
-  var CAT_NAMES = { "Gospel and worship": "Gospel", "Soul and blues": "Soul", "Vocal workouts": "Workouts", "Melody shapes": "Shapes", "Song guides": "Songs", "For your instrument": "Instrument", "Exotic scales": "Exotic", "Regional Mexican": "Mexican regional", "Range builders": "Range", "Ear training": "Ear", "Your own": "Mine" }, curCat = null;
+  EX.push(
+    { group: "Corridos", name: "Corrido: storytelling line", steps: [0,2,4,4,4,2,4,5,4,2,0], hold: 0.5, beats: 1, tip: "Corridos tell a story, so lines sit on a few notes with lots of words. Keep repeated notes level." },
+    { group: "Corridos", name: "Corrido: waltz-time phrase", steps: [7,7,5,4,5,4,2,0,2,4,0], hold: 0.5, beats: 1, tip: "A three-beat corrido phrase. Feel the oom-pah-pah under it." },
+    { group: "Corridos", name: "Corrido: down to the low five", steps: [4,2,0,-1,0,-3,-5,0], hold: 0.55, beats: 1, tip: "Corrido lines often dip below home to the low fifth. Stay relaxed down there." },
+    { group: "Corridos", name: "Corrido tumbado: dark hook", steps: [7,8,7,5,3,5,3,2,0], hold: 0.45, beats: 1, tip: "A moody minor hook with the flat sixth, the modern tumbado sound.", min: true },
+    { group: "Corridos", name: "Corrido tumbado: requinto echo", steps: [0,3,7,10,7,3,5,3,0], hold: 0.45, beats: 1, tip: "Sing the kind of shape a requinto guitar answers with.", min: true },
+    { group: "Corridos", name: "Corrido tumbado: laid-back fall", steps: [10,7,5,3,2,0,-2,0], hold: 0.5, beats: 1, tip: "A lazy falling line. Sing it behind the beat, relaxed.", min: true },
+    { group: "Ranchera and mariachi", name: "Ranchera: sixth leap to the cry", steps: [0,9,9,7,5,4,2,0], hold: 0.7, beats: 2, tip: "Leap a sixth and hold it with a wide, open vowel, then come home." },
+    { group: "Ranchera and mariachi", name: "Ranchera: five-chord turn", steps: [7,9,7,5,4,2,-1,0], hold: 0.6, beats: 2, tip: "Turn around the fifth and land through the leading note." },
+    { group: "Ranchera and mariachi", name: "Mariachi: trumpet-style arpeggio", steps: [0,4,7,12,7,4,7,0], hold: 0.5, beats: 1, tip: "Sing it like the trumpets would play it: bright and clean." },
+    { group: "Ranchera and mariachi", name: "Ranchera: minor lament", steps: [0,3,7,8,7,5,3,2,0], hold: 0.65, beats: 2, tip: "A sorrowful minor ranchera line. Let the flat sixth ache.", min: true },
+    { group: "Bolero", name: "Bolero: tender rise", steps: [0,2,4,7,9,7,4], hold: 0.65, beats: 2, tip: "A soft, smooth rise. Connect every note, no bumps." },
+    { group: "Bolero", name: "Bolero: sixth to the seventh", steps: [9,11,9,7,4,5,4,2,0], hold: 0.6, beats: 2, tip: "The sixth and major seventh give the bolero its romance." },
+    { group: "Bolero", name: "Bolero: minor-major turn", steps: [3,2,3,7,4,2,0], hold: 0.6, beats: 2, tip: "Starts in minor color and brightens to major at the end." },
+    { group: "Bolero", name: "Bolero: triplet sigh", steps: [7,5,4,5,4,2,4,2,0], hold: 0.45, beats: 1, tip: "Little sighing groups of three. Keep it flowing." },
+    { group: "Cumbia", name: "Cumbia: call and answer", steps: [0,2,4,2,0,4,5,4,2,0], hold: 0.45, beats: 1, tip: "A short call, then an answer. Bounce on each note." },
+    { group: "Cumbia", name: "Cumbia sonidera: minor hook", steps: [0,3,5,7,5,3,5,3,0], hold: 0.45, beats: 1, tip: "A catchy minor hook for dancing.", min: true },
+    { group: "Cumbia", name: "Cumbia: repeated-note chorus", steps: [7,7,7,5,4,4,4,2,0], hold: 0.45, beats: 1, tip: "Easy to sing along: repeated notes stepping down." },
+    { group: "Cumbia", name: "Cumbia: fifth jump", steps: [0,7,5,4,7,5,4,2,0], hold: 0.45, beats: 1, tip: "Jump up to the fifth and step down twice." },
+    { group: "Norteño and banda", name: "Norteño: accordion run", steps: [0,2,4,5,7,9,7,5,4,2,0], hold: 0.4, beats: 1, tip: "Quick and even, like an accordion run." },
+    { group: "Norteño and banda", name: "Norteño: duet in thirds", steps: [0,2,4,2,0,-1,0], hold: 0.55, beats: 1, tip: "Sing the low part of a norteño duet; then try it with Your part set to a third above." },
+    { group: "Norteño and banda", name: "Banda: big held chorus", steps: [7,9,12,12,11,9,7], hold: 0.75, beats: 2, tip: "Big and held, like a banda chorus over the brass." },
+    { group: "Norteño and banda", name: "Banda: minor sierreño run", steps: [0,2,3,5,7,8,7,5,3,2,0], hold: 0.4, beats: 1, tip: "A fast minor run in the sierreño style.", min: true },
+    { group: "Grupera", name: "Grupera: tender verse", steps: [0,2,4,2,0,2,4,5,4], hold: 0.6, beats: 2, tip: "A soft verse that stays close to home, the romantic grupera style." },
+    { group: "Grupera", name: "Grupera: climb into the chorus", steps: [4,5,7,9,11,12], hold: 0.6, beats: 2, tip: "Step up through the top of the scale into the chorus." },
+    { group: "Grupera", name: "Grupera: minor heartbreak line", steps: [0,3,5,7,8,7,5,3], hold: 0.6, beats: 2, tip: "A heartbroken minor line.", min: true },
+    { group: "Grupera", name: "Grupera: falling chorus", steps: [12,11,9,9,7,5,4,2,0], hold: 0.6, beats: 2, tip: "Start on top and fall home slowly." },
+    { group: "Huapango and son", name: "Huapango: falsete flip", steps: [4,12,4,12,11,9,7], hold: 0.55, beats: 1, tip: "Flip into falsetto on the high notes, the huapango break." },
+    { group: "Huapango and son", name: "Son jarocho: bouncy line", steps: [0,4,7,4,2,5,9,5,4], hold: 0.4, beats: 1, tip: "Bouncy and bright, like a jarana strum." },
+    { group: "Huapango and son", name: "Son huasteco: high answer", steps: [7,12,11,12,9,7], hold: 0.5, beats: 1, tip: "A high answering phrase. Keep the falsetto light." },
+    { group: BL, name: "Balada: whisper to belt", steps: [0,2,4,7,9,12], hold: 0.7, beats: 2, tip: "Start soft and grow louder with each note up." },
+    { group: BL, name: "Balada: minor sixth longing", steps: [0,8,7,5,3,2,0], hold: 0.65, beats: 2, tip: "Leap to the minor sixth and fall. Full of longing.", min: true },
+    { group: BL, name: "Balada: repeated-note confession", steps: [4,4,4,5,4,2,2,0], hold: 0.55, beats: 1, tip: "Ballad verses often sit on a note to let the words speak." },
+    { group: BL, name: "Balada: big final note", steps: [7,9,11,12,12], hold: 1, beats: 2, tip: "Climb to the octave and hold the last note long and steady." },
+    { group: BL, name: "Balada: chromatic climb", steps: [0,1,2,3,4,7], hold: 0.55, beats: 1, tip: "Creep up by half steps, then open out." },
+    { group: "Dream pop", name: "Echo phrase", steps: [7,4,7,4,2,0], hold: 0.65, beats: 2, tip: "A phrase that repeats like an echo. Soft and even." },
+    { group: "Dream pop", name: "Major 7 fall", steps: [11,9,7,4,2,0], hold: 0.65, beats: 2, tip: "Fall from the major seventh, that dreamy top note." },
+    { group: "Dream pop", name: "Suspended float", steps: [2,5,7,5,2], hold: 0.7, beats: 2, tip: "No third, so it floats without settling." },
+    { group: "Dream pop", name: "Sleepy minor", steps: [3,2,0,-2,0], hold: 0.7, beats: 2, tip: "A sleepy, low minor line. Barely above a whisper.", min: true },
+    { group: "Dream pop", name: "Shoegaze climb", steps: [0,7,12,14,12,7], hold: 0.65, beats: 2, tip: "Wide fifths and a ninth, like a wall of guitars." },
+    { group: "Juan Gabriel style", name: "Big ranchera-pop opening", steps: [0,4,7,12,11,9,7], hold: 0.65, beats: 2, tip: "A grand opening line that climbs high, in the spirit of his big songs." },
+    { group: "Juan Gabriel style", name: "Storytelling verse", steps: [0,0,2,4,4,2,0,-1,0], hold: 0.5, beats: 1, tip: "Lots of words on a few notes, then a turn home." },
+    { group: "Juan Gabriel style", name: "Climb to the chorus cry", steps: [4,5,7,9,12,12], hold: 0.7, beats: 2, tip: "Step up to a high, held note full of feeling." },
+    { group: "Juan Gabriel style", name: "Minor heartbreak fall", steps: [12,10,8,7,5,3,0], hold: 0.6, beats: 2, tip: "Fall through the minor scale from the top.", min: true },
+    { group: "Juan Gabriel style", name: "Mariachi-pop hook", steps: [7,9,7,4,5,4,0], hold: 0.55, beats: 1, tip: "A short hook that swings around the fifth." },
+    { group: "Juan Gabriel style", name: "Held final cry", steps: [7,11,12,12], hold: 1, beats: 2, tip: "Rise through the leading note and hold the final high note." },
+    { group: "Camilo Sesto style", name: "Dramatic octave leap", steps: [0,12,11,9,7,5], hold: 0.7, beats: 2, tip: "Leap the octave and descend slowly, like a big ballad chorus." },
+    { group: "Camilo Sesto style", name: "Soaring chorus", steps: [7,9,11,12,14,12,11,12], hold: 0.6, beats: 2, tip: "Soar above the octave and land on it." },
+    { group: "Camilo Sesto style", name: "Tender low verse", steps: [0,-1,0,2,4,2,0], hold: 0.6, beats: 2, tip: "Soft, close to home, before the big chorus." },
+    { group: "Camilo Sesto style", name: "Minor drama", steps: [0,3,7,8,10,8,7,3], hold: 0.6, beats: 2, tip: "A dramatic minor line with a lifted top.", min: true },
+    { group: "Camilo Sesto style", name: "Key-change lift", steps: [4,5,7,4,6,8], hold: 0.6, beats: 2, tip: "The same idea a whole step higher, like a ballad key change." },
+    { group: "Camilo Sesto style", name: "Long belt finish", steps: [9,11,12,12,12], hold: 1, beats: 2, tip: "End on a long, strong octave." },
+    { group: "Los Bukis style", name: "Gentle romantic verse", steps: [4,2,4,5,4,2,0], hold: 0.6, beats: 2, tip: "Smooth and gentle, close to home." },
+    { group: "Los Bukis style", name: "Sing-along chorus", steps: [7,7,9,7,5,4,4,2,0], hold: 0.55, beats: 1, tip: "A chorus everyone can sing: repeated notes walking down." },
+    { group: "Los Bukis style", name: "Sweet sixth", steps: [0,9,7,5,4,2], hold: 0.65, beats: 2, tip: "Leap to the sixth for a sweet, longing sound." },
+    { group: "Los Bukis style", name: "Thirds duet line", steps: [4,5,7,5,4,2,4], hold: 0.6, beats: 2, tip: "A line made for singing in thirds with a second voice." },
+    { group: "Los Bukis style", name: "Soft minor verse", steps: [0,2,3,2,0,-2,0], hold: 0.6, beats: 2, tip: "A soft minor verse that dips below home.", min: true },
+    { group: "Los Bukis style", name: "Falsetto touch", steps: [7,12,11,9,7], hold: 0.6, beats: 2, tip: "Touch the top lightly, almost in falsetto, then come back." },
+    { group: "Los Temerarios style", name: "Smooth romantic rise", steps: [0,2,4,7,9,11,12], hold: 0.6, beats: 2, tip: "A smooth, steady rise into the chorus." },
+    { group: "Los Temerarios style", name: "Breathy low verse", steps: [0,0,-1,0,2,0], hold: 0.6, beats: 2, tip: "Low and breathy, close to the mic." },
+    { group: "Los Temerarios style", name: "Major 7 longing", steps: [4,7,11,12,11,7], hold: 0.65, beats: 2, tip: "The major seventh gives a soft, longing color." },
+    { group: "Los Temerarios style", name: "Minor chorus", steps: [3,5,7,8,7,5,3,2,0], hold: 0.6, beats: 2, tip: "A minor chorus that climbs and settles.", min: true },
+    { group: "Los Temerarios style", name: "Echo answer", steps: [7,9,7,4,7,9,7,2,0], hold: 0.55, beats: 1, tip: "A phrase and its echo, then home." },
+    { group: "Los Temerarios style", name: "Long held top", steps: [7,9,11,12], hold: 1, beats: 2, tip: "Climb and hold the top note long." },
+    { group: "Lorde style", name: "Low spoken verse", steps: [0,0,0,-2,0,-2,-5], hold: 0.5, beats: 1, tip: "Sits low, close to talking. Stay on pitch down low." },
+    { group: "Lorde style", name: "Chant with a lift", steps: [7,7,7,7,9,7,5], hold: 0.5, beats: 1, tip: "Chant on one note, then lift once." },
+    { group: "Lorde style", name: "Octave-up chorus", steps: [0,0,12,12,10,12], hold: 0.6, beats: 2, tip: "Jump an octave for the chorus." },
+    { group: "Lorde style", name: "Stacked harmony line", steps: [0,4,7,4,0,-3], hold: 0.6, beats: 2, tip: "A line that works stacked in layers, like her vocal harmonies." },
+    { group: "Lorde style", name: "Minor whisper hook", steps: [0,3,0,-2,0], hold: 0.55, beats: 1, tip: "A small, whispered minor hook.", min: true },
+    { group: "Lorde style", name: "Rising pre-chorus", steps: [0,2,3,5,7,8], hold: 0.55, beats: 1, tip: "Climb steadily to build tension.", min: true },
+    { group: "The Marías style", name: "Velvet low line", steps: [0,3,5,3,0,-2], hold: 0.6, beats: 2, tip: "Soft and smooth, low in the voice.", min: true },
+    { group: "The Marías style", name: "Breathy major 7", steps: [0,4,7,11,7], hold: 0.7, beats: 2, tip: "A breathy, dreamy major seventh shape." },
+    { group: "The Marías style", name: "Dorian sway", steps: [0,2,3,5,9,7,5], hold: 0.6, beats: 2, tip: "Minor with a bright sixth, a laid-back sway.", min: true },
+    { group: "The Marías style", name: "Ninth sigh", steps: [14,12,11,7], hold: 0.7, beats: 2, tip: "Sigh down from the ninth." },
+    { group: "The Marías style", name: "Lazy repeated hook", steps: [7,7,5,7,7,5,3], hold: 0.55, beats: 1, tip: "A lazy, repeated hook. Stay relaxed.", min: true },
+    { group: "The Marías style", name: "Floating minor 9", steps: [0,3,7,10,14,10], hold: 0.65, beats: 2, tip: "A minor ninth chord shape, floating up and back.", min: true },
+    { group: "Alvvays style", name: "Jangly bright line", steps: [0,2,4,7,4,2,4,0], hold: 0.5, beats: 1, tip: "Bright and jangly, like the guitars." },
+    { group: "Alvvays style", name: "Hazy fall", steps: [9,7,5,4,2,0], hold: 0.6, beats: 2, tip: "A hazy falling line, soft and clear." },
+    { group: "Alvvays style", name: "Wide chorus leap", steps: [0,7,9,12,11,9], hold: 0.6, beats: 2, tip: "Leap wide into the chorus." },
+    { group: "Alvvays style", name: "Minor shimmer", steps: [0,3,5,7,10,7,5], hold: 0.55, beats: 1, tip: "A shimmering minor line.", min: true },
+    { group: "Alvvays style", name: "Sixth surprise", steps: [4,9,7,4,2,4], hold: 0.6, beats: 2, tip: "A sudden sixth leap, then settle." },
+    { group: "Alvvays style", name: "Held dreamy top", steps: [7,11,12,12], hold: 0.9, beats: 2, tip: "Rise and hold the top softly." },
+    { group: "Dua Lipa style", name: "Disco octave hook", steps: [0,12,10,12,7,10], hold: 0.45, beats: 1, tip: "A bouncy disco octave hook. Snap onto each note.", min: true },
+    { group: "Dua Lipa style", name: "Low cool verse", steps: [0,0,-2,0,3,0], hold: 0.5, beats: 1, tip: "Cool and low, a confident verse.", min: true },
+    { group: "Dua Lipa style", name: "Pre-chorus climb", steps: [0,3,5,7,8,10], hold: 0.5, beats: 1, tip: "Climb steadily into the chorus.", min: true },
+    { group: "Dua Lipa style", name: "Dance chorus", steps: [7,7,8,7,5,3,5], hold: 0.45, beats: 1, tip: "A catchy minor dance chorus.", min: true },
+    { group: "Dua Lipa style", name: "Falsetto pop", steps: [7,12,10,12,15,12], hold: 0.5, beats: 1, tip: "Flip up into a light falsetto.", min: true },
+    { group: "Dua Lipa style", name: "Funky pentatonic", steps: [0,3,5,3,5,7,5,3,0], hold: 0.4, beats: 1, tip: "A funky pentatonic line for groove pop.", min: true }
+  );
+  (function () {
+    var PRE = [[/^Corridos? tumbados?:|^Corrido:/, "Corridos"], [/^Ranchera:|^Mariachi:/, "Ranchera and mariachi"], [/^Bolero:/, "Bolero"], [/^Cumbia/, "Cumbia"], [/^Norte|^Banda:/, "Norte\u00F1o and banda"], [/^Grupera:/, "Grupera"], [/^Huapango:|^Son /, "Huapango and son"]];
+    EX.forEach(function (e) { if (e.group !== MX) return; for (var i = 0; i < PRE.length; i++) if (PRE[i][0].test(e.name)) { e.group = PRE[i][1]; return; } });
+  })();
+  var GROUPS = [INST_GROUP, "Warm-ups", "Vocal workouts", "Melody shapes", "Song guides", "Scales", JZ, XO, MX, "Corridos", "Ranchera and mariachi", "Bolero", "Cumbia", "Norteño and banda", "Grupera", "Huapango and son", BL, "Pop", "Dream pop", "Gospel and worship", "Soul and blues", MT, LK, CH, OR, "Juan Gabriel style", "Camilo Sesto style", "Los Bukis style", "Los Temerarios style", "Lorde style", "The Marías style", "Alvvays style", "Dua Lipa style", "Intervals", "Arpeggios", "Slides", "Range builders", "Ear training", "Your own"];
+  var MEX_GROUPS = [MX, "Corridos", "Ranchera and mariachi", "Bolero", "Cumbia", "Norteño and banda", "Grupera", "Huapango and son"];
+  var ARTIST_GROUPS = ["Juan Gabriel style", "Camilo Sesto style", "Los Bukis style", "Los Temerarios style", "Lorde style", "The Marías style", "Alvvays style", "Dua Lipa style"];
+  var STYLE_GROUPS = [JZ, XO, BL, "Pop", "Dream pop", "Gospel and worship", "Soul and blues", MT, LK, CH, OR], SHAPE_GROUPS = ["Melody shapes"];
+  var CAT_NAMES = { "Ranchera and mariachi": "Ranchera", "Norteño and banda": "Norteño and banda", "Huapango and son": "Huapango", "Juan Gabriel style": "Juan Gabriel", "Camilo Sesto style": "Camilo Sesto", "Los Bukis style": "Los Bukis", "Los Temerarios style": "Los Temerarios", "Lorde style": "Lorde", "The Marías style": "The Marías", "Alvvays style": "Alvvays", "Dua Lipa style": "Dua Lipa", "Gospel and worship": "Gospel", "Soul and blues": "Soul", "Vocal workouts": "Workouts", "Melody shapes": "Shapes", "Song guides": "Songs", "For your instrument": "Instrument", "Exotic scales": "Exotic", "Regional Mexican": "Mexican scales", "Range builders": "Range", "Ear training": "Ear", "Your own": "Mine" }, curCat = null;
   function pickerRender() {
     var cats = $("ex-cats"), grid = $("ex-grid"), sel = EX[+exSel.value];
     if (!curCat || pickerRender.last !== exSel.value) curCat = sel.group;
     pickerRender.last = exSel.value;
     cats.innerHTML = ""; grid.innerHTML = "";
-    var secOf = function (g) { return STYLE_GROUPS.indexOf(g) >= 0 ? "styles" : SHAPE_GROUPS.indexOf(g) >= 0 ? "shapes" : "basics"; };
+    var secOf = function (g) { return MEX_GROUPS.indexOf(g) >= 0 ? "mex" : ARTIST_GROUPS.indexOf(g) >= 0 ? "artists" : /^Songs: /.test(g) ? "songs" : STYLE_GROUPS.indexOf(g) >= 0 ? "styles" : SHAPE_GROUPS.indexOf(g) >= 0 ? "shapes" : "basics"; };
     if (!pickerRender.sec || pickerRender.curWas !== curCat) pickerRender.sec = secOf(curCat);
     pickerRender.curWas = curCat;
     var secs = $("ex-secs"); secs.innerHTML = "";
-    [["basics", "Basics"], ["styles", "Styles and genres"], ["shapes", "Shapes and songs"]].forEach(function (sc) {
+    [["basics", "Basics"], ["mex", "Mexican regional"], ["styles", "Genres"], ["artists", "Artist styles"], ["songs", "Song guides"], ["shapes", "Melody shapes"]].forEach(function (sc) {
       var b = document.createElement("button"); b.type = "button"; b.textContent = sc[1];
       b.setAttribute("aria-pressed", String(sc[0] === pickerRender.sec));
       b.addEventListener("click", function () {
@@ -7077,7 +7172,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
   (function () {
     var PCN = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }, per = {}, picks = [];
     SONGMAPS.forEach(function (sm) {
-      if (picks.length >= 14 || (per[sm.artist] = (per[sm.artist] || 0) + 1) > 3) return;
+
       var sec = sm.secs.filter(function (x) { return x[0] === "chorus"; })[0] || sm.secs[0]; if (!sec) return;
       var chs = [];
       String(sec[1]).split(/\s+/).forEach(function (tok) {
@@ -7090,7 +7185,9 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
       picks.push({ sm: sm, chs: chs, sec: sec[0] });
     });
     picks.forEach(function (p) {
-      EX.push({ group: "Song guides", name: p.sm.title + " (" + p.sec + ")", hold: 0.8, beats: 4, songGuide: 1,
+      var gname = "Songs: " + p.sm.artist;
+      if (GROUPS.indexOf(gname) < 0) { GROUPS.splice(GROUPS.indexOf("Song guides"), 0, gname); CAT_NAMES[gname] = p.sm.artist; }
+      EX.push({ group: gname, name: p.sm.title + " (" + p.sec + ")", hold: 0.8, beats: 4, songGuide: 1,
         tip: "A guide line through the " + p.sec + " chords of " + p.sm.title + " by " + p.sm.artist + ", moved to your starting note. Each note is a chord tone, chosen to move as little as possible, so it is not the real melody. Use it to hear how a line can follow the chords, then try your own.",
         gen: function (r0) {
           var shift = r0 - (p.sm.key + 60), prev = r0 + 4 - (p.sm.mode === "min" ? 1 : 0), out = [];
