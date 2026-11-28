@@ -249,6 +249,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     <button type="button" data-mode="jam" aria-pressed="false">Jam</button>
     <button type="button" data-mode="build" aria-pressed="false">Builder</button>
     <button type="button" data-mode="play" aria-pressed="false">Play along</button>
+    <button type="button" data-mode="charts" aria-pressed="false">Diagrams</button>
     <button type="button" data-mode="learn" aria-pressed="false">Compose</button>
     <button type="button" data-mode="rhythm" aria-pressed="false">Rhythm</button>
   </div>
@@ -780,6 +781,22 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     <p>To record yourself over the groove, wear headphones and tap Start listening. When you tap Stop, your take plays back with the groove mixed in, and you can download it.</p>
   </section>
 
+  <section class="panel" id="panel-dg" hidden>
+    <p>Scales and chord progressions drawn for your instrument. Pick a style group, then a scale or progression.</p>
+    <div class="cats" id="dg-view" role="group" aria-label="What to show"><button type="button" data-v="scale">Scales</button><button type="button" data-v="prog">Chord progressions</button></div>
+    <div class="row">
+      <label class="fld" style="flex:1 1 130px">Instrument<select id="dg-inst"><option value="piano">Piano</option><option value="guitar">Guitar</option><option value="bass">Bass</option><option value="sopsax">Soprano sax</option><option value="altosax">Alto sax</option><option value="tensax">Tenor sax</option></select></label>
+      <label class="fld" style="flex:1 1 110px">Key (concert)<select id="dg-key"></select></label>
+    </div>
+    <div class="row">
+      <label class="fld" style="flex:1 1 140px">Style<select id="dg-grp"></select></label>
+      <label class="fld" style="flex:2 1 200px">Pick one<select id="dg-item"></select></label>
+    </div>
+    <div class="row"><button type="button" class="ghost" id="dg-play">Hear it</button></div>
+    <div style="width:100%"><canvas id="dg-cv" style="width:100%;display:block"></canvas></div>
+    <p class="small" id="dg-info"></p>
+    <p class="small">Bright dots and keys are the home note (root); gray-blue ones are the other scale notes. Sax pictures show basic keys only, with written note names; the key menu is concert pitch.</p>
+  </section>
   <section class="panel" id="panel-play" hidden>
     <p>Play guitar or piano along with a song. Pick a real song below, or use the song you made in the Builder.</p>
     <div class="builder" style="display:flex;flex-direction:column;gap:6px">
@@ -7307,6 +7324,130 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     dot(rs, rf, true); dot(rs + 1, rf + 2, false);
   }
 
+  /* ---------- Diagrams tab: scales and chord progressions for piano, guitar, bass and saxes ---------- */
+  var DG_SC = [
+    ["Basics", [["Major", [0,2,4,5,7,9,11]], ["Natural minor", [0,2,3,5,7,8,10]], ["Harmonic minor", [0,2,3,5,7,8,11]], ["Melodic minor (jazz minor)", [0,2,3,5,7,9,11]], ["Major pentatonic", [0,2,4,7,9]], ["Minor pentatonic", [0,3,5,7,10]], ["Blues", [0,3,5,6,7,10]], ["Major blues", [0,2,3,4,7,9]], ["Chromatic", [0,1,2,3,4,5,6,7,8,9,10,11]]]],
+    ["Modes", [["Ionian (major)", [0,2,4,5,7,9,11]], ["Dorian", [0,2,3,5,7,9,10]], ["Phrygian", [0,1,3,5,7,8,10]], ["Lydian", [0,2,4,6,7,9,11]], ["Mixolydian", [0,2,4,5,7,9,10]], ["Aeolian (minor)", [0,2,3,5,7,8,10]], ["Locrian", [0,1,3,5,6,8,10]]]],
+    ["Mexican regional", [["Major: corridos, norteño, banda, mariachi", [0,2,4,5,7,9,11]], ["Harmonic minor: ranchera, bolero, banda", [0,2,3,5,7,8,11]], ["Natural minor: corridos tumbados, sierreño", [0,2,3,5,7,8,10]], ["Phrygian dominant: huapango, son, bolero color", [0,1,4,5,7,8,10]], ["Mixolydian: norteño and cumbia", [0,2,4,5,7,9,10]], ["Dorian: cumbia sonidera", [0,2,3,5,7,9,10]], ["Major pentatonic: cumbia melodies", [0,2,4,7,9]], ["Minor pentatonic: requinto licks", [0,3,5,7,10]]]],
+    ["Exotic and world", [["Egyptian (suspended pentatonic)", [0,2,5,7,10]], ["Arabic (double harmonic)", [0,1,4,5,7,8,11]], ["Hijaz (Phrygian dominant)", [0,1,4,5,7,8,10]], ["Hungarian minor", [0,2,3,6,7,8,11]], ["Persian", [0,1,4,5,6,8,11]], ["Neapolitan minor", [0,1,3,5,7,8,11]], ["Hirajoshi (Japanese)", [0,2,3,7,8]], ["In-sen (Japanese)", [0,1,5,7,10]], ["Whole tone", [0,2,4,6,8,10]]]],
+    ["Jazz", [["Bebop dominant", [0,2,4,5,7,9,10,11]], ["Bebop major", [0,2,4,5,7,8,9,11]], ["Dorian", [0,2,3,5,7,9,10]], ["Lydian dominant", [0,2,4,6,7,9,10]], ["Altered", [0,1,3,4,6,8,10]], ["Half-whole diminished", [0,1,3,4,6,7,9,10]], ["Whole-half diminished", [0,2,3,5,6,8,9,11]], ["Melodic minor", [0,2,3,5,7,9,11]]]],
+    ["Pop and ballads", [["Major", [0,2,4,5,7,9,11]], ["Major pentatonic", [0,2,4,7,9]], ["Natural minor", [0,2,3,5,7,8,10]], ["Minor pentatonic", [0,3,5,7,10]], ["Mixolydian", [0,2,4,5,7,9,10]]]],
+    ["Dream pop and indie", [["Lydian", [0,2,4,6,7,9,11]], ["Dorian", [0,2,3,5,7,9,10]], ["Mixolydian", [0,2,4,5,7,9,10]], ["Major pentatonic", [0,2,4,7,9]], ["Aeolian (minor)", [0,2,3,5,7,8,10]]]],
+    ["Gospel and soul", [["Major blues", [0,2,3,4,7,9]], ["Minor blues", [0,3,5,6,7,10]], ["Major pentatonic", [0,2,4,7,9]], ["Mixolydian", [0,2,4,5,7,9,10]], ["Dorian", [0,2,3,5,7,9,10]]]],
+    ["Rock and metal", [["Minor pentatonic", [0,3,5,7,10]], ["Blues", [0,3,5,6,7,10]], ["Phrygian", [0,1,3,5,7,8,10]], ["Harmonic minor", [0,2,3,5,7,8,11]], ["Phrygian dominant", [0,1,4,5,7,8,10]], ["Locrian", [0,1,3,5,6,8,10]]]]
+  ];
+  var DG_PR = [
+    ["Mexican regional", [["Corrido / norteño: one and five", "I V7 V7 I"], ["Ranchera", "I IV I V7"], ["Mariachi with the minor four", "I I7 IV iv I V7 I"], ["Bolero", "I vi ii7 V7"], ["Bolero with the six-seven", "Imaj7 VI7 ii7 V7"], ["Huapango / son", "I IV V7 I"], ["Cumbia (minor)", "i bVII bVI V7"], ["Cumbia (major)", "I IV V7 I"], ["Grupera ballad", "I iii IV V"], ["Corrido tumbado", "i bVI bVII i"], ["Sierreño minor", "i iv V7 i"], ["Andalusian cadence", "i bVII bVI V7"]]],
+    ["Pop", [["Axis (four chords)", "I V vi IV"], ["Sad pop", "vi IV I V"], ["Fifties / doo-wop", "I vi IV V"], ["Pop lift", "I IV vi V"], ["Royal road", "IV V iii vi"], ["Minor pop", "i bVI bIII bVII"]]],
+    ["Ballads", [["Rising ballad", "I iii IV V"], ["Canon", "I V vi iii IV I IV V"], ["Turnaround", "I vi ii V"], ["Big chorus", "IV V iii vi ii V I"], ["Minor ballad", "i iv bVII bIII"]]],
+    ["Dream pop and indie", [["Two-chord float", "Imaj7 IVmaj7"], ["Minor four color", "I iii IV iv"], ["Dreamy loop", "vi7 IVmaj7 Imaj7 V"], ["Sevenths drift", "Imaj7 iii7 IVmaj7 iv"], ["Flat-seven lift", "I bVII IV I"]]],
+    ["Jazz", [["Two-five-one", "ii7 V7 Imaj7"], ["Rhythm changes start", "Imaj7 vi7 ii7 V7"], ["Minor two-five-one", "iiø7 V7 i"], ["Long turnaround", "Imaj7 IV7 iii7 VI7 ii7 V7 Imaj7"]]],
+    ["Gospel and soul", [["Church cadence", "I IV I V"], ["Gospel walk-down", "IVmaj7 iii7 ii7 Imaj7"], ["Minor-four gospel", "I I7 IV iv I"], ["Soul loop", "vi7 ii7 V7 Imaj7"]]],
+    ["Blues", [["12-bar blues", "I7 I7 I7 I7 IV7 IV7 I7 I7 V7 IV7 I7 V7"], ["Quick-change blues", "I7 IV7 I7 I7 IV7 IV7 I7 I7 V7 IV7 I7 V7"], ["Minor blues", "i7 i7 i7 i7 iv7 iv7 i7 i7 bVI7 V7 i7 V7"]]],
+    ["Rock and metal", [["Epic minor", "i bVI bVII i"], ["Mixolydian rock", "I bVII IV I"], ["Phrygian riff", "i bII i bII"], ["Metal climb", "i bVII bVI bVII"]]]
+  ];
+  var DG_Q = { "": [0,4,7], m: [0,3,7], "7": [0,4,7,10], maj7: [0,4,7,11], m7: [0,3,7,10], dim: [0,3,6], m7b5: [0,3,6,10] };
+  var DG_DEG = ["1","♭2","2","♭3","3","4","♭5","5","♭6","6","♭7","7"], DG_RN = { I: 0, II: 2, III: 4, IV: 5, V: 7, VI: 9, VII: 11 };
+  var DG = { view: prefs.dgView || "scale", inst: prefs.dgInst || "piano", key: prefs.dgKey || 0, grp: 0, item: 0 };
+  function dgParse(rn) {
+    var m = /^(b|#)?(VII|VI|V|IV|III|II|I|vii|vi|v|iv|iii|ii|i)(.*)$/.exec(rn); if (!m) return null;
+    var low = m[2] === m[2].toLowerCase(), suf = m[3], q;
+    if (suf === "ø7") q = "m7b5"; else if (suf === "°") q = "dim"; else if (suf === "maj7") q = "maj7"; else if (suf === "7") q = low ? "m7" : "7"; else q = low ? "m" : "";
+    var semi = DG_RN[m[2].toUpperCase()] + (m[1] === "b" ? -1 : m[1] === "#" ? 1 : 0);
+    return { semi: (semi + 12) % 12, q: q, rn: rn };
+  }
+  function dgNm(pc, key) { key = key == null ? DG.key : key; return (DG_DEG[(pc - key + 12) % 12].indexOf("♭") >= 0 ? FLAT : dgNames())[pc % 12]; }
+  function dgNames() { return [5, 10, 3, 8, 1].indexOf(DG.key) >= 0 ? FLAT : SHARP; }
+  function dgList() { return DG.view === "scale" ? DG_SC : DG_PR; }
+  function dgFill() {
+    var L = dgList(); DG.grp = Math.min(DG.grp, L.length - 1);
+    $("dg-grp").innerHTML = L.map(function (g, i) { return '<option value="' + i + '">' + g[0] + "</option>"; }).join(""); $("dg-grp").value = DG.grp;
+    var items = L[DG.grp][1]; DG.item = Math.min(DG.item, items.length - 1);
+    $("dg-item").innerHTML = items.map(function (it, i) { return '<option value="' + i + '">' + it[0] + (DG.view === "prog" ? " (" + it[1] + ")" : "") + "</option>"; }).join(""); $("dg-item").value = DG.item;
+    document.querySelectorAll("#dg-view button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === DG.view)); });
+    dgDraw();
+  }
+  function dgChords() {
+    var nn = dgNames();
+    return dgList()[DG.grp][1][DG.item][1].split(" ").map(function (rn) {
+      var p = dgParse(rn), root = (DG.key + p.semi) % 12;
+      return { root: root, tones: DG_Q[p.q], name: nn[root] + (p.q === "m7b5" ? "m7♭5" : p.q === "dim" ? "°" : p.q), rn: rn };
+    });
+  }
+  function dgDraw() {
+    var cv = $("dg-cv"), W = cv.parentNode.clientWidth || 360, nn = dgNames(), C = { ink: TH.text, mut: TH.muted, dot: TH.note }, H, g, dpr = window.devicePixelRatio || 1;
+    var sax = SAX_WX[DG.inst] != null, wx = sax ? SAX_WX[DG.inst] : 0;
+    function setup(h) { H = h; cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + "px"; g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); g.textAlign = "center"; g.textBaseline = "middle"; }
+    var info = "";
+    if (DG.view === "scale") {
+      var sc = dgList()[DG.grp][1][DG.item][1], on = {}; sc.forEach(function (iv) { on[(DG.key + iv) % 12] = iv; });
+      info = "Notes: " + sc.map(function (iv) { return dgNm((DG.key + iv) % 12); }).join(" ") + "   ·   Steps: " + sc.map(function (iv) { return DG_DEG[iv]; }).join(" ");
+      if (DG.inst === "piano") {
+        var kw = W / 15; setup(Math.min(170, kw * 5.2)); var wk = [0,2,4,5,7,9,11], i;
+        for (i = 0; i < 15; i++) { var pc = wk[i % 7], hit = on[(pc) % 12] != null; g.fillStyle = hit ? (on[pc] === 0 ? C.dot : "#a9c2ec") : "#f4f4f4"; g.fillRect(i * kw + 0.5, 0, kw - 1, H - 2); g.strokeStyle = "#555"; g.lineWidth = 1; g.strokeRect(i * kw + 0.5, 0, kw - 1, H - 2); if (hit) { g.fillStyle = "#111"; g.font = "700 " + Math.max(11, Math.round(kw * 0.42)) + "px system-ui, sans-serif"; g.fillText(dgNm(pc), i * kw + kw / 2, H - kw * 0.75); g.font = Math.max(10, Math.round(kw * 0.34)) + "px system-ui, sans-serif"; g.fillText(DG_DEG[(pc - DG.key + 12) % 12], i * kw + kw / 2, H - kw * 0.35); } }
+        for (i = 0; i < 14; i++) { pc = wk[i % 7]; if (pc === 4 || pc === 11) continue; var pb = pc + 1, hb = on[pb] != null, bx = (i + 1) * kw - kw * 0.3; g.fillStyle = hb ? (on[pb] === 0 ? C.dot : "rgb(96,118,156)") : "#111"; g.fillRect(bx, 0, kw * 0.6, H * 0.6); if (hb) { g.strokeStyle = "#111"; g.strokeRect(bx, 0, kw * 0.6, H * 0.6); g.fillStyle = "#fff"; g.font = "700 " + Math.max(9, Math.round(kw * 0.34)) + "px system-ui, sans-serif"; g.fillText(dgNm(pb), bx + kw * 0.3, H * 0.6 - kw * 0.3); } }
+      } else if (DG.inst === "guitar" || DG.inst === "bass") {
+        var tun = DG.inst === "guitar" ? [40, 45, 50, 55, 59, 64] : [28, 33, 38, 43], ns = tun.length, FR = 12, Lx = 26, fw = (W - Lx - 6) / (FR + 0.6), sg = DG.inst === "guitar" ? 26 : 30, T = 24;
+        setup(T + sg * (ns - 1) + 30);
+        g.strokeStyle = C.mut; g.lineWidth = 1;
+        for (var s = 0; s < ns; s++) { var y = T + (ns - 1 - s) * sg; g.beginPath(); g.moveTo(Lx, y); g.lineTo(Lx + fw * (FR + 0.6), y); g.stroke(); g.fillStyle = C.mut; g.font = "11px system-ui, sans-serif"; g.fillText(nn[tun[s] % 12], 10, y); }
+        for (var f = 0; f <= FR; f++) { var fx = Lx + (f + 0.6) * fw; g.strokeStyle = f === 0 ? C.ink : C.mut; g.lineWidth = f === 0 ? 3 : 1; g.beginPath(); g.moveTo(fx, T - 6); g.lineTo(fx, T + sg * (ns - 1) + 6); g.stroke(); if ([3,5,7,9,12].indexOf(f) >= 0) { g.fillStyle = C.mut; g.font = "10px system-ui, sans-serif"; g.fillText(f, fx - fw / 2, T + sg * (ns - 1) + 20); } }
+        var rr = Math.min(fw, sg) * 0.4;
+        for (s = 0; s < ns; s++) for (f = 0; f <= FR; f++) {
+          var p2 = (tun[s] + f) % 12; if (on[p2] == null) continue;
+          var cx = f === 0 ? Lx + fw * 0.3 : Lx + (f + 0.1) * fw, cy = T + (ns - 1 - s) * sg;
+          g.beginPath(); g.arc(cx, cy, rr, 0, 7); g.fillStyle = on[p2] === 0 ? C.dot : "rgb(96,118,156)"; g.fill();
+          g.fillStyle = "#fff"; g.font = "600 " + Math.round(rr * 0.95) + "px system-ui, sans-serif"; g.fillText(dgNm(p2), cx, cy + 0.5);
+        }
+      } else {
+        var notes = sc.concat([12]), per = Math.max(3, Math.min(notes.length, Math.floor(W / 74))), cw = W / per, ch = 150, rows = Math.ceil(notes.length / per);
+        setup(rows * (ch + 26));
+        var wroot = DG.key + wx, wn = flats ? FLAT : SHARP;
+        notes.forEach(function (iv, k) {
+          var x = (k % per) * cw, y0 = Math.floor(k / per) * (ch + 26), wnote = saxWritten(DG.key + iv + 60, wx);
+          if (k && iv < notes[k - 1]) wnote += 12;
+          miniSax(g, x + 4, y0, cw - 8, ch, wnote, C, true);
+          g.fillStyle = C.mut; g.font = "11px system-ui, sans-serif"; g.textAlign = "center"; g.fillText(DG_DEG[iv % 12] + " · sounds " + dgNm((DG.key + iv) % 12), x + cw / 2, y0 + ch + 10);
+        });
+        info += "   ·   Written for " + SAX_NAME[DG.inst] + ": " + sc.map(function (iv) { return dgNm((wroot + iv) % 12, wroot % 12); }).join(" ") + " (key of " + dgNames()[wroot % 12] + ")";
+      }
+    } else {
+      var chs = dgChords(), per2 = Math.max(2, Math.min(4, Math.floor(W / 88))), cw2 = W / per2, chh = DG.inst === "piano" ? 92 : sax ? 170 : 130, rows2 = Math.ceil(chs.length / per2);
+      setup(rows2 * (chh + 8));
+      chs.forEach(function (c, k) {
+        var x = (k % per2) * cw2, y0 = Math.floor(k / per2) * (chh + 8);
+        g.fillStyle = C.ink; g.font = "700 17px system-ui, sans-serif"; g.textAlign = "center"; g.fillText(c.name, x + cw2 / 2, y0 + 11);
+        g.fillStyle = C.mut; g.font = "11px system-ui, sans-serif"; g.fillText(c.rn, x + cw2 / 2, y0 + 27);
+        var dy = y0 + 36, dh = chh - 40;
+        if (DG.inst === "piano") miniPiano(g, x + 6, dy + 4, cw2 - 12, dh - 6, c, C);
+        else if (DG.inst === "guitar") miniGuitar(g, x + 6, dy, cw2 - 12, dh, c, C);
+        else if (DG.inst === "bass") miniBass(g, x + 6, dy, cw2 - 12, dh, c, C);
+        else { miniSax(g, x + 6, dy, cw2 - 12, dh - 14, c.root + wx + 60, C, true); g.fillStyle = C.mut; g.font = "10px system-ui, sans-serif"; g.textAlign = "center"; g.fillText("arp: " + c.tones.map(function (t) { return dgNames()[(c.root + t + wx) % 12]; }).join(" "), x + cw2 / 2, y0 + chh - 4); }
+      });
+      info = "Chords: " + chs.map(function (c) { return c.name; }).join(" – ") + (sax ? "   ·   Sax shows the written root fingering and written chord notes (arp) for " + SAX_NAME[DG.inst] + "." : DG.inst === "bass" ? "   ·   Bass: root (big dot) and fifth." : "");
+    }
+    $("dg-info").textContent = info;
+  }
+  function dgPlay() {
+    if (DG.view === "scale") {
+      var sc = dgList()[DG.grp][1][DG.item][1], base = DG.key + (DG.inst === "bass" ? 36 : 60), up = sc.map(function (iv) { return base + iv; }).concat([base + 12]);
+      playSeq(up.concat(up.slice(0, -1).reverse()), 0.32, 0.36);
+    } else {
+      ready().then(function () { var t = ac.currentTime + 0.05; dgChords().forEach(function (c, k) { c.tones.forEach(function (iv) { synth(ac, output(), curInst(), 48 + c.root + iv + (c.root > 6 ? -12 : 0) + 12, t + k * 1.1, 1.0); }); synth(ac, output(), curInst(), 36 + c.root, t + k * 1.1, 1.0); }); });
+    }
+  }
+  (function () {
+    $("dg-key").innerHTML = SHARP.map(function (n, i) { return '<option value="' + i + '">' + (FLAT[i] !== n ? n + " / " + FLAT[i] : n) + "</option>"; }).join("");
+    $("dg-key").value = DG.key; $("dg-inst").value = DG.inst;
+    $("dg-key").addEventListener("change", function () { DG.key = +this.value; prefs.dgKey = DG.key; savePrefs(); dgDraw(); });
+    $("dg-inst").addEventListener("change", function () { DG.inst = this.value; prefs.dgInst = DG.inst; savePrefs(); dgDraw(); });
+    $("dg-grp").addEventListener("change", function () { DG.grp = +this.value; DG.item = 0; dgFill(); });
+    $("dg-item").addEventListener("change", function () { DG.item = +this.value; dgDraw(); });
+    document.querySelectorAll("#dg-view button").forEach(function (b) { b.addEventListener("click", function () { DG.view = b.getAttribute("data-v"); prefs.dgView = DG.view; savePrefs(); DG.grp = 0; DG.item = 0; dgFill(); }); });
+    $("dg-play").addEventListener("click", dgPlay);
+    window.addEventListener("resize", function () { if (mode === "charts") dgDraw(); });
+  })();
+
   /* ---------- play-along view: big current chord, next chord, beat count and shapes ---------- */
   var PA = { on: false, inst: prefs.pa || "guitar", tag: "" };
   $("pa-inst").value = PA.inst;
@@ -8410,7 +8551,7 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     document.querySelectorAll(".seg button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-mode") === m)); });
     ["target", "key", "range"].forEach(function (p) { $("panel-" + p).hidden = m !== p; });
     $("panel-ex").hidden = m !== "exercise";
-    $("panel-jam").hidden = m !== "jam"; $("panel-rhythm").hidden = m !== "rhythm"; $("panel-build").hidden = m !== "build"; $("panel-learn").hidden = m !== "learn"; $("panel-play").hidden = m !== "play"; if (typeof PA !== "undefined") { PA.on = m === "play"; setTimeout(function () { paPlace(m); }, 0); if (PA.on) { if (GV.on && !GV.song) gvStop(); if (!SF.on) { SF.on = true; $("sf-on").checked = true; prefs.sf = { on: true }; savePrefs(); } setTimeout(plShow, 0); } }
+    $("panel-jam").hidden = m !== "jam"; $("panel-rhythm").hidden = m !== "rhythm"; $("panel-build").hidden = m !== "build"; $("panel-learn").hidden = m !== "learn"; $("panel-play").hidden = m !== "play"; $("panel-dg").hidden = m !== "charts"; if (m === "charts") setTimeout(dgFill, 0); if (typeof PA !== "undefined") { PA.on = m === "play"; setTimeout(function () { paPlace(m); }, 0); if (PA.on) { if (GV.on && !GV.song) gvStop(); if (!SF.on) { SF.on = true; $("sf-on").checked = true; prefs.sf = { on: true }; savePrefs(); } setTimeout(plShow, 0); } }
     if (m === "jam") setTimeout(function () { gvGridIdle(); jmDraw(); }, 0);
     if (m === "build") {
       if (GV.on && !GV.song) gvStop();
@@ -8421,8 +8562,8 @@ h1 select { width: 106px; flex: none; max-width: 180px; min-height: 38px; font-s
     } else if ($("sf-body").parentNode !== $("sf-box")) $("sf-box").appendChild($("sf-body"));
     /* in the Jam tab the song form stays off unless you turned it on there yourself */
     if (m === "jam" && SF.on !== !!prefs.sfJam) { if (GV.on || GV.ending) gvStop(); SF.on = !!prefs.sfJam; $("sf-on").checked = SF.on; $("sf-body").hidden = !SF.on; $("gv-play").textContent = SF.on ? "Play the song" : "Play groove"; setTimeout(gvWho, 0); }
-    document.querySelector(".trace-wrap").hidden = m === "rhythm" || m === "play"; card.hidden = m === "play"; toggle.hidden = m === "play" && !running;
-    sizeChart(); $("kb-card").hidden = m === "song" || m === "rhythm" || m === "build" || m === "learn" || m === "play" || !sw("kb");
+    document.querySelector(".trace-wrap").hidden = m === "rhythm" || m === "play" || m === "charts"; card.hidden = m === "play" || m === "charts"; toggle.hidden = (m === "play" || m === "charts") && !running;
+    sizeChart(); $("kb-card").hidden = m === "song" || m === "rhythm" || m === "build" || m === "learn" || m === "play" || m === "charts" || !sw("kb");
     if (m === "exercise") { setFlats(); renderChips(); }
     kbHint();
     $("panel-song").hidden = m !== "song";
